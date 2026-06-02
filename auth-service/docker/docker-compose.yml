@@ -1,0 +1,22 @@
+services:
+
+  postgres:
+    image: postgres:15
+    container_name: sus-postgres-dev
+    environment:
+      POSTGRES_DB: sus_queue_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - sus_postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sus_queue_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  sus_postgres_data:
