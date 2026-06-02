@@ -34,6 +34,18 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
     }
 
+    @ExceptionHandler(UserOrPasswordIncorrect.class)
+    public ResponseEntity<ProblemDetail> handleInvalidCredentials(
+            UserOrPasswordIncorrect ex, HttpServletRequest request) {
+
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+        problem.setType(URI.create(TYPE_BASE + "invalid-credentials"));
+        problem.setTitle("Credenciais inválidas");
+        problem.setInstance(URI.create(request.getRequestURI()));
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(problem);
+    }
+
     @ExceptionHandler(PasswordNotValidException.class)
     public ResponseEntity<ProblemDetail> handlePasswordNotValid(
             PasswordNotValidException ex, HttpServletRequest request) {

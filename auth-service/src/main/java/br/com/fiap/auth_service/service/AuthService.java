@@ -2,7 +2,9 @@ package br.com.fiap.auth_service.service;
 
 import br.com.fiap.auth_service.exception.PasswordNotValidException;
 import br.com.fiap.auth_service.exception.UserAlreadyExistException;
+import br.com.fiap.auth_service.exception.UserOrPasswordIncorrect;
 import br.com.fiap.auth_service.model.User;
+import br.com.fiap.auth_service.model.dto.LoginRequestDTO;
 import br.com.fiap.auth_service.model.dto.NewUserDTO;
 import br.com.fiap.auth_service.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -51,5 +53,17 @@ public class AuthService {
             throw new PasswordNotValidException(
                     "Senha deve ter no mínimo 9 caracteres, incluindo letra maiúscula, minúscula, número e caractere especial");
         }
+    }
+
+    public User doLogin(LoginRequestDTO loginRequestDTO) {
+        User user = userRepository
+                .findByUsername(loginRequestDTO.username())
+                .orElseThrow(() -> new UserOrPasswordIncorrect("Usuário ou senha incorretos!"));
+
+        if (!passwordEncoder.matches(loginRequestDTO.password(), user.getPassword())) {
+            throw new UserOrPasswordIncorrect("Usuário ou senha incorretos!");
+        }
+
+        return user;
     }
 }

@@ -1,9 +1,13 @@
 package br.com.fiap.auth_service.controller;
 
 import br.com.fiap.auth_service.model.User;
+import br.com.fiap.auth_service.model.UserRole;
+import br.com.fiap.auth_service.model.dto.AuthResponseDTO;
+import br.com.fiap.auth_service.model.dto.LoginRequestDTO;
 import br.com.fiap.auth_service.model.dto.NewUserDTO;
 import br.com.fiap.auth_service.model.dto.UserPresenterDTO;
 import br.com.fiap.auth_service.service.AuthService;
+import br.com.fiap.auth_service.service.JwtService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,9 +21,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final JwtService jwtService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService,
+                          JwtService jwtService) {
         this.authService = authService;
+        this.jwtService = jwtService;
     }
 
     @PostMapping("/register")
@@ -30,4 +37,12 @@ public class AuthController {
                 .body(new UserPresenterDTO(user.getId().toString(), user.getUsername(), user.getRole().toString()));
     }
 
+    @PostMapping("/login")
+    public ResponseEntity<AuthResponseDTO> login(@Valid @RequestBody LoginRequestDTO loginRequestDTO) {
+        User user = authService.doLogin(loginRequestDTO);
+        String token = jwtService.generateToken(user);
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(AuthResponseDTO.of(token, jwtService.getExpirationMs(), user.getRole()));
+    }
 }
