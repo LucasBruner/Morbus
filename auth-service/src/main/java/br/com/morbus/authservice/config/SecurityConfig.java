@@ -1,4 +1,4 @@
-package br.com.fiap.auth_service.config;
+package br.com.morbus.authservice.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

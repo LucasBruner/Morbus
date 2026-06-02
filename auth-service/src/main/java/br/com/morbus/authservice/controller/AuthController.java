@@ -1,13 +1,12 @@
-package br.com.fiap.auth_service.controller;
+package br.com.morbus.authservice.controller;
 
-import br.com.fiap.auth_service.model.User;
-import br.com.fiap.auth_service.model.UserRole;
-import br.com.fiap.auth_service.model.dto.AuthResponseDTO;
-import br.com.fiap.auth_service.model.dto.LoginRequestDTO;
-import br.com.fiap.auth_service.model.dto.NewUserDTO;
-import br.com.fiap.auth_service.model.dto.UserPresenterDTO;
-import br.com.fiap.auth_service.service.AuthService;
-import br.com.fiap.auth_service.service.JwtService;
+import br.com.morbus.authservice.model.User;
+import br.com.morbus.authservice.model.dto.AuthResponseDTO;
+import br.com.morbus.authservice.model.dto.LoginRequestDTO;
+import br.com.morbus.authservice.model.dto.NewUserDTO;
+import br.com.morbus.authservice.model.dto.UserPresenterDTO;
+import br.com.morbus.authservice.service.AuthService;
+import br.com.morbus.authservice.service.JwtService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

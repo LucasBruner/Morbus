@@ -1,6 +1,6 @@
-package br.com.fiap.auth_service.model.dto;
+package br.com.morbus.authservice.model.dto;
 
-import br.com.fiap.auth_service.model.UserRole;
+import br.com.morbus.authservice.model.UserRole;
 
 public record AuthResponseDTO(String token,
                               String type,

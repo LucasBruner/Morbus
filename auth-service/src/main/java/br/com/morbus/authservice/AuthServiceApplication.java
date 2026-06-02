@@ -1,4 +1,4 @@
-package br.com.fiap.auth_service;
+package br.com.morbus.authservice;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;

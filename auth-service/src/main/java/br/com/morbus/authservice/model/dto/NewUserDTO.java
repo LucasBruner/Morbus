@@ -1,6 +1,6 @@
-package br.com.fiap.auth_service.model.dto;
+package br.com.morbus.authservice.model.dto;
 
-import br.com.fiap.auth_service.model.UserRole;
+import br.com.morbus.authservice.model.UserRole;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

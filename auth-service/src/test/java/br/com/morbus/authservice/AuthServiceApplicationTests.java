@@ -1,4 +1,4 @@
-package br.com.fiap.auth_service;
+package br.com.morbus.authservice;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

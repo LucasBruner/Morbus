@@ -1,6 +1,6 @@
-package br.com.fiap.auth_service.repository;
+package br.com.morbus.authservice.repository;
 
-import br.com.fiap.auth_service.model.User;
+import br.com.morbus.authservice.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

@@ -1,4 +1,4 @@
-package br.com.fiap.auth_service.exception;
+package br.com.morbus.authservice.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpHeaders;

@@ -1,4 +1,4 @@
-package br.com.fiap.auth_service.model;
+package br.com.morbus.authservice.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

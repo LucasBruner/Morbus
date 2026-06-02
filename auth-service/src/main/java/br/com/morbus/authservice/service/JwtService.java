@@ -1,6 +1,6 @@
-package br.com.fiap.auth_service.service;
+package br.com.morbus.authservice.service;
 
-import br.com.fiap.auth_service.model.User;
+import br.com.morbus.authservice.model.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;

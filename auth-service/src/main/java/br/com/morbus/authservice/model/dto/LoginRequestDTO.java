@@ -1,4 +1,4 @@
-package br.com.fiap.auth_service.model.dto;
+package br.com.morbus.authservice.model.dto;
 
 import jakarta.validation.constraints.NotBlank;
 

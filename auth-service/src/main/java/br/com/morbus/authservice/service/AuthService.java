@@ -1,12 +1,12 @@
-package br.com.fiap.auth_service.service;
+package br.com.morbus.authservice.service;
 
-import br.com.fiap.auth_service.exception.PasswordNotValidException;
-import br.com.fiap.auth_service.exception.UserAlreadyExistException;
-import br.com.fiap.auth_service.exception.UserOrPasswordIncorrect;
-import br.com.fiap.auth_service.model.User;
-import br.com.fiap.auth_service.model.dto.LoginRequestDTO;
-import br.com.fiap.auth_service.model.dto.NewUserDTO;
-import br.com.fiap.auth_service.repository.UserRepository;
+import br.com.morbus.authservice.exception.PasswordNotValidException;
+import br.com.morbus.authservice.exception.UserAlreadyExistException;
+import br.com.morbus.authservice.exception.UserOrPasswordIncorrect;
+import br.com.morbus.authservice.model.User;
+import br.com.morbus.authservice.model.dto.LoginRequestDTO;
+import br.com.morbus.authservice.model.dto.NewUserDTO;
+import br.com.morbus.authservice.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
