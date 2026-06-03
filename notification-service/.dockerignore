@@ -1,5 +1,12 @@
-*
-!target/*-runner
-!target/*-runner.jar
-!target/lib/*
-!target/quarkus-app/*
+# Exclui artefatos de build anteriores (o multi-stage build gera o seu próprio)
+target/
+
+# Exclui arquivos de IDE e controle de versão
+.idea/
+.git/
+*.iml
+
+# Exclui arquivos de documentação e configuração local
+README.md
+docker/
+docs/
