@@ -11,4 +11,5 @@ public interface IQueueEntryRepository {
     Optional<QueueEntry> findById(UUID id);
     Optional<QueueEntry> findNextByPriority();
     List<QueueEntry> findAllOrderedByPriority();
+    int countEntriesWithHigherPriority(QueueEntry entry); // Conta quantos têm score menor (maior prioridade) que este paciente
 }
