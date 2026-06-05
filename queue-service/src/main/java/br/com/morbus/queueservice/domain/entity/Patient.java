@@ -3,13 +3,15 @@ package br.com.morbus.queueservice.domain.entity;
 import br.com.morbus.queueservice.domain.enums.EGender;
 import br.com.morbus.queueservice.domain.enums.EPriorityGroup;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDate;
 import java.util.UUID;
 
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class Patient {

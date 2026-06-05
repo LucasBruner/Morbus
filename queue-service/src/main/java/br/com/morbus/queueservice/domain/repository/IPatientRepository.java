@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface IPatientRepository {
-    void save();
+    void save(Patient patient);
     Optional<Patient> findById(Integer id);
     Optional<Patient> findByCpf(String cpf);
     Optional<Patient> findByCns(String cns);

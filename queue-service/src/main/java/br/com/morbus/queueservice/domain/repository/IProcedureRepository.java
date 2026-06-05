@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface IProcedureRepository {
-    void save();
+    void save(Procedure procedure);
     Optional<Procedure> findById(Integer id);
     Optional<Procedure> findByCoProcedimento(String coProcedimento);
     List<Procedure> findAll();
