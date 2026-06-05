@@ -4,10 +4,11 @@ import br.com.morbus.queueservice.domain.entity.QueueEntry;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public interface IQueueEntryRepository {
-    void save();
-    Optional<QueueEntry> findById(Integer id);
-    QueueEntry findNextByPriority();
+    void save(QueueEntry entry);
+    Optional<QueueEntry> findById(UUID id);
+    Optional<QueueEntry> findNextByPriority();
     List<QueueEntry> findAllOrderedByPriority();
 }

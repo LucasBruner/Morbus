@@ -1,7 +1,12 @@
 package br.com.morbus.queueservice.domain.entity;
 
+import lombok.Builder;
+import lombok.Getter;
+
 import java.util.UUID;
 
+@Builder
+@Getter
 public class Procedure {
     private UUID id;
     private String coProcedimento;

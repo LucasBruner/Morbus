@@ -2,16 +2,14 @@ package br.com.morbus.queueservice.domain.entity;
 
 import br.com.morbus.queueservice.domain.enums.EQueueStatus;
 import br.com.morbus.queueservice.domain.enums.ERiskColor;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
+@Builder
+@Getter
 public class QueueEntry {
     private UUID id;
     private Patient patient;
@@ -24,5 +22,10 @@ public class QueueEntry {
 
     public Integer calculatePriorityScore() {
         return 1;
+    }
+
+    public void call() {
+        this.queueStatus = EQueueStatus.AGENDADO;
+        this.updatedAt = LocalDateTime.now();
     }
 }
