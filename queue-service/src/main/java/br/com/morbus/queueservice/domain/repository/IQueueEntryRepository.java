@@ -1,15 +1,16 @@
 package br.com.morbus.queueservice.domain.repository;
 
+import br.com.morbus.queueservice.domain.entity.Patient;
 import br.com.morbus.queueservice.domain.entity.QueueEntry;
-import br.com.morbus.queueservice.domain.usecase.RegisterPatientCommand;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public interface IQueueEntryRepository {
-    void save(QueueEntry queueEntry);
-    QueueEntry execute(RegisterPatientCommand command);
-    Optional<QueueEntry> findById(Integer id);
-    QueueEntry findNextByPriority();
+    void save(QueueEntry entry);
+    Optional<QueueEntry> findById(UUID id);
+    Optional<QueueEntry> findNextByPriority();
+    Optional<QueueEntry> findByPatient(Patient patient);
     List<QueueEntry> findAllOrderedByPriority();
 }

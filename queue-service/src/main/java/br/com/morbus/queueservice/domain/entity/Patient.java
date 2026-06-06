@@ -2,18 +2,14 @@ package br.com.morbus.queueservice.domain.entity;
 
 import br.com.morbus.queueservice.domain.enums.EGender;
 import br.com.morbus.queueservice.domain.enums.EPriorityGroup;
-import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.time.LocalDate;
 import java.util.UUID;
 
+@Builder
 @Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
 public class Patient {
     private UUID id;
     private String cpf;
@@ -24,4 +20,8 @@ public class Patient {
     private EGender gender;
     private String contato;
     private EPriorityGroup grupoLegal;
+
+    public void updateGrupoLegal(EPriorityGroup grupoLegal) {
+        this.grupoLegal = grupoLegal;
+    }
 }

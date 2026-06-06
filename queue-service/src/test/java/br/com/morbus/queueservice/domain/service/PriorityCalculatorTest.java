@@ -110,11 +110,12 @@ class PriorityCalculatorTest {
     @Test
     @DisplayName("Cenário 3b: Múltiplos pacientes no mesmo timestamp")
     void testMultiplosPacientesMesmoTimestamp() {
-        QueueEntry fila1 = criarQueueEntry(pacienteGeral, ERiskColor.AZUL, LocalDateTime.now());
-        QueueEntry fila2 = criarQueueEntry(pacienteGeral, ERiskColor.AZUL, LocalDateTime.now());
-        
+        LocalDateTime mesmoInstante = LocalDateTime.now();
+        QueueEntry fila1 = criarQueueEntry(pacienteGeral, ERiskColor.AZUL, mesmoInstante);
+        QueueEntry fila2 = criarQueueEntry(pacienteGeral, ERiskColor.AZUL, mesmoInstante);
+
         int resultado = PriorityCalculator.compare(fila1, fila2);
-        
+
         assertEquals(0, resultado, "Mesmo timestamp deve retornar 0");
     }
     
@@ -138,11 +139,12 @@ class PriorityCalculatorTest {
         Patient paciente1 = criarPaciente("Pedro Costa", 35);
         Patient paciente2 = criarPaciente("Paulo Silva", 35);
         
-        QueueEntry fila1 = criarQueueEntry(paciente1, ERiskColor.VERDE, LocalDateTime.now());
-        QueueEntry fila2 = criarQueueEntry(paciente2, ERiskColor.VERDE, LocalDateTime.now());
-        
+        LocalDateTime mesmoInstante = LocalDateTime.now();
+        QueueEntry fila1 = criarQueueEntry(paciente1, ERiskColor.VERDE, mesmoInstante);
+        QueueEntry fila2 = criarQueueEntry(paciente2, ERiskColor.VERDE, mesmoInstante);
+
         int resultado = PriorityCalculator.compare(fila1, fila2);
-        
+
         assertEquals(0, resultado, "Mesmas características devem resultar em 0");
     }
     
@@ -249,26 +251,26 @@ class PriorityCalculatorTest {
      * Cria um paciente com idade específica e grupo legal definido
      */
     private Patient criarPaciente(String nome, int idadeAtual, EPriorityGroup grupoLegal) {
-        Patient paciente = new Patient();
-        paciente.setId(UUID.randomUUID());
-        paciente.setNome(nome);
-        paciente.setDataNascimento(LocalDate.now().minusYears(idadeAtual));
-        paciente.setGrupoLegal(grupoLegal);
-        paciente.setCpf("12345678901");
-        paciente.setCns("123456789012345");
-        return paciente;
+        return Patient.builder()
+                .id(UUID.randomUUID())
+                .nome(nome)
+                .dataNascimento(LocalDate.now().minusYears(idadeAtual))
+                .grupoLegal(grupoLegal)
+                .cpf("12345678901")
+                .cns("123456789012345")
+                .build();
     }
     
     /**
      * Cria uma entrada de fila
      */
     private QueueEntry criarQueueEntry(Patient paciente, ERiskColor riskColor, LocalDateTime registeredAt) {
-        QueueEntry queueEntry = new QueueEntry();
-        queueEntry.setId(UUID.randomUUID());
-        queueEntry.setPatient(paciente);
-        queueEntry.setRiskColor(riskColor);
-        queueEntry.setRegisteredAt(registeredAt);
-        queueEntry.setUpdatedAt(registeredAt);
-        return queueEntry;
+        return QueueEntry.builder()
+                .id(UUID.randomUUID())
+                .patient(paciente)
+                .riskColor(riskColor)
+                .registeredAt(registeredAt)
+                .updatedAt(registeredAt)
+                .build();
     }
 }

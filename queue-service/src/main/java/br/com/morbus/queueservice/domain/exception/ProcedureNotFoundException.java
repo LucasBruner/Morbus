@@ -1,7 +1,9 @@
 package br.com.morbus.queueservice.domain.exception;
 
+import java.util.UUID;
+
 public class ProcedureNotFoundException extends RuntimeException {
-    public ProcedureNotFoundException(Integer procedureId) {
+    public ProcedureNotFoundException(UUID procedureId) {
         super("Procedimento não encontrado: " + procedureId);
     }
 }
