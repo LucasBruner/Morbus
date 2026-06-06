@@ -1,4 +1,4 @@
-package br.com.sus.notification.model.dto;
+package br.com.sus.notificationservice.model.dto;
 
 import java.time.LocalDateTime;
 import java.util.UUID;

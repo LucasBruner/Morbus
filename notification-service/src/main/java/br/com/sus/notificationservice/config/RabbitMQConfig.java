@@ -1,4 +1,4 @@
-package br.com.sus.notification.config;
+package br.com.sus.notificationservice.config;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
