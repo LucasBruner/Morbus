@@ -1,5 +1,7 @@
 package br.com.morbus.queueservice.domain.usecase;
 
+import br.com.morbus.queueservice.domain.event.IQueueEventPublisher;
+import br.com.morbus.queueservice.domain.exception.*;
 import br.com.morbus.queueservice.domain.usecase.DTO.RegisterPatientDTO;
 import br.com.morbus.queueservice.domain.entity.Patient;
 import br.com.morbus.queueservice.domain.entity.Procedure;
@@ -7,10 +9,6 @@ import br.com.morbus.queueservice.domain.entity.QueueEntry;
 import br.com.morbus.queueservice.domain.enums.EPriorityGroup;
 import br.com.morbus.queueservice.domain.enums.EQueueStatus;
 import br.com.morbus.queueservice.domain.enums.ERiskColor;
-import br.com.morbus.queueservice.domain.event.IPatientRegisterEventPublisher;
-import br.com.morbus.queueservice.domain.exception.PatientNotEligibleForProcedureException;
-import br.com.morbus.queueservice.domain.exception.PatientNotFoundException;
-import br.com.morbus.queueservice.domain.exception.ProcedureNotFoundException;
 import br.com.morbus.queueservice.domain.repository.IPatientRepository;
 import br.com.morbus.queueservice.domain.repository.IProcedureRepository;
 import br.com.morbus.queueservice.domain.repository.IQueueEntryRepository;
@@ -27,41 +25,52 @@ public class RegisterPatientInQueue {
     private final IPatientRepository patientRepository;
     private final IProcedureRepository procedureRepository;
     private final IQueueEntryRepository queueEntryRepository;
-    private final IPatientRegisterEventPublisher eventPublisher;
+    private final IQueueEventPublisher eventPublisher;
 
-    private RegisterPatientInQueue(IPatientRepository patientRepository, IProcedureRepository procedureRepository, IQueueEntryRepository queueEntryRepository, IPatientRegisterEventPublisher eventPublisher) {
+    private RegisterPatientInQueue(IPatientRepository patientRepository, IProcedureRepository procedureRepository, IQueueEntryRepository queueEntryRepository, IQueueEventPublisher eventPublisher) {
         this.patientRepository = patientRepository;
         this.procedureRepository = procedureRepository;
         this.queueEntryRepository = queueEntryRepository;
         this.eventPublisher = eventPublisher;
     }
 
-    public Patient execute(RegisterPatientDTO patientDTO) {
-        validatePatient(patientDTO);
+    public static RegisterPatientInQueue create(IPatientRepository patientRepository, IProcedureRepository procedureRepository, IQueueEntryRepository queueEntryRepository, IQueueEventPublisher eventPublisher) {
+        return new RegisterPatientInQueue(patientRepository, procedureRepository, queueEntryRepository, eventPublisher);
+    }
 
-        Procedure procedure = procedureRepository.findById(patientDTO.procedureId())
-                .orElseThrow(() -> new ProcedureNotFoundException(patientDTO.procedureId()));
+    public QueueEntry execute(RegisterPatientDTO patientDTO) {
+        validatePatient(patientDTO);
 
         Patient patient = patientRepository.findById(patientDTO.patient().getId())
                 .orElseThrow(() -> new PatientNotFoundException("Paciente não encontrado"));
 
+        Procedure procedure = procedureRepository.findById(patientDTO.procedureId())
+                .orElseThrow(() -> new ProcedureNotFoundException(patientDTO.procedureId()));
+
+        validateIfActivePatient(patient);
         validatePatientAge(patient.getDataNascimento(), procedure);
 
         EPriorityGroup priorityGroup = PriorityCalculator.getPriorityGroup(patient);
         patient.updateGrupoLegal(priorityGroup);
         patientRepository.save(patient);
 
-        Optional<QueueEntry> queueEntry = queueEntryRepository.findByPatient(patient);
-        //buildQueueEntry(patientDTO);
-        //queueEntryRepository.save(queueEntry);
+        validateIfPatientInQueue(patient, procedure);
 
-        eventPublisher.publish(patient);
-        return patient;
+        QueueEntry queueEntry = buildQueueEntry(patient, procedure, patientDTO.riskColor());
+        queueEntryRepository.save(queueEntry);
+        eventPublisher.publishPatientRegistered(queueEntry);
+        return queueEntry;
     }
 
     private void validatePatient(RegisterPatientDTO patientDTO) {
         if (patientDTO == null || patientDTO.patient() == null || patientDTO.procedureId() == null) {
             throw new IllegalArgumentException("Comando de registro inválido");
+        }
+    }
+
+    private void validateIfActivePatient(Patient patient) {
+        if (!patient.isAtivo()) {
+            throw new PatientInactivatedException("Paciente inativo");
         }
     }
 
@@ -79,13 +88,29 @@ public class RegisterPatientInQueue {
         }
     }
 
-    private QueueEntry buildQueueEntry(RegisterPatientDTO patientDTO) {
+    private void validateIfPatientInQueue(Patient patient, Procedure procedure) {
+        boolean existsActiveEntry = queueEntryRepository.existsByPatientAndProcedureAndStatusIn(
+                patient,
+                procedure,
+                java.util.List.of(EQueueStatus.AGUARDANDO, EQueueStatus.AGENDADO)
+        );
+
+        if (existsActiveEntry) {
+            throw new PatientAlreadyRegisteredException(
+                    "Paciente já está registrado na fila (AGUARDANDO ou AGENDADO) para este procedimento"
+            );
+        }
+    }
+
+    private QueueEntry buildQueueEntry(Patient patient, Procedure procedure, ERiskColor riskColor) {
         return QueueEntry.builder()
                 .id(UUID.randomUUID())
-                .patient(patientDTO.patient())
-                .riskColor(ERiskColor.AZUL)
+                .patient(patient)
+                .procedure(procedure)
+                .riskColor(riskColor)
                 .queueStatus(EQueueStatus.AGUARDANDO)
                 .registeredAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
                 .build();
     }
 }
