@@ -6,7 +6,7 @@ import br.com.morbus.queueservice.domain.event.IQueueEventPublisher;
 import br.com.morbus.queueservice.domain.exceptions.QueueNotAllowedException;
 import br.com.morbus.queueservice.domain.exceptions.QueueNotExistException;
 import br.com.morbus.queueservice.domain.repository.IQueueEntryRepository;
-import br.com.morbus.queueservice.domain.usecase.DTO.QueueEntryRiskColorResult;
+import br.com.morbus.queueservice.domain.usecase.DTO.QueueEntryRiskQueuePosition;
 import br.com.morbus.queueservice.domain.usecase.DTO.QueueUpdateRiskColorDTO;
 
 public class ReclassifyPriority {
@@ -24,7 +24,7 @@ public class ReclassifyPriority {
         return new ReclassifyPriority(eventPublisher, queueEntryRepository);
     }
 
-    public QueueEntryRiskColorResult run(QueueUpdateRiskColorDTO queueUpdateRiskColorDTO) {
+    public QueueEntryRiskQueuePosition run(QueueUpdateRiskColorDTO queueUpdateRiskColorDTO) {
         QueueEntry queueEntryUpdateRiskyColor = queueEntryRepository
                 .findById(queueUpdateRiskColorDTO.queueId())
                 .orElseThrow(() -> new QueueNotExistException("Não existe fila com esse ID"));
@@ -37,7 +37,7 @@ public class ReclassifyPriority {
             throw new QueueNotAllowedException("Não é possível reclassificar o paciente!");
         }
         eventPublisher.update(queueEntryUpdateRiskyColor);
-        int posicaoPatientQueue = queueEntryRepository.countEntriesWithHigherPriority(queueEntryUpdateRiskyColor) + 1;
-        return new QueueEntryRiskColorResult(queueEntryUpdateRiskyColor, posicaoPatientQueue);
+        int posicaoPatientQueue = queueEntryRepository.countEntriesWithHigherPriority(queueEntryUpdateRiskyColor);
+        return new QueueEntryRiskQueuePosition(queueEntryUpdateRiskyColor, posicaoPatientQueue);
     }
 }
