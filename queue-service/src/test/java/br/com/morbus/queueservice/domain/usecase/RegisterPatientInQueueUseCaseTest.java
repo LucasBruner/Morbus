@@ -304,7 +304,7 @@ class RegisterPatientInQueueUseCaseTest {
         verify(patientRepository).save(patientIdoso);
     }
 
-    // ============ Testes para validatePatient ============
+    // Testes para validatePatient
 
     @Test
     @DisplayName("validatePatient: Lança IllegalArgumentException quando DTO é nulo")
@@ -334,7 +334,7 @@ class RegisterPatientInQueueUseCaseTest {
                 .hasMessage("Comando de registro inválido");
     }
 
-    // ============ Testes para validateIfActivePatient ============
+    // Testes para validateIfActivePatient
 
     @Test
     @DisplayName("validateIfActivePatient: Lança PatientInactivatedException quando paciente está inativo")
