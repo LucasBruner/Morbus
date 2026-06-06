@@ -8,8 +8,6 @@ import br.com.morbus.queueservice.domain.exceptions.QueueNotExistException;
 import br.com.morbus.queueservice.domain.repository.IQueueEntryRepository;
 import br.com.morbus.queueservice.domain.usecase.DTO.QueueCancelDTO;
 
-import java.util.UUID;
-
 public class CancelQueueEntry {
     private final IQueueEntryRepository queueEntryRepository;
     private final IQueueEventPublisher eventPublisher;
@@ -35,7 +33,7 @@ public class CancelQueueEntry {
         }
         queueEntryCancel.cancelQueue();
         queueEntryRepository.save(queueEntryCancel);
-        eventPublisher.cancel(queueEntryCancel, cancelDTO.reason());
+        eventPublisher.publishPatientCancelled(queueEntryCancel, cancelDTO.reason());
         return queueEntryCancel;
     }
 }

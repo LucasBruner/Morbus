@@ -36,7 +36,7 @@ public class ReclassifyPriority {
         } else {
             throw new QueueNotAllowedException("Não é possível reclassificar o paciente!");
         }
-        eventPublisher.update(queueEntryUpdateRiskyColor);
+        eventPublisher.publishPriorityUpdated(queueEntryUpdateRiskyColor);
         int posicaoPatientQueue = queueEntryRepository.countEntriesWithHigherPriority(queueEntryUpdateRiskyColor);
         return new QueueEntryRiskQueuePosition(queueEntryUpdateRiskyColor, posicaoPatientQueue);
     }

@@ -28,7 +28,7 @@ public class CallNextPatient {
         queueEntryExistente.call();
 
         queueEntryRepository.save(queueEntryExistente);
-        queueEventPublisher.publish(queueEntryExistente);
+        queueEventPublisher.publishPatientCalled(queueEntryExistente);
 
         return queueEntryExistente;
     }
