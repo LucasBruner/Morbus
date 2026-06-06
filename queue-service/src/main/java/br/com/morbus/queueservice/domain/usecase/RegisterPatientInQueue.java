@@ -48,17 +48,19 @@ public class RegisterPatientInQueue {
                 .orElseThrow(() -> new ProcedureNotFoundException(patientDTO.procedureId()));
 
         validateIfActivePatient(patient);
+        validateIfPatientInQueue(patient, procedure);
         validatePatientAge(patient.getDataNascimento(), procedure);
 
         EPriorityGroup priorityGroup = PriorityCalculator.getPriorityGroup(patient);
         patient.updateGrupoLegal(priorityGroup);
         patientRepository.save(patient);
 
-        validateIfPatientInQueue(patient, procedure);
+        ERiskColor riskColor = patientDTO.riskColor() == null ? ERiskColor.AZUL : patientDTO.riskColor();
+        QueueEntry queueEntry = buildQueueEntry(patient, procedure, riskColor);
 
-        QueueEntry queueEntry = buildQueueEntry(patient, procedure, patientDTO.riskColor());
         queueEntryRepository.save(queueEntry);
         eventPublisher.publishPatientRegistered(queueEntry);
+
         return queueEntry;
     }
 
