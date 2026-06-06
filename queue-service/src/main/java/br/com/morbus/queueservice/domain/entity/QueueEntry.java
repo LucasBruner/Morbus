@@ -42,4 +42,9 @@ public class QueueEntry {
         this.updatedAt = LocalDateTime.now();
         calculatePriorityScore();
     }
+
+    public void cancelQueue() {
+        this.queueStatus = EQueueStatus.CANCELADO;
+        this.updatedAt = LocalDateTime.now();
+    }
 }
