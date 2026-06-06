@@ -6,7 +6,7 @@ import br.com.morbus.queueservice.domain.enums.EPriorityGroup;
 import br.com.morbus.queueservice.domain.enums.EQueueStatus;
 import br.com.morbus.queueservice.domain.enums.ERiskColor;
 import br.com.morbus.queueservice.domain.event.IQueueEventPublisher;
-import br.com.morbus.queueservice.domain.exceptions.QueueEmptyException;
+import br.com.morbus.queueservice.domain.exception.QueueEmptyException;
 import br.com.morbus.queueservice.domain.repository.IQueueEntryRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
