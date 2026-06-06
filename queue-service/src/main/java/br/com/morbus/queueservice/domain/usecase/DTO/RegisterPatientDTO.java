@@ -1,4 +1,4 @@
-package br.com.morbus.queueservice.domain.dto;
+package br.com.morbus.queueservice.domain.usecase.DTO;
 
 import br.com.morbus.queueservice.domain.entity.Patient;
 

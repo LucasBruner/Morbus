@@ -1,14 +1,14 @@
 package br.com.morbus.queueservice.domain.usecase;
 
 import br.com.morbus.queueservice.domain.entity.QueueEntry;
-import br.com.morbus.queueservice.domain.repository.IQueueEntryRepository;
 import br.com.morbus.queueservice.domain.event.IQueueEventPublisher;
 import br.com.morbus.queueservice.domain.exception.QueueEmptyException;
+import br.com.morbus.queueservice.domain.repository.IQueueEntryRepository;
 
 public class CallNextPatient {
 
-    IQueueEntryRepository queueEntryRepository;
-    IQueueEventPublisher queueEventPublisher;
+    private final IQueueEntryRepository queueEntryRepository;
+    private final IQueueEventPublisher queueEventPublisher;
     private CallNextPatient(IQueueEntryRepository queueEntryRepository,
                             IQueueEventPublisher queueEventPublisher) {
         this.queueEntryRepository = queueEntryRepository;
@@ -28,7 +28,7 @@ public class CallNextPatient {
         queueEntryExistente.call();
 
         queueEntryRepository.save(queueEntryExistente);
-        queueEventPublisher.publish(queueEntryExistente);
+        queueEventPublisher.publishPatientCalled(queueEntryExistente);
 
         return queueEntryExistente;
     }

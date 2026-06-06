@@ -374,7 +374,7 @@ Reclassifica a cor de risco de uma entrada na fila. Publica o evento `PRIORITY_U
 | Status | Motivo                                                    |
 |--------|-----------------------------------------------------------|
 | `404`  | Entrada não encontrada                                    |
-| `422`  | Status da entrada não permite reclassificação (ex: `ATENDIDO`) |
+| `422`  | Status não permite reclassificação — apenas `AGUARDANDO` e `DEVOLVIDO` são permitidos. `AGENDADO`, `ATENDIDO`, `FALTOU` e `CANCELADO` retornam 422 |
 
 ---
 
@@ -400,10 +400,10 @@ Cancela a entrada de um paciente na fila. Publica o evento `PATIENT_CANCELLED`.
 
 **Erros:**
 
-| Status | Motivo                                                              |
-|--------|---------------------------------------------------------------------|
-| `404`  | Entrada não encontrada                                              |
-| `422`  | Status não permite cancelamento (ex: entrada já `ATENDIDO`)        |
+| Status | Motivo                                                                                            |
+|--------|---------------------------------------------------------------------------------------------------|
+| `404`  | Entrada não encontrada                                                                            |
+| `422`  | Status não permite cancelamento — apenas `AGUARDANDO` e `AGENDADO` podem ser cancelados. `ATENDIDO`, `FALTOU`, `CANCELADO` e `DEVOLVIDO` retornam 422 |
 
 ---
 

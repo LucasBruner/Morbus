@@ -1,6 +1,6 @@
 package br.com.morbus.queueservice.domain.usecase;
 
-import br.com.morbus.queueservice.domain.dto.RegisterPatientDTO;
+import br.com.morbus.queueservice.domain.usecase.DTO.RegisterPatientDTO;
 import br.com.morbus.queueservice.domain.entity.Patient;
 import br.com.morbus.queueservice.domain.entity.Procedure;
 import br.com.morbus.queueservice.domain.entity.QueueEntry;

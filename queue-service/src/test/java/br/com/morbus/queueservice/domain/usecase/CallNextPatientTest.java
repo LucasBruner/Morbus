@@ -126,7 +126,7 @@ class CallNextPatientTest {
 
             useCase.run();
 
-            verify(publisher).publish(entry);
+            verify(publisher).publishPatientCalled(entry);
         }
 
         @Test
@@ -139,7 +139,7 @@ class CallNextPatientTest {
 
             InOrder order = inOrder(repository, publisher);
             order.verify(repository).save(entry);
-            order.verify(publisher).publish(entry);
+            order.verify(publisher).publishPatientCalled(entry);
         }
     }
 
@@ -178,7 +178,7 @@ class CallNextPatientTest {
             assertThatThrownBy(() -> useCase.run())
                     .isInstanceOf(QueueEmptyException.class);
 
-            verify(publisher, never()).publish(any());
+            verify(publisher, never()).publishPatientCalled(any());
         }
     }
 }
