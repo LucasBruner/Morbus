@@ -34,7 +34,7 @@ O sistema é composto por **três microsserviços** independentes que se comunic
 
 | Atributo         | Valor                                      |
 |------------------|--------------------------------------------|
-| Framework        | Spring Boot 3 + Spring Security            |
+| Framework        | Spring Boot 4 + Spring Security            |
 | Padrão           | MVC                                        |
 | Porta            | `8082`                                     |
 | Banco de dados   | PostgreSQL (schema compartilhado)          |
@@ -75,7 +75,7 @@ auth-service/
 
 | Atributo         | Valor                                                  |
 |------------------|--------------------------------------------------------|
-| Framework        | Spring Boot 3 + Spring Data JPA + Spring AMQP          |
+| Framework        | Spring Boot 4.0.6 + Spring Data JPA + Spring AMQP     |
 | Padrão           | **Clean Architecture**                                 |
 | Porta            | `8080`                                                 |
 | Banco de dados   | PostgreSQL                                             |
@@ -86,29 +86,34 @@ auth-service/
 ```
 queue-service/
 └── src/main/java/
-    └── br.com.sus.queue/
+    └── br.com.morbus.queueservice/
         ├── domain/
-        │   ├── entity/          # Patient, QueueEntry, Procedure (POJO puro)
-        │   ├── enums/           # RiskColor, PriorityGroup, QueueStatus
-        │   ├── repository/      # Interfaces de repositório (contratos)
-        │   └── usecase/         # Interfaces dos use cases
+        │   ├── entity/          # Patient, QueueEntry, Procedure (POJO puro, Lombok @Builder @Getter)
+        │   ├── enums/           # ERiskColor, EPriorityGroup, EQueueStatus, EGender
+        │   ├── event/           # IQueueEventPublisher (contrato de saída — porta do domínio)
+        │   ├── exceptions/      # QueueNotExistException, QueueNotAllowedException, QueueEmptyException
+        │   ├── repository/      # IQueueEntryRepository, IPatientRepository, IProcedureRepository
+        │   ├── service/         # PriorityCalculator
+        │   └── usecase/         # CallNextPatient, CancelQueueEntry, GetQueuePosition, ReclassifyPriority
+        │       └── DTO/         # QueueCancelDTO, QueueUpdateRiskColorDTO, QueueEntryRiskQueuePosition
         ├── application/
-        │   └── usecase/         # Implementações dos use cases
+        │   └── usecase/         # (reservado — use cases vivem em domain/usecase nesta fase)
         ├── infrastructure/
-        │   ├── persistence/     # Entidades JPA, implementações de repositório
-        │   ├── messaging/       # RabbitMQQueueEventPublisher
-        │   ├── security/        # JwtAuthFilter, SecurityConfig
-        │   └── config/          # RabbitMQConfig, FlywayConfig
+        │   ├── config/          # RabbitMQConfig
+        │   ├── messaging/       # RabbitMqQueueEventPublisher
+        │   │   └── DTO/         # QueueEventPayload (record)
+        │   ├── persistence/     # (a implementar — entidades JPA e repositórios Spring Data)
+        │   └── security/        # (a implementar — JwtAuthFilter, SecurityConfig)
         └── interfaces/
-            ├── controller/      # QueueController, PatientController, ProcedureController
-            └── dto/             # Request/Response DTOs, Mappers
+            ├── controller/      # (a implementar — QueueController, PatientController, ProcedureController)
+            └── dto/             # (a implementar — Request/Response DTOs, Mappers)
 ```
 
 **Regra de dependências (Clean Architecture):**
 ```
 interfaces → application → domain ← infrastructure
 ```
-Nenhuma classe do `domain` importa algo de `infrastructure` ou `interfaces`.
+Nenhuma classe do `domain` importa algo de `infrastructure`, `interfaces` ou qualquer framework (Spring, JPA, RabbitMQ).
 
 **Endpoints expostos:**
 
@@ -231,7 +236,7 @@ notification-service
   └── consome todas as 4 filas via @Incoming (SmallRye Reactive Messaging)
 ```
 
-**Payload dos eventos (JSON):**
+**Payload dos eventos (JSON) — `QueueEventPayload`:**
 ```json
 {
   "eventType": "PATIENT_CALLED",
@@ -240,9 +245,23 @@ notification-service
   "patientContact": "joao@email.com",
   "procedureName": "Consulta de Cardiologia",
   "riskColor": "AMARELO",
+  "motivoCancelamento": null,
   "timestamp": "2026-05-27T10:30:00Z"
 }
 ```
+
+> `motivoCancelamento` é preenchido apenas no evento `PATIENT_CANCELLED` (quando um motivo é fornecido); nos demais eventos o campo é `null`.
+
+**IQueueEventPublisher — métodos do contrato:**
+
+| Método                                               | Evento publicado   | Routing key         |
+|------------------------------------------------------|--------------------|---------------------|
+| `publishPatientRegistered(QueueEntry)`               | PATIENT_REGISTERED | `patient.registered`|
+| `publishPatientCalled(QueueEntry)`                   | PATIENT_CALLED     | `patient.called`    |
+| `publishPriorityUpdated(QueueEntry)`                 | PRIORITY_UPDATED   | `priority.updated`  |
+| `publishPatientCancelled(QueueEntry, String reason)` | PATIENT_CANCELLED  | `patient.cancelled` |
+
+> **Status do RabbitMQConfig:** atualmente apenas a fila `queue.patient.registered` está com binding declarado. As filas `queue.patient.called`, `queue.priority.updated` e `queue.patient.cancelled` têm Queue beans declarados mas ainda precisam de Binding.
 
 ---
 
