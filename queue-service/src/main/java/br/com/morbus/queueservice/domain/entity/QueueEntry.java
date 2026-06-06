@@ -18,14 +18,33 @@ public class QueueEntry {
     private EQueueStatus queueStatus;
     private LocalDateTime registeredAt;
     private LocalDateTime updatedAt;
-    private int posicaoCalculada;
+    private int scorePosicaoCalculada;
 
-    public Integer calculatePriorityScore() {
-        return 1;
+    public void calculatePriorityScore() {
+        int colorScore = this.riskColor != null
+                ? this.riskColor.getNumericPriority()
+                : 4;
+
+        int groupScore = (this.patient != null && this.patient.getGrupoLegal() != null)
+                ? this.patient.getGrupoLegal().getNumericPriority()
+                : 6;
+
+        this.scorePosicaoCalculada = colorScore * 10 + groupScore;
     }
 
     public void call() {
         this.queueStatus = EQueueStatus.AGENDADO;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void updateRiskColor(ERiskColor riskColor) {
+        this.riskColor = riskColor;
+        this.updatedAt = LocalDateTime.now();
+        calculatePriorityScore();
+    }
+
+    public void cancelQueue() {
+        this.queueStatus = EQueueStatus.CANCELADO;
         this.updatedAt = LocalDateTime.now();
     }
 }
