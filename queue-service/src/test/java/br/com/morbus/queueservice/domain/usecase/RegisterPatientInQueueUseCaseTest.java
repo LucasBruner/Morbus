@@ -284,10 +284,6 @@ class RegisterPatientInQueueUseCaseTest {
                 .gender(EGender.MASCULINO)
                 .contato("john@email.com")
                 .ativo(true)
-                .gestante(false)
-                .deficiente(false)
-                .lactante(false)
-                .obeso(false)
                 .grupoLegal(EPriorityGroup.GERAL)
                 .build();
 

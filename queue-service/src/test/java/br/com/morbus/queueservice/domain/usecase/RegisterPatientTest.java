@@ -3,7 +3,6 @@ package br.com.morbus.queueservice.domain.usecase;
 import br.com.morbus.queueservice.domain.entity.Patient;
 import br.com.morbus.queueservice.domain.enums.EGender;
 import br.com.morbus.queueservice.domain.enums.EPriorityGroup;
-import br.com.morbus.queueservice.domain.enums.ERiskColor;
 import br.com.morbus.queueservice.domain.exception.PatientAlreadyExistsException;
 import br.com.morbus.queueservice.domain.repository.IPatientRepository;
 import br.com.morbus.queueservice.domain.usecase.DTO.RegisterPatientDTO;
