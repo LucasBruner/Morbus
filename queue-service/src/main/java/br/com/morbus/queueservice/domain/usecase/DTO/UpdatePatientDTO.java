@@ -7,10 +7,10 @@ import jakarta.validation.constraints.NotBlank;
 import org.hibernate.validator.constraints.br.CPF;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
-public record UpdatePatientDTO(@NotBlank(message = "É obrigatório informar o CPF!")
-                               @CPF
-                               String cpf,
+public record UpdatePatientDTO(@NotBlank(message = "É obrigatório informar o ID do paciente!")
+                               UUID id,
                                String cns,
                                @NotBlank(message = "É obrigatório informar o nome do paciente!")
                                String nome,
