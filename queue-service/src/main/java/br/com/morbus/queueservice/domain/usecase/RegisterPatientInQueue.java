@@ -2,7 +2,7 @@ package br.com.morbus.queueservice.domain.usecase;
 
 import br.com.morbus.queueservice.domain.event.IQueueEventPublisher;
 import br.com.morbus.queueservice.domain.exception.*;
-import br.com.morbus.queueservice.domain.usecase.DTO.RegisterPatientDTO;
+import br.com.morbus.queueservice.domain.usecase.DTO.RegisterPatientInQueueDTO;
 import br.com.morbus.queueservice.domain.entity.Patient;
 import br.com.morbus.queueservice.domain.entity.Procedure;
 import br.com.morbus.queueservice.domain.entity.QueueEntry;
@@ -17,7 +17,6 @@ import br.com.morbus.queueservice.domain.service.PriorityCalculator;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
-import java.util.Optional;
 import java.util.UUID;
 
 public class RegisterPatientInQueue {
@@ -38,7 +37,7 @@ public class RegisterPatientInQueue {
         return new RegisterPatientInQueue(patientRepository, procedureRepository, queueEntryRepository, eventPublisher);
     }
 
-    public QueueEntry execute(RegisterPatientDTO patientDTO) {
+    public QueueEntry execute(RegisterPatientInQueueDTO patientDTO) {
         validatePatient(patientDTO);
 
         Patient patient = patientRepository.findById(patientDTO.patient().getId())
@@ -64,7 +63,7 @@ public class RegisterPatientInQueue {
         return queueEntry;
     }
 
-    private void validatePatient(RegisterPatientDTO patientDTO) {
+    private void validatePatient(RegisterPatientInQueueDTO patientDTO) {
         if (patientDTO == null || patientDTO.patient() == null || patientDTO.procedureId() == null) {
             throw new IllegalArgumentException("Comando de registro inválido");
         }

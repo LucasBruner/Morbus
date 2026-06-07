@@ -31,6 +31,6 @@ public class Patient {
     }
 
     public boolean isAtivo(){
-        return ativo;
+        return this.ativo;
     }
 }
