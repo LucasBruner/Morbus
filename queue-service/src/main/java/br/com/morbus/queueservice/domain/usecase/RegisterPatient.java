@@ -38,10 +38,6 @@ public class RegisterPatient {
                 .dataNascimento(dto.dataNascimento())
                 .gender(dto.gender())
                 .contato(dto.contato())
-                //.gestante(dto.gestante())
-                //.deficiente(dto.deficiente())
-                //.lactante(dto.lactante())
-                //.obeso(dto.obeso())
                 .ativo(true)
                 .grupoLegal(grupoLegal)
                 .build();
