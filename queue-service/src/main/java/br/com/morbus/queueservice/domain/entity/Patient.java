@@ -2,6 +2,7 @@ package br.com.morbus.queueservice.domain.entity;
 
 import br.com.morbus.queueservice.domain.enums.EGender;
 import br.com.morbus.queueservice.domain.enums.EPriorityGroup;
+import br.com.morbus.queueservice.domain.usecase.DTO.UpdatePatientDTO;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -28,5 +29,15 @@ public class Patient {
 
     public boolean isAtivo(){
         return this.ativo;
+    }
+
+    public void update(UpdatePatientDTO updatePatientDTO){
+        this.cns = updatePatientDTO.cns();
+        this.nome = updatePatientDTO.nome();
+        this.sobrenome = updatePatientDTO.sobrenome();
+        this.dataNascimento = updatePatientDTO.dataNascimento();
+        this.gender = updatePatientDTO.gender();
+        this.contato = updatePatientDTO.contato();
+        this.grupoLegal = updatePatientDTO.grupoLegal();
     }
 }
