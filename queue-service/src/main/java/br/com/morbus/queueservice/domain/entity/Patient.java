@@ -31,6 +31,10 @@ public class Patient {
         return this.ativo;
     }
 
+    public void inactivate() {
+        this.ativo = false;
+    }
+
     public void update(UpdatePatientDTO updatePatientDTO){
         this.cns = updatePatientDTO.cns();
         this.nome = updatePatientDTO.nome();

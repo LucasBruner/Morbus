@@ -11,7 +11,7 @@ import br.com.morbus.queueservice.domain.event.IQueueEventPublisher;
 import br.com.morbus.queueservice.domain.exception.PatientAlreadyRegisteredException;
 import br.com.morbus.queueservice.domain.exception.PatientNotEligibleForProcedureException;
 import br.com.morbus.queueservice.domain.exception.PatientNotFoundException;
-import br.com.morbus.queueservice.domain.exception.PatientInactivatedException;
+import br.com.morbus.queueservice.domain.exception.PatientInactiveException;
 import br.com.morbus.queueservice.domain.exception.ProcedureNotFoundException;
 import br.com.morbus.queueservice.domain.repository.IPatientRepository;
 import br.com.morbus.queueservice.domain.repository.IProcedureRepository;
@@ -355,8 +355,8 @@ class RegisterPatientInQueueUseCaseTest {
         when(procedureRepository.findById(procedureId)).thenReturn(Optional.of(procedure));
 
         assertThatThrownBy(() -> useCase.execute(dto))
-                .isInstanceOf(PatientInactivatedException.class)
-                .hasMessage("Paciente inativo");
+                .isInstanceOf(PatientInactiveException.class)
+                .hasMessage("O paciente está inativo");
 
         verify(patientRepository, never()).save(any());
         verify(queueEntryRepository, never()).save(any());

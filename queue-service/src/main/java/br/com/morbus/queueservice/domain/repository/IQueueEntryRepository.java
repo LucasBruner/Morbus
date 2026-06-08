@@ -17,4 +17,5 @@ public interface IQueueEntryRepository {
     List<QueueEntry> findAllOrderedByPriority();
     int countEntriesWithHigherPriority(QueueEntry entry); // Conta quantos têm score menor (maior prioridade) que este paciente. Adicionar +1 no retorno da lógica
     boolean existsByPatientAndProcedureAndStatusIn(Patient patient, Procedure procedure, List<EQueueStatus> statuses);
+    List<QueueEntry> findByPatientAndStatusIn(Patient patient, List<EQueueStatus> statuses);
 }
