@@ -19,5 +19,18 @@ public class Patient {
     private LocalDate dataNascimento;
     private EGender gender;
     private String contato;
+    private boolean gestante;
+    private boolean deficiente;
+    private boolean lactante;
+    private boolean obeso;
+    private boolean ativo;
     private EPriorityGroup grupoLegal;
+
+    public void updateGrupoLegal(EPriorityGroup grupoLegal) {
+        this.grupoLegal = grupoLegal;
+    }
+
+    public boolean isAtivo(){
+        return ativo;
+    }
 }

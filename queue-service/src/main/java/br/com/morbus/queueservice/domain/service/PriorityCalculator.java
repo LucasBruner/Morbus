@@ -5,6 +5,7 @@ import br.com.morbus.queueservice.domain.entity.QueueEntry;
 import br.com.morbus.queueservice.domain.enums.EPriorityGroup;
 
 import java.time.LocalDate;
+import java.time.Period;
 
 /**
  * Calculadora de priorização de fila conforme as regras do SUS.
@@ -17,6 +18,8 @@ import java.time.LocalDate;
 public class PriorityCalculator {
     
     private static final int IDOSO_AGE_THRESHOLD = 60;
+    
+    private PriorityCalculator() { }
     
     /**
      * Compara duas entradas de fila conforme as regras do SUS:
@@ -98,15 +101,8 @@ public class PriorityCalculator {
         
         LocalDate birthDate = patient.getDataNascimento();
         LocalDate today = LocalDate.now();
-        int age = today.getYear() - birthDate.getYear();
-        
-        // Ajustar idade se o aniversário ainda não passou este ano
-        if (today.getMonthValue() < birthDate.getMonthValue() ||
-            (today.getMonthValue() == birthDate.getMonthValue() && 
-             today.getDayOfMonth() < birthDate.getDayOfMonth())) {
-            age--;
-        }
-        
+
+        int age = Period.between(birthDate, today).getYears();
         return age >= IDOSO_AGE_THRESHOLD;
     }
 }

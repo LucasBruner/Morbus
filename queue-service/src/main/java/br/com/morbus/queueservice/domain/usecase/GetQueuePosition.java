@@ -1,7 +1,7 @@
 package br.com.morbus.queueservice.domain.usecase;
 
 import br.com.morbus.queueservice.domain.entity.QueueEntry;
-import br.com.morbus.queueservice.domain.exceptions.QueueNotExistException;
+import br.com.morbus.queueservice.domain.exception.QueueNotExistException;
 import br.com.morbus.queueservice.domain.repository.IQueueEntryRepository;
 import br.com.morbus.queueservice.domain.usecase.DTO.QueueEntryRiskQueuePosition;
 

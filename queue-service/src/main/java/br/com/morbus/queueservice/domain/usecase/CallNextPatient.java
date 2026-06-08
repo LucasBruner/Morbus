@@ -2,7 +2,7 @@ package br.com.morbus.queueservice.domain.usecase;
 
 import br.com.morbus.queueservice.domain.entity.QueueEntry;
 import br.com.morbus.queueservice.domain.event.IQueueEventPublisher;
-import br.com.morbus.queueservice.domain.exceptions.QueueEmptyException;
+import br.com.morbus.queueservice.domain.exception.QueueEmptyException;
 import br.com.morbus.queueservice.domain.repository.IQueueEntryRepository;
 
 public class CallNextPatient {
