@@ -4,6 +4,7 @@ import br.com.morbus.queueservice.domain.entity.Patient;
 import br.com.morbus.queueservice.domain.enums.EPriorityGroup;
 import br.com.morbus.queueservice.domain.exception.PatientAlreadyExistsException;
 import br.com.morbus.queueservice.domain.repository.IPatientRepository;
+import br.com.morbus.queueservice.domain.service.PriorityCalculator;
 import br.com.morbus.queueservice.domain.usecase.DTO.RegisterPatientDTO;
 
 import java.time.LocalDate;
@@ -27,8 +28,6 @@ public class RegisterPatient {
             throw new PatientAlreadyExistsException("Paciente com CPF " + dto.cpf() + " já existe");
         }
 
-        EPriorityGroup grupoLegal = calculatePriorityGroup(dto);
-
         Patient patient = Patient.builder()
                 .id(UUID.randomUUID())
                 .cpf(dto.cpf())
@@ -39,24 +38,14 @@ public class RegisterPatient {
                 .gender(dto.gender())
                 .contato(dto.contato())
                 .ativo(true)
-                .grupoLegal(grupoLegal)
+                .grupoLegal(dto.grupoLegal())
                 .build();
 
+        EPriorityGroup priorityGroup = PriorityCalculator.getPriorityGroup(patient);
+        patient.updateGrupoLegal(priorityGroup);
+
         patientRepository.save(patient);
+
         return patient;
-    }
-
-    private EPriorityGroup calculatePriorityGroup(RegisterPatientDTO dto) {
-        if (dto.dataNascimento() != null && isIdoso(dto.dataNascimento())) {
-            return EPriorityGroup.IDOSO;
-        }
-
-        return dto.grupoLegal() != null ? dto.grupoLegal() : EPriorityGroup.GERAL;
-    }
-
-    private boolean isIdoso(LocalDate dataNascimento) {
-        LocalDate today = LocalDate.now();
-        int age = Period.between(dataNascimento, today).getYears();
-        return age >= 60;
     }
 }
