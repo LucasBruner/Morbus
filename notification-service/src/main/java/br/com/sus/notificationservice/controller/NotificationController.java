@@ -16,8 +16,9 @@ import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import java.util.List;
+import java.util.Map;
 
-@Path("/api/notifications")
+@Path("/api/v1/notifications")
 @Tag(name = "Notifications", description = "Gerenciamento de notificações enviadas")
 public class NotificationController {
 
@@ -27,9 +28,9 @@ public class NotificationController {
     @APIResponse(responseCode = "200", description = "Lista de notificações retornada com sucesso")
     public Response getNotifications(
             @Parameter(description = "Tipo do evento (ex: PATIENT_REGISTERED, PATIENT_CALLED, PRIORITY_UPDATED, PATIENT_CANCELLED)")
-            @QueryParam("type") String type) {
-        List<Notification> notifications = type != null
-                ? PanacheEntityBase.list("eventType", type)
+            @QueryParam("eventType") String eventType) {
+        List<Notification> notifications = eventType != null
+                ? PanacheEntityBase.list("eventType", eventType)
                 : PanacheEntityBase.listAll();
         List<NotificationQueueDTO> dtos = notifications.stream()
                 .map(this::toNotificationQueueDTO)
@@ -51,7 +52,9 @@ public class NotificationController {
             if (notification == null) return Response.status(Response.Status.NOT_FOUND).build();
             return Response.ok(toNotificationQueueDTO(notification)).build();
         } catch (Exception e) {
-            return Response.status(Response.Status.NOT_FOUND).build();
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(Map.of("message", "Notificação não encontrada para o id: " + id))
+                    .build();
         }
     }
 
