@@ -31,8 +31,8 @@ public class NotificationController {
             @Parameter(description = "Tipo do evento (ex: PATIENT_REGISTERED, PATIENT_CALLED, PRIORITY_UPDATED, PATIENT_CANCELLED)")
             @QueryParam("eventType") String eventType) {
         List<Notification> notifications = eventType != null
-                ? PanacheEntityBase.list("eventType", Sort.by("sentAt"), eventType)
-                : PanacheEntityBase.listAll(Sort.by("sentAt"));
+                ? PanacheEntityBase.list("eventType", Sort.by("sentAt").descending(), eventType)
+                : PanacheEntityBase.listAll(Sort.by("sentAt").descending());
         List<NotificationQueueDTO> dtos = notifications.stream()
                 .map(this::toNotificationQueueDTO)
                 .toList();
