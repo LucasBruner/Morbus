@@ -71,7 +71,7 @@ public class RegisterPatientInQueue {
 
     private void validateIfActivePatient(Patient patient) {
         if (!patient.isAtivo()) {
-            throw new PatientInactivatedException("Paciente inativo");
+            throw new PatientInactiveException("O paciente está inativo");
         }
     }
 
