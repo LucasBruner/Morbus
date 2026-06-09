@@ -3,6 +3,7 @@ package br.com.sus.notificationservice.controller;
 import br.com.sus.notificationservice.model.Notification;
 import br.com.sus.notificationservice.model.dto.NotificationQueueDTO;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
+import io.quarkus.panache.common.Sort;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
@@ -30,8 +31,8 @@ public class NotificationController {
             @Parameter(description = "Tipo do evento (ex: PATIENT_REGISTERED, PATIENT_CALLED, PRIORITY_UPDATED, PATIENT_CANCELLED)")
             @QueryParam("eventType") String eventType) {
         List<Notification> notifications = eventType != null
-                ? PanacheEntityBase.list("eventType", eventType)
-                : PanacheEntityBase.listAll();
+                ? PanacheEntityBase.list("eventType", Sort.by("sentAt"), eventType)
+                : PanacheEntityBase.listAll(Sort.by("sentAt"));
         List<NotificationQueueDTO> dtos = notifications.stream()
                 .map(this::toNotificationQueueDTO)
                 .toList();
