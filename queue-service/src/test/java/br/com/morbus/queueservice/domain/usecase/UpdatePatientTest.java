@@ -193,7 +193,7 @@ class UpdatePatientTest {
                 "Silva Updated",
                 LocalDate.of(1980, 6, 20),
                 null,
-                null,
+                "joao@email.com",
                 null
         );
 
