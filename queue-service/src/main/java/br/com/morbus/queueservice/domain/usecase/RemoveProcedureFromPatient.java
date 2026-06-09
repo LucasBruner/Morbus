@@ -63,6 +63,6 @@ public class RemoveProcedureFromPatient {
         }
 
         patientProcedureRepository.deleteByPatientAndProcedure(patient.getId(), procedure.getId());
-        patientRepository.save(patient);
+        patientProcedureRepository.save(patient.getId(), procedure.getId());
     }
 }
