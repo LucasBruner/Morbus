@@ -1,4 +1,4 @@
-package br.com.morbus.queueservice.domain.usecase.DTO;
+package br.com.morbus.queueservice.domain.usecase.dto;
 
 import br.com.morbus.queueservice.domain.entity.Patient;
 import br.com.morbus.queueservice.domain.enums.ERiskColor;

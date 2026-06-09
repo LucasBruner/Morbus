@@ -16,7 +16,7 @@ import br.com.morbus.queueservice.domain.exception.ProcedureNotFoundException;
 import br.com.morbus.queueservice.domain.repository.IPatientRepository;
 import br.com.morbus.queueservice.domain.repository.IProcedureRepository;
 import br.com.morbus.queueservice.domain.repository.IQueueEntryRepository;
-import br.com.morbus.queueservice.domain.usecase.DTO.RegisterPatientInQueueDTO;
+import br.com.morbus.queueservice.domain.usecase.dto.RegisterPatientInQueueDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -191,7 +191,7 @@ class RegisterPatientInQueueUseCaseTest {
 
         assertThatThrownBy(() -> useCase.execute(dto))
                 .isInstanceOf(PatientNotEligibleForProcedureException.class)
-                .hasMessageContaining("não é elegível para procedimento");
+                .hasMessageContaining("não compatível para o procedimento");
 
         verify(queueEntryRepository, never()).save(any());
     }
@@ -219,7 +219,7 @@ class RegisterPatientInQueueUseCaseTest {
 
         assertThatThrownBy(() -> useCase.execute(dto))
                 .isInstanceOf(PatientNotEligibleForProcedureException.class)
-                .hasMessageContaining("não é elegível para procedimento");
+                .hasMessageContaining("não compatível para o procedimento");
 
         verify(queueEntryRepository, never()).save(any());
     }

@@ -5,7 +5,7 @@ import br.com.morbus.queueservice.domain.enums.EPriorityGroup;
 import br.com.morbus.queueservice.domain.exception.PatientNotFoundException;
 import br.com.morbus.queueservice.domain.repository.IPatientRepository;
 import br.com.morbus.queueservice.domain.service.PriorityCalculator;
-import br.com.morbus.queueservice.domain.usecase.DTO.UpdatePatientDTO;
+import br.com.morbus.queueservice.domain.usecase.dto.UpdatePatientDTO;
 
 public class UpdatePatient {
 

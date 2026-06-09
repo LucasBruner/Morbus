@@ -5,7 +5,7 @@ import br.com.morbus.queueservice.domain.enums.EGender;
 import br.com.morbus.queueservice.domain.enums.EPriorityGroup;
 import br.com.morbus.queueservice.domain.exception.PatientNotFoundException;
 import br.com.morbus.queueservice.domain.repository.IPatientRepository;
-import br.com.morbus.queueservice.domain.usecase.DTO.UpdatePatientDTO;
+import br.com.morbus.queueservice.domain.usecase.dto.UpdatePatientDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -193,7 +193,7 @@ class UpdatePatientTest {
                 "Silva Updated",
                 LocalDate.of(1980, 6, 20),
                 null,
-                null,
+                "joao@email.com",
                 null
         );
 

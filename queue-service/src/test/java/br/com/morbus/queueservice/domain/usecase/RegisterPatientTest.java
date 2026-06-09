@@ -5,7 +5,7 @@ import br.com.morbus.queueservice.domain.enums.EGender;
 import br.com.morbus.queueservice.domain.enums.EPriorityGroup;
 import br.com.morbus.queueservice.domain.exception.PatientAlreadyExistsException;
 import br.com.morbus.queueservice.domain.repository.IPatientRepository;
-import br.com.morbus.queueservice.domain.usecase.DTO.RegisterPatientDTO;
+import br.com.morbus.queueservice.domain.usecase.dto.RegisterPatientDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

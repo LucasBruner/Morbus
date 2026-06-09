@@ -6,8 +6,8 @@ import br.com.morbus.queueservice.domain.event.IQueueEventPublisher;
 import br.com.morbus.queueservice.domain.exception.QueueNotAllowedException;
 import br.com.morbus.queueservice.domain.exception.QueueNotExistException;
 import br.com.morbus.queueservice.domain.repository.IQueueEntryRepository;
-import br.com.morbus.queueservice.domain.usecase.DTO.QueueEntryRiskQueuePosition;
-import br.com.morbus.queueservice.domain.usecase.DTO.QueueUpdateRiskColorDTO;
+import br.com.morbus.queueservice.domain.usecase.dto.QueueEntryRiskQueuePosition;
+import br.com.morbus.queueservice.domain.usecase.dto.QueueUpdateRiskColorDTO;
 
 public class ReclassifyPriority {
     private final IQueueEntryRepository queueEntryRepository;
