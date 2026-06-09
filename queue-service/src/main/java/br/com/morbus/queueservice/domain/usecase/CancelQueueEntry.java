@@ -6,7 +6,7 @@ import br.com.morbus.queueservice.domain.event.IQueueEventPublisher;
 import br.com.morbus.queueservice.domain.exception.QueueNotAllowedException;
 import br.com.morbus.queueservice.domain.exception.QueueNotExistException;
 import br.com.morbus.queueservice.domain.repository.IQueueEntryRepository;
-import br.com.morbus.queueservice.domain.usecase.DTO.QueueCancelDTO;
+import br.com.morbus.queueservice.domain.usecase.dto.QueueCancelDTO;
 
 public class CancelQueueEntry {
     private final IQueueEntryRepository queueEntryRepository;

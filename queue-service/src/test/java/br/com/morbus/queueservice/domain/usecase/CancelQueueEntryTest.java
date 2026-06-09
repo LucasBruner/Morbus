@@ -10,7 +10,7 @@ import br.com.morbus.queueservice.domain.event.IQueueEventPublisher;
 import br.com.morbus.queueservice.domain.exception.QueueNotAllowedException;
 import br.com.morbus.queueservice.domain.exception.QueueNotExistException;
 import br.com.morbus.queueservice.domain.repository.IQueueEntryRepository;
-import br.com.morbus.queueservice.domain.usecase.DTO.QueueCancelDTO;
+import br.com.morbus.queueservice.domain.usecase.dto.QueueCancelDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

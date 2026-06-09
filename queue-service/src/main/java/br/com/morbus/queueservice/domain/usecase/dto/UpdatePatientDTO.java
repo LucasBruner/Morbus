@@ -1,4 +1,4 @@
-package br.com.morbus.queueservice.domain.usecase.DTO;
+package br.com.morbus.queueservice.domain.usecase.dto;
 
 import br.com.morbus.queueservice.domain.enums.EGender;
 import br.com.morbus.queueservice.domain.enums.EPriorityGroup;

@@ -2,7 +2,7 @@ package br.com.morbus.queueservice.domain.usecase;
 
 import br.com.morbus.queueservice.domain.event.IQueueEventPublisher;
 import br.com.morbus.queueservice.domain.exception.*;
-import br.com.morbus.queueservice.domain.usecase.DTO.RegisterPatientInQueueDTO;
+import br.com.morbus.queueservice.domain.usecase.dto.RegisterPatientInQueueDTO;
 import br.com.morbus.queueservice.domain.entity.Patient;
 import br.com.morbus.queueservice.domain.entity.Procedure;
 import br.com.morbus.queueservice.domain.entity.QueueEntry;
@@ -80,11 +80,9 @@ public class RegisterPatientInQueue {
             throw new PatientNotEligibleForProcedureException("Data de nascimento do paciente é obrigatória");
         }
 
-        LocalDate today = LocalDate.now();
-        int age = Period.between(birthDate, today).getYears();
-        if (age < procedure.getIdadeMinima() || age > procedure.getIdadeMaxima()) {
+        if (!procedure.isAgeEligible(birthDate)) {
             throw new PatientNotEligibleForProcedureException(
-                    String.format("Paciente com %d anos não é elegível para procedimento %s", age, procedure.getNoProcedimento())
+                    String.format("Paciente com idade não compatível para o procedimento %s", procedure.getNoProcedimento())
             );
         }
     }

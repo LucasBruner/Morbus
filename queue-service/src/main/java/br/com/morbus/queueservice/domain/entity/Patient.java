@@ -2,7 +2,7 @@ package br.com.morbus.queueservice.domain.entity;
 
 import br.com.morbus.queueservice.domain.enums.EGender;
 import br.com.morbus.queueservice.domain.enums.EPriorityGroup;
-import br.com.morbus.queueservice.domain.usecase.DTO.UpdatePatientDTO;
+import br.com.morbus.queueservice.domain.usecase.dto.UpdatePatientDTO;
 import lombok.Builder;
 import lombok.Getter;
 
