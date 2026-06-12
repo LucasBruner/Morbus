@@ -16,7 +16,6 @@ import br.com.morbus.queueservice.domain.service.PriorityCalculator;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.Period;
 import java.util.UUID;
 
 public class RegisterPatientInQueue {
