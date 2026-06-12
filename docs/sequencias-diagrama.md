@@ -19,7 +19,7 @@
 
 ## 1. Registro de Usuário
 
-Criação de um novo usuário com role `MEDICO` ou `PACIENTE`.
+Criação de um novo usuário. O campo `role` aceita um dos cinco valores: `MEDICO`, `PACIENTE`, `SOLICITANTE`, `REGULADOR` ou `EXECUTANTE`.
 
 ```mermaid
 sequenceDiagram
@@ -27,15 +27,17 @@ sequenceDiagram
     participant AuthService as auth-service :8082
     participant DB as PostgreSQL
 
-    Cliente->>AuthService: POST /auth/register<br/>{ username, email, password, role }
+    Cliente->>AuthService: POST /auth/register<br/>{ username, email, password,<br/>role: MEDICO|PACIENTE|SOLICITANTE|REGULADOR|EXECUTANTE }
 
-    AuthService->>AuthService: Valida campos obrigatórios<br/>e formato do e-mail
+    AuthService->>AuthService: Valida campos obrigatórios,<br/>formato do e-mail e role permitida
 
     AuthService->>DB: SELECT * FROM users WHERE username = ?<br/>OR email = ?
     DB-->>AuthService: resultado
 
     alt username ou email já existem
-        AuthService-->>Cliente: 409 Conflict<br/>{ error: "CPF ou e-mail já cadastrado" }
+        AuthService-->>Cliente: 409 Conflict (application/problem+json)<br/>{ type: ".../user-already-exists",<br/>title: "Conflito de dados",<br/>detail: "Username ou e-mail já cadastrado",<br/>status: 409 }
+    else role inválida
+        AuthService-->>Cliente: 422 Unprocessable Entity (application/problem+json)<br/>{ type: ".../invalid-role",<br/>title: "Regra de negócio violada",<br/>detail: "Role informada não é permitida",<br/>status: 422 }
     else dados válidos e únicos
         AuthService->>AuthService: bcrypt.hash(password, 10)
         AuthService->>DB: INSERT INTO users (id, username, email, password_hash, role, created_at)
@@ -69,7 +71,7 @@ sequenceDiagram
         alt senha incorreta
             AuthService-->>Cliente: 401 Unauthorized<br/>{ error: "Credenciais inválidas" }
         else senha correta
-            AuthService->>AuthService: JWT.sign({ sub: username, role: ROLE_MEDICO },<br/>JWT_SECRET, { expiresIn: 24h })
+            AuthService->>AuthService: JWT.sign({ sub: username, role: ROLE_<ROLE_DO_USUARIO> },<br/>JWT_SECRET, { expiresIn: 24h })
             AuthService-->>Cliente: 200 OK<br/>{ token, type: "Bearer", expiresIn, role }
         end
     end
@@ -450,20 +452,175 @@ sequenceDiagram
 
 ---
 
+---
+
+## 10. Solicitação Aprovada → Fila → Agendamento (Caminho Feliz)
+
+Fluxo completo de ponta a ponta: UBS cria solicitação, regulador aprova, paciente entra na fila, é chamado e recebe slot confirmado.
+
+```mermaid
+sequenceDiagram
+    actor Solicitante as Solicitante (UBS)
+    actor Regulador
+    actor Paciente
+    participant RS as regulacao-service :8083
+    participant MQ as RabbitMQ
+    participant QS as queue-service :8080
+    participant AS as agendamento-service :8084
+    participant NS as notification-service :8081
+
+    Solicitante->>RS: POST /api/v1/solicitacoes<br/>{ patientId, procedureId, cid, justificativa, destino: FILA_REGULADA }
+    RS->>RS: Valida dados, verifica duplicidade
+    RS-->>Solicitante: 201 Created { id, status: AGUARDANDO }
+
+    Note over Regulador,RS: Avaliação pelo Regulador
+
+    Regulador->>RS: GET /api/v1/regulacao/pendentes
+    RS-->>Regulador: [ solicitação 11223344... ]
+
+    Regulador->>RS: POST /api/v1/regulacao/11223344.../avaliar<br/>{ decisao: AUTORIZAR, riskColorDefinido: AMARELO }
+    RS->>RS: Cria Parecer, atualiza status → APROVADA
+    RS--)MQ: SOLICITATION_APPROVED<br/>{ solicitacaoId, patientId, procedureId, riskColor: AMARELO, tipoFila: FILA_REGULADA }
+    RS-->>Regulador: 200 OK { novoStatus: APROVADA }
+
+    Note over MQ,QS: queue-service consome o evento
+
+    MQ--)QS: Consome SOLICITATION_APPROVED
+    QS->>QS: AddToQueue → cria QueueEntry<br/>status: AGUARDANDO, tipoFila: FILA_REGULADA, riskColor: AMARELO
+    QS--)MQ: PATIENT_REGISTERED
+    MQ--)NS: Consome PATIENT_REGISTERED
+    NS-->>Paciente: [EMAIL] "Você foi incluído na fila para [procedimento]. Classificação: AMARELO"
+
+    Note over Regulador,AS: Chamada do próximo
+
+    Regulador->>QS: POST /api/v1/queue/call-next
+    QS->>QS: CallNextPatient → status: CHAMADO
+    QS--)MQ: PATIENT_CALLED { queueEntryId, patientId, procedureId, preferredUnitId }
+    QS-->>Regulador: 200 OK { status: CHAMADO }
+
+    Note over MQ,AS: agendamento-service aloca slot
+
+    MQ--)AS: Consome PATIENT_CALLED
+    AS->>AS: AlocarSlot — busca slot disponível para procedimento/unidade/faixa etária
+    AS->>AS: Cria Appointment { status: AGUARDANDO_CONFIRMACAO, expiresAt: +72h }
+    AS--)MQ: APPOINTMENT_CONFIRMED { queueEntryId, slotDateTime, unitName, unitAddress }
+
+    MQ--)QS: Consome APPOINTMENT_CONFIRMED
+    QS->>QS: Atualiza QueueEntry: CHAMADO → AGENDADO
+
+    MQ--)NS: Consome APPOINTMENT_CONFIRMED
+    NS-->>Paciente: [EMAIL] "Consulta agendada para 10/07/2026 às 08:30 na UPA Norte, Rua das Flores 100"
+
+    Note over Paciente,AS: Confirmação de presença
+
+    Paciente->>AS: PATCH /api/v1/appointments/{id}/confirmar
+    AS->>AS: status: AGUARDANDO_CONFIRMACAO → CONFIRMADO
+    AS-->>Paciente: 200 OK { status: CONFIRMADO, slotDateTime, unitName }
+```
+
+---
+
+## 11. Solicitação Negada pelo Regulador
+
+```mermaid
+sequenceDiagram
+    actor Solicitante as Solicitante (UBS)
+    actor Regulador
+    participant RS as regulacao-service :8083
+    participant MQ as RabbitMQ
+    participant NS as notification-service :8081
+
+    Solicitante->>RS: POST /api/v1/solicitacoes { ... }
+    RS-->>Solicitante: 201 Created { status: AGUARDANDO }
+
+    Regulador->>RS: POST /api/v1/regulacao/{id}/avaliar<br/>{ decisao: NEGAR, riskColorDefinido: AZUL, justificativa: "Procedimento não indicado para o CID informado" }
+    RS->>RS: Cria Parecer, atualiza status → NEGADA
+    RS--)MQ: SOLICITATION_DENIED { solicitacaoId, justificativa }
+    RS-->>Regulador: 200 OK { novoStatus: NEGADA }
+
+    MQ--)NS: Consome SOLICITATION_DENIED
+    NS-->>Solicitante: [EMAIL] "Solicitação negada. Motivo: Procedimento não indicado para o CID informado"
+```
+
+---
+
+## 12. Agendamento Expirado — Reinserção na Fila
+
+Quando o paciente não confirma presença em 72 horas, o job de expiração cancela o agendamento e o queue-service reinserirá o paciente na fila.
+
+```mermaid
+sequenceDiagram
+    participant Job as @Scheduled (a cada hora)
+    participant AS as agendamento-service :8084
+    participant MQ as RabbitMQ
+    participant QS as queue-service :8080
+    participant NS as notification-service :8081
+    actor Paciente
+
+    Note over Job,AS: Job de verificação periódica (a cada hora)
+
+    Job->>AS: verifyExpiredAppointments()
+    AS->>AS: SELECT appointments WHERE status = AGUARDANDO_CONFIRMACAO AND expires_at < NOW()
+    AS->>AS: Para cada expirado: status → CANCELADO
+    AS--)MQ: APPOINTMENT_EXPIRED { queueEntryId, patientId, procedureName }
+
+    MQ--)QS: Consome APPOINTMENT_EXPIRED
+    QS->>QS: QueueEntry: CHAMADO → AGUARDANDO (reinserido no fim da fila)
+    QS--)MQ: PATIENT_REINSTATED { queueEntryId, patientId }
+
+    MQ--)NS: Consome APPOINTMENT_EXPIRED
+    NS-->>Paciente: [EMAIL] "Seu agendamento para [procedimento] foi cancelado por não confirmação em 72h. Você voltou à fila."
+
+    MQ--)NS: Consome PATIENT_REINSTATED
+    NS-->>Paciente: [EMAIL] "Você foi reinserido na fila para [procedimento]. Aguarde nova chamada."
+```
+
+---
+
+## 13. Paciente Faltou — Reinserção na Fila
+
+```mermaid
+sequenceDiagram
+    actor Executante
+    participant AS as agendamento-service :8084
+    participant MQ as RabbitMQ
+    participant QS as queue-service :8080
+    participant NS as notification-service :8081
+    actor Paciente
+
+    Executante->>AS: POST /api/v1/appointments/{id}/falta
+    AS->>AS: status: CONFIRMADO → FALTOU
+    AS->>AS: Libera slot (booked--)
+    AS--)MQ: PATIENT_NO_SHOW { queueEntryId, patientId }
+    AS-->>Executante: 204 No Content
+
+    MQ--)QS: Consome PATIENT_NO_SHOW
+    QS->>QS: QueueEntry: AGENDADO → AGUARDANDO (reinserido no fim da fila)
+    QS--)MQ: PATIENT_REINSTATED { queueEntryId }
+
+    MQ--)NS: Consome PATIENT_REINSTATED
+    NS-->>Paciente: [EMAIL] "Você foi reinserido na fila para [procedimento] após não comparecimento."
+```
+
+---
+
 ## Legenda dos Participantes
 
-| Participante            | Descrição                                                            |
-|-------------------------|----------------------------------------------------------------------|
-| **Médico**              | Profissional de saúde com `ROLE_MEDICO` — gerencia a fila           |
-| **Paciente**            | Usuário com `ROLE_PACIENTE` — consulta sua posição                  |
-| **auth-service**        | Serviço de autenticação, emite e valida credenciais                 |
-| **queue-service**       | Núcleo do sistema — aplica regras de negócio e publica eventos      |
-| **JwtAuthFilter**       | Filtro Spring Security que intercepta e valida o Bearer token       |
-| **UseCase**             | Camada Application do queue-service (Clean Architecture)            |
-| **RabbitMQ Publisher**  | Porta de saída na camada Infrastructure — publica eventos no broker |
-| **RabbitMQ**            | Message broker — desacopla queue-service do notification-service    |
-| **notification-service**| Consome eventos e envia notificações ao paciente                    |
-| **PostgreSQL**          | Banco de dados compartilhado pelos serviços                         |
+| Participante              | Descrição                                                                  |
+|---------------------------|----------------------------------------------------------------------------|
+| **Médico**                | Profissional com `ROLE_MEDICO` — gerencia a fila                          |
+| **Paciente**              | Usuário com `ROLE_PACIENTE` — consulta posição e confirma presença        |
+| **Solicitante (UBS)**     | Operador com `ROLE_SOLICITANTE` — cria solicitações na UBS                |
+| **Regulador**             | Médico regulador com `ROLE_REGULADOR` — avalia e emite pareceres          |
+| **Executante**            | Responsável da unidade com `ROLE_EXECUTANTE` — registra faltas e grades   |
+| **auth-service**          | Serviço de autenticação, emite JWT                                        |
+| **regulacao-service**     | Upstream — gerencia solicitações e pareceres (Hexagonal Architecture)     |
+| **queue-service**         | Núcleo do sistema — fila priorizada (Clean Architecture)                  |
+| **agendamento-service**   | Downstream — gerencia slots e agendamentos (CQRS + GraphQL)               |
+| **notification-service**  | Consome todos os eventos e notifica pacientes e UBS (Event-driven)        |
+| **RabbitMQ**              | Message broker — desacopla todos os serviços                              |
+| **PostgreSQL**            | Banco de dados — cada serviço tem seu próprio schema                      |
+| **@Scheduled**            | Job Spring periódico no agendamento-service para expiração de 72h         |
 
 ---
 
