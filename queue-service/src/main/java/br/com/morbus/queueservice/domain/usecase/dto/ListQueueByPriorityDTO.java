@@ -12,9 +12,7 @@ public record ListQueueByPriorityDTO(
         UUID procedureId,
         EQueueStatus status,
         ERiskColor riskColor,
-        @Positive(message = "Página deve ser positiva")
         Integer page,
-        @Positive(message = "Tamanho deve ser positivo")
         Integer size
 ) {
 }

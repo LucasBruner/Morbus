@@ -2,6 +2,7 @@ package br.com.morbus.queueservice.infrastructure.database.persistence;
 
 import br.com.morbus.queueservice.domain.entity.Procedure;
 import br.com.morbus.queueservice.domain.repository.IProcedureRepository;
+import br.com.morbus.queueservice.infrastructure.database.entity.ProcedureEntity;
 
 import java.util.List;
 import java.util.Optional;
@@ -26,5 +27,16 @@ public class ProcedureRepositoryImpl implements IProcedureRepository {
     @Override
     public List<Procedure> findAll() {
         return List.of();
+    }
+
+    Procedure mapToDomainProcedure(ProcedureEntity procedure) {
+        return Procedure.builder()
+                .id(procedure.getId())
+                .coProcedimento(procedure.getCoProcedimento())
+                .noProcedimento(procedure.getNoProcedimento())
+                .idadeMinima(procedure.getIdadeMinima())
+                .idadeMaxima(procedure.getIdadeMaxima())
+                .grupo(procedure.getGrupo())
+                .build();
     }
 }

@@ -37,7 +37,7 @@ public class PatientRepositoryImpl implements IPatientRepository {
         return List.of();
     }
 
-    private Patient toDomain(Patient entity) {
+    Patient mapToDomainPatient(PatientEntity entity) {
         return Patient.builder()
                 .id(entity.getId())
                 .cpf(entity.getCpf())
@@ -45,22 +45,9 @@ public class PatientRepositoryImpl implements IPatientRepository {
                 .nome(entity.getNome())
                 .sobrenome(entity.getSobrenome())
                 .dataNascimento(entity.getDataNascimento())
-                .gender(entity.getGender())
+                .gender(entity.getSexo())
                 .contato(entity.getContato())
                 .grupoLegal(entity.getGrupoLegal())
-                .build();
-    }
-
-    private PatientEntity toEntity(RegisterPatientDTO patient) {
-        return PatientEntity.builder()
-                .cpf(patient.cpf())
-                .cns(patient.cns())
-                .nome(patient.nome())
-                .sobrenome(patient.sobrenome())
-                .dataNascimento(patient.dataNascimento())
-                .sexo(patient.gender())
-                .contato(patient.contato())
-                .grupoLegal(patient.grupoLegal())
                 .build();
     }
 }
