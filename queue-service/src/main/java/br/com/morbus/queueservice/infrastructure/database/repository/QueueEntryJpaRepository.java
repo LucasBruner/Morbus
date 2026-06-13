@@ -57,4 +57,58 @@ public interface QueueEntryJpaRepository extends JpaRepository<QueueEntryEntity,
             @Param("patientId") UUID patientId,
             @Param("statuses") List<EQueueStatus> statuses
     );
+
+    @Query("""
+        SELECT q
+        FROM QueueEntryEntity q
+        WHERE q.patient_id = :patientId
+        ORDER BY
+            q.riskColor ASC,
+            q.priorityGroup ASC,
+            q.registeredAt ASC
+    """)
+    List<QueueEntryEntity> findByPatient(
+            @Param("patientId") UUID patientId
+    );
+
+    @Query("""
+        SELECT count(q)
+        FROM QueueEntryEntity q
+        WHERE q.id = :queueId
+    """)
+    Integer countEntriesWithHigherPriority(@Param("queueId") UUID queueId);
+
+    @Query("""
+        SELECT count(q)
+        FROM QueueEntryEntity q
+        WHERE q.patient_id = :patientId
+        AND q.procedure_id = :procedureId
+        AND q.status IN :statuses
+        ORDER BY
+            q.riskColor ASC,
+            q.priorityGroup ASC,
+            q.registeredAt ASC
+    """)
+    Integer existsByPatientAndProcedureAndStatusIn(
+            @Param("patientId") UUID patientId,
+            @Param("procedureId") UUID procedureId,
+            @Param("statuses") List<EQueueStatus> statuses
+    );
+
+    @Query("""
+        SELECT q
+        FROM QueueEntryEntity q
+        WHERE q.procedure_id = :procedureId
+        AND q.status = :status
+        AND (:riskColor IS NULL OR q.riskColor = :riskColor)
+        ORDER BY
+            q.riskColor ASC,
+            q.priorityGroup ASC,
+            q.registeredAt ASC
+    """)
+    List<QueueEntryEntity> findByProcedureIdAndFilters(
+            @Param("procedureId") UUID procedureId,
+            @Param("status") EQueueStatus status,
+            @Param("riskColor") ERiskColor riskColor
+    );
 }

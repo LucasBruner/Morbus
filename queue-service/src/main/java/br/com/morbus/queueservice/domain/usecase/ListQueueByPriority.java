@@ -25,9 +25,6 @@ public class ListQueueByPriority {
     public List<QueueEntry> run(ListQueueByPriorityDTO dto) {
         EQueueStatus statusFilter = dto.status() != null ? dto.status() : DEFAULT_STATUS;
 
-        // Filtra por status
-        // Filtra por riskColor (opcional, retorna todas as cores se não for informado no dto)
-        // Retorna lista por: riskColor ASC, priorityGroup ASC, registeredAt ASC
         List<QueueEntry> entries = queueEntryRepository.findByProcedureIdAndFilters(
                 dto.procedureId(),
                 statusFilter,
