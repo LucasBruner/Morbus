@@ -7,8 +7,8 @@ public record ProcedureResponseDTO(
         UUID id,
         String coProcedimento,
         String noProcedimento,
-        int idadeMinima,
-        int idadeMaxima,
+        Integer idadeMinima,
+        Integer idadeMaxima,
         String grupo
 ) {
     public static ProcedureResponseDTO fromEntity(Procedure procedure) {
