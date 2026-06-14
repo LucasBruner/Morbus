@@ -46,11 +46,11 @@ public interface QueueEntryJpaRepository extends JpaRepository<QueueEntryEntity,
     @Query("""
         SELECT q
         FROM QueueEntryEntity q
-        WHERE q.patient_id = :patientId
+        WHERE q.patient.id = :patientId
         AND q.status IN :statuses
         ORDER BY
             q.riskColor ASC,
-            q.patient.grupoLegal ASC,,
+            q.patient.grupoLegal ASC,
             q.registeredAt ASC
     """)
     List<QueueEntryEntity> findByPatientAndStatusIn(
@@ -61,7 +61,7 @@ public interface QueueEntryJpaRepository extends JpaRepository<QueueEntryEntity,
     @Query("""
         SELECT q
         FROM QueueEntryEntity q
-        WHERE q.patient_id = :patientId
+        WHERE q.patient.id = :patientId
         ORDER BY
             q.riskColor ASC,
             q.patient.grupoLegal ASC,
@@ -81,8 +81,8 @@ public interface QueueEntryJpaRepository extends JpaRepository<QueueEntryEntity,
     @Query("""
         SELECT count(q)
         FROM QueueEntryEntity q
-        WHERE q.patient_id = :patientId
-        AND q.procedure_id = :procedureId
+        WHERE q.patient.id = :patientId
+        AND q.procedure.id = :procedureId
         AND q.status IN :statuses
         ORDER BY
             q.riskColor ASC,
@@ -98,7 +98,7 @@ public interface QueueEntryJpaRepository extends JpaRepository<QueueEntryEntity,
     @Query("""
         SELECT q
         FROM QueueEntryEntity q
-        WHERE q.procedure_id = :procedureId
+        WHERE q.procedure.id = :procedureId
         AND q.status = :status
         AND (:riskColor IS NULL OR q.riskColor = :riskColor)
         ORDER BY

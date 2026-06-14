@@ -9,5 +9,5 @@ CREATE TABLE patients (
     data_nascimento  DATE         NOT NULL,
     sexo             VARCHAR(10)  CHECK (sexo IN ('MASCULINO', 'FEMININO', 'OUTROS')),
     contato          VARCHAR(255),
-    grupo_legal      VARCHAR(20)  NOT NULL CHECK (grupo_legal IN ('IDOSO', 'GESTANTE', 'DEFICIENTE', 'LACTANTE', 'OBESO', 'GERAL'))
+    grupo_legal      SMALLINT     NOT NULL
 );
