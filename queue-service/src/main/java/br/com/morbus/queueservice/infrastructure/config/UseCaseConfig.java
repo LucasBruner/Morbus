@@ -8,8 +8,13 @@ import br.com.morbus.queueservice.domain.repository.IQueueEntryRepository;
 import br.com.morbus.queueservice.domain.usecase.AssignProcedureToPatient;
 import br.com.morbus.queueservice.domain.usecase.CallNextPatient;
 import br.com.morbus.queueservice.domain.usecase.CancelQueueEntry;
+import br.com.morbus.queueservice.domain.usecase.GetPatientByCpf;
+import br.com.morbus.queueservice.domain.usecase.GetPatientById;
+import br.com.morbus.queueservice.domain.usecase.GetProcedureByCodigo;
+import br.com.morbus.queueservice.domain.usecase.GetProcedureById;
 import br.com.morbus.queueservice.domain.usecase.GetQueuePosition;
 import br.com.morbus.queueservice.domain.usecase.InactivatePatient;
+import br.com.morbus.queueservice.domain.usecase.ListProcedures;
 import br.com.morbus.queueservice.domain.usecase.ListQueueByPriority;
 import br.com.morbus.queueservice.domain.usecase.ReclassifyPriority;
 import br.com.morbus.queueservice.domain.usecase.RegisterPatient;
@@ -21,6 +26,31 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class UseCaseConfig {
+
+    @Bean
+    public GetPatientById getPatientById(IPatientRepository patientRepository) {
+        return GetPatientById.create(patientRepository);
+    }
+
+    @Bean
+    public GetPatientByCpf getPatientByCpf(IPatientRepository patientRepository) {
+        return GetPatientByCpf.create(patientRepository);
+    }
+
+    @Bean
+    public GetProcedureById getProcedureById(IProcedureRepository procedureRepository) {
+        return GetProcedureById.create(procedureRepository);
+    }
+
+    @Bean
+    public GetProcedureByCodigo getProcedureByCodigo(IProcedureRepository procedureRepository) {
+        return GetProcedureByCodigo.create(procedureRepository);
+    }
+
+    @Bean
+    public ListProcedures listProcedures(IProcedureRepository procedureRepository) {
+        return ListProcedures.create(procedureRepository);
+    }
 
     @Bean
     public RegisterPatient registerPatient(IPatientRepository patientRepository) {

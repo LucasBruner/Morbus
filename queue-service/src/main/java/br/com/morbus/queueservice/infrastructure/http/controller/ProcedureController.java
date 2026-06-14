@@ -1,16 +1,19 @@
 package br.com.morbus.queueservice.infrastructure.http.controller;
 
 import br.com.morbus.queueservice.domain.entity.Procedure;
-import br.com.morbus.queueservice.domain.repository.IProcedureRepository;
+import br.com.morbus.queueservice.domain.usecase.GetProcedureByCodigo;
+import br.com.morbus.queueservice.domain.usecase.GetProcedureById;
+import br.com.morbus.queueservice.domain.usecase.ListProcedures;
 import br.com.morbus.queueservice.domain.usecase.dto.ProcedureResponseDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.UUID;
@@ -20,22 +23,28 @@ import java.util.UUID;
 @Tag(name = "Procedures", description = "Endpoints para gerenciamento de procedimentos")
 public class ProcedureController {
 
-    private final IProcedureRepository repository;
+    private final ListProcedures listProcedures;
+    private final GetProcedureById getProcedureById;
+    private final GetProcedureByCodigo getProcedureByCodigo;
 
-    public ProcedureController(IProcedureRepository repository) {
-        this.repository = repository;
+    public ProcedureController(ListProcedures listProcedures,
+                               GetProcedureById getProcedureById,
+                               GetProcedureByCodigo getProcedureByCodigo) {
+        this.listProcedures = listProcedures;
+        this.getProcedureById = getProcedureById;
+        this.getProcedureByCodigo = getProcedureByCodigo;
     }
 
     @GetMapping
     @Operation(
             summary = "Lista todos os procedimentos",
-            description = "Retorna uma lista de procedimentos do catálogo SIGTAP disponível no sistema.",
+            description = "Retorna uma lista paginada de procedimentos do catálogo SIGTAP disponível no sistema.",
             responses = {
                     @ApiResponse(description = "Ok", responseCode = "200")})
-    public ResponseEntity<List<ProcedureResponseDTO>> listAllProcedures(@RequestParam(value = "page", defaultValue = "1") Integer page,
-                                                                        @RequestParam(value = "size", defaultValue = "20") Integer size) {
-        List<Procedure> procedures = repository.findAll(PageRequest.of(page, size));
-
+    public ResponseEntity<List<ProcedureResponseDTO>> listAllProcedures(
+            @RequestParam(value = "page", defaultValue = "1") Integer page,
+            @RequestParam(value = "size", defaultValue = "20") Integer size) {
+        List<Procedure> procedures = listProcedures.run(page, size);
         return ResponseEntity.ok(procedures.stream().map(ProcedureResponseDTO::fromEntity).toList());
     }
 
@@ -45,13 +54,10 @@ public class ProcedureController {
             description = "Busca um procedimento específico utilizando o seu código SIGTAP único.",
             responses = {
                     @ApiResponse(description = "Ok", responseCode = "200"),
-                    @ApiResponse(description = "Not found", responseCode = "404")})
+                    @ApiResponse(description = "Não encontrado", responseCode = "404")})
     public ResponseEntity<ProcedureResponseDTO> getByCodigo(@RequestParam String codigo) {
-        return repository.findByCoProcedimento(codigo)
-                .map(ProcedureResponseDTO::fromEntity)
-                .map(ResponseEntity::ok)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Procedimento com código SIGTAP " + codigo + " não encontrado"));
+        Procedure procedure = getProcedureByCodigo.run(codigo);
+        return ResponseEntity.ok(ProcedureResponseDTO.fromEntity(procedure));
     }
 
     @GetMapping("/{id}")
@@ -60,12 +66,9 @@ public class ProcedureController {
             description = "Retorna os detalhes de um procedimento através do seu UUID.",
             responses = {
                     @ApiResponse(description = "Ok", responseCode = "200"),
-                    @ApiResponse(description = "Not found", responseCode = "404")})
-    public ResponseEntity<ProcedureResponseDTO> getById(@PathVariable("id") UUID id) {
-        return repository.findById(id)
-                .map(ProcedureResponseDTO::fromEntity)
-                .map(ResponseEntity::ok)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Procedimento com ID " + id + " não encontrado"));
+                    @ApiResponse(description = "Não encontrado", responseCode = "404")})
+    public ResponseEntity<ProcedureResponseDTO> getById(@PathVariable UUID id) {
+        Procedure procedure = getProcedureById.run(id);
+        return ResponseEntity.ok(ProcedureResponseDTO.fromEntity(procedure));
     }
 }
