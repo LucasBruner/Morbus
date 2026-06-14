@@ -10,11 +10,13 @@ import br.com.morbus.queueservice.infrastructure.database.entity.PatientEntity;
 import br.com.morbus.queueservice.infrastructure.database.entity.ProcedureEntity;
 import br.com.morbus.queueservice.infrastructure.database.entity.QueueEntryEntity;
 import br.com.morbus.queueservice.infrastructure.database.repository.QueueEntryJpaRepository;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+@Component
 public class QueueEntryRepositoryImpl implements IQueueEntryRepository {
 
     private final QueueEntryJpaRepository repository;
@@ -42,7 +44,9 @@ public class QueueEntryRepositoryImpl implements IQueueEntryRepository {
     @Override
     public Optional<QueueEntry> findNextByPriority() {
         List<QueueEntryEntity> entryList = repository.findByPriority(null, null);
-        return Optional.ofNullable(mapToDomainQueue(entryList.getFirst()));
+        return entryList.isEmpty()
+                ? Optional.empty()
+                : Optional.of(mapToDomainQueue(entryList.getFirst()));
     }
 
     @Override

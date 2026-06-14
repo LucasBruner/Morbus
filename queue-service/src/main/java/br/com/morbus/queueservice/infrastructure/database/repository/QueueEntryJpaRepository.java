@@ -21,7 +21,7 @@ public interface QueueEntryJpaRepository extends JpaRepository<QueueEntryEntity,
           AND (:riskColor IS NULL OR q.riskColor = :riskColor)
         ORDER BY
             q.riskColor ASC,
-            q.priorityGroup ASC,
+            q.patient.grupoLegal ASC,
             q.registeredAt ASC
     """)
     List<QueueEntryEntity> findByPriority(
@@ -35,7 +35,7 @@ public interface QueueEntryJpaRepository extends JpaRepository<QueueEntryEntity,
         WHERE q.status = 'AGUARDANDO'
         ORDER BY
             q.riskColor ASC,
-            q.priorityGroup ASC,
+            q.patient.grupoLegal ASC,
             q.registeredAt ASC
     """)
     List<QueueEntryEntity> findAllOrderedByPriority(
@@ -50,7 +50,7 @@ public interface QueueEntryJpaRepository extends JpaRepository<QueueEntryEntity,
         AND q.status IN :statuses
         ORDER BY
             q.riskColor ASC,
-            q.priorityGroup ASC,
+            q.patient.grupoLegal ASC,,
             q.registeredAt ASC
     """)
     List<QueueEntryEntity> findByPatientAndStatusIn(
@@ -64,7 +64,7 @@ public interface QueueEntryJpaRepository extends JpaRepository<QueueEntryEntity,
         WHERE q.patient_id = :patientId
         ORDER BY
             q.riskColor ASC,
-            q.priorityGroup ASC,
+            q.patient.grupoLegal ASC,
             q.registeredAt ASC
     """)
     List<QueueEntryEntity> findByPatient(
@@ -86,7 +86,7 @@ public interface QueueEntryJpaRepository extends JpaRepository<QueueEntryEntity,
         AND q.status IN :statuses
         ORDER BY
             q.riskColor ASC,
-            q.priorityGroup ASC,
+            q.patient.grupoLegal ASC,
             q.registeredAt ASC
     """)
     Integer existsByPatientAndProcedureAndStatusIn(
@@ -103,7 +103,7 @@ public interface QueueEntryJpaRepository extends JpaRepository<QueueEntryEntity,
         AND (:riskColor IS NULL OR q.riskColor = :riskColor)
         ORDER BY
             q.riskColor ASC,
-            q.priorityGroup ASC,
+            q.patient.grupoLegal ASC,
             q.registeredAt ASC
     """)
     List<QueueEntryEntity> findByProcedureIdAndFilters(

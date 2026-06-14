@@ -44,7 +44,7 @@ public class PatientEntity {
     @Column(name = "contato", length = 255)
     private String contato;
 
-    @Enumerated(EnumType.STRING)
+    @Enumerated(EnumType.ORDINAL)
     @Column(name = "grupo_legal", nullable = false, length = 20)
     private EPriorityGroup grupoLegal;
 

@@ -4,11 +4,13 @@ import br.com.morbus.queueservice.domain.entity.Procedure;
 import br.com.morbus.queueservice.domain.repository.IProcedureRepository;
 import br.com.morbus.queueservice.infrastructure.database.entity.ProcedureEntity;
 import br.com.morbus.queueservice.infrastructure.database.repository.ProcedureJpaRepository;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+@Component
 public class ProcedureRepositoryImpl implements IProcedureRepository {
 
     private final ProcedureJpaRepository repository;

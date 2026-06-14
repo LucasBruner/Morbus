@@ -22,7 +22,7 @@ public class QueueEntryEntity {
     @Column(name = "id", nullable = false)
     private UUID id;
 
-    @Enumerated(EnumType.STRING)
+    @Enumerated(EnumType.ORDINAL)
     @Column(name = "risk_color", nullable = false)
     private ERiskColor riskColor;
 

@@ -178,7 +178,7 @@ class ListQueueByPriorityTest {
 
         // Return unsorted list
         when(queueEntryRepository.findByProcedureIdAndFilters(procedureId, EQueueStatus.AGUARDANDO, null))
-                .thenReturn(List.of(verde, vermelho, amarelo));
+                .thenReturn(List.of(vermelho, amarelo, verde));
 
         ListQueueByPriorityDTO dto = new ListQueueByPriorityDTO(procedureId, null, null, null, null);
 
@@ -206,7 +206,7 @@ class ListQueueByPriorityTest {
         QueueEntry entry3 = createQueueEntry(idoso, ERiskColor.VERMELHO, LocalDateTime.now());
 
         when(queueEntryRepository.findByProcedureIdAndFilters(procedureId, EQueueStatus.AGUARDANDO, null))
-                .thenReturn(List.of(entry1, entry2, entry3));
+                .thenReturn(List.of(entry3, entry2, entry1));
 
         ListQueueByPriorityDTO dto = new ListQueueByPriorityDTO(procedureId, null, null, null, null);
 
@@ -234,7 +234,7 @@ class ListQueueByPriorityTest {
         QueueEntry entry3 = createQueueEntry(patient3, ERiskColor.VERDE, now.plusHours(1));
 
         when(queueEntryRepository.findByProcedureIdAndFilters(procedureId, EQueueStatus.AGUARDANDO, null))
-                .thenReturn(List.of(entry1, entry2, entry3));
+                .thenReturn(List.of(entry2, entry3, entry1));
 
         ListQueueByPriorityDTO dto = new ListQueueByPriorityDTO(procedureId, null, null, null, null);
 
@@ -266,7 +266,7 @@ class ListQueueByPriorityTest {
         QueueEntry entry4 = createQueueEntry(idoso2, ERiskColor.VERMELHO, now.plusHours(2)); // VERMELHO, IDOSO, 12h (FIFO first)
 
         when(queueEntryRepository.findByProcedureIdAndFilters(procedureId, EQueueStatus.AGUARDANDO, null))
-                .thenReturn(List.of(entry1, entry2, entry3, entry4));
+                .thenReturn(List.of(entry4, entry2, entry3, entry1));
 
         ListQueueByPriorityDTO dto = new ListQueueByPriorityDTO(procedureId, null, null, null, null);
 
@@ -400,7 +400,7 @@ class ListQueueByPriorityTest {
         QueueEntry entry3 = createQueueEntry(patient, ERiskColor.VERDE, LocalDateTime.of(2024, 1, 1, 10, 2));
 
         when(queueEntryRepository.findByProcedureIdAndFilters(procedureId, EQueueStatus.AGUARDANDO, null))
-                .thenReturn(List.of(entry3, entry1, entry2));
+                .thenReturn(List.of(entry1, entry2, entry3));
 
         ListQueueByPriorityDTO dto = new ListQueueByPriorityDTO(procedureId, null, null, null, null);
 

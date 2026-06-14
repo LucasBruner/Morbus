@@ -15,7 +15,7 @@ public interface ProcedureJpaRepository extends JpaRepository<ProcedureEntity, U
     @Query("""
         SELECT p
         FROM ProcedureEntity p
-        WHERE p.co_procedimento = :coProcedimento
+        WHERE p.coProcedimento = :coProcedimento
     """)
     Optional<ProcedureEntity> findByCoProcedimento(
             @Param("coProcedimento") String coProcedimento
