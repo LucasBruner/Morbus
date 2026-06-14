@@ -9,7 +9,6 @@ import br.com.morbus.queueservice.domain.repository.IPatientRepository;
 import br.com.morbus.queueservice.domain.repository.IQueueEntryRepository;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 public class InactivatePatient {
