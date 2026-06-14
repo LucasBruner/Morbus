@@ -5,23 +5,51 @@
 
 ## 1. Visão Geral
 
-O sistema digitaliza o processo de **fila regulatória ambulatorial do SUS (SISREG)**, cobrindo desde o cadastro de um paciente em um procedimento até a chamada do próximo da fila com base em regras de prioridade definidas pelo Ministério da Saúde.
+O sistema digitaliza o processo de **regulação e agendamento ambulatorial do SUS (SISREG)**, cobrindo o ciclo completo: desde a solicitação de um procedimento pela UBS até o agendamento confirmado com data, hora e local na unidade executante.
 
-O sistema é composto por **três microsserviços** independentes que se comunicam via REST (operações síncronas) e RabbitMQ (notificações assíncronas).
+O sistema é composto por **cinco microsserviços** independentes que se comunicam via REST/GraphQL (operações síncronas) e RabbitMQ (eventos assíncronos).
 
 ```
-┌─────────────┐     REST/JWT      ┌──────────────────┐
-│   Cliente   │ ───────────────▶  │   auth-service   │
-│  (Postman / │                   │   :8082          │
-│   Swagger)  │                   └──────────────────┘
-│             │     REST/JWT      ┌──────────────────┐      AMQP       ┌───────────────────────┐
-│             │ ───────────────▶  │  queue-service   │ ─────────────▶  │  notification-service │
-└─────────────┘                   │  :8080           │                 │  :8081                │
-                                  └────────┬─────────┘                 └───────────────────────┘
-                                           │ JPA
-                                  ┌────────▼─────────┐
-                                  │   PostgreSQL :5432│
-                                  └──────────────────┘
+                         ┌─────────────────────────────────────────────────────────────────┐
+                         │                         auth-service :8082                      │
+                         │          (Spring Boot MVC — emissão de JWT)                     │
+                         └───────────────────────────┬─────────────────────────────────────┘
+                                    JWT compartilhado │ (JWT_SECRET)
+       ┌────────────────────────────┬────────────────┼───────────────┬────────────────────────┐
+       ▼                            ▼                ▼               ▼                        ▼
+┌─────────────────┐   ┌─────────────────┐   ┌──────────────┐   ┌───────────────────┐   ┌──────────────────────┐
+│ regulacao-      │   │  queue-service  │   │ agendamento- │   │  notification-    │   │      Cliente         │
+│ service :8083   │   │  :8080          │   │ service :8084│   │  service :8081    │   │  (Postman/Swagger/   │
+│                 │   │                 │   │              │   │                   │   │   Frontend)          │
+│ Hexagonal       │   │ Clean           │   │ CQRS +       │   │ Event-driven      │   └──────────────────────┘
+│ Architecture    │   │ Architecture    │   │ GraphQL      │   │ (Quarkus)         │
+│ REST            │   │ REST            │   │ REST+GraphQL │   │                   │
+└────────┬────────┘   └────────┬────────┘   └──────┬───────┘   └───────────────────┘
+         │ PostgreSQL          │ PostgreSQL          │ PostgreSQL
+         ▼                     ▼                     ▼
+   [regulacao_db]        [queue_db]            [agendamento_db]
+
+──────────────────────────────── RabbitMQ :5672 ────────────────────────────────
+  sus.regulacao.exchange ──▶ queue-service, notification-service
+  sus.queue.exchange     ──▶ agendamento-service, notification-service
+  sus.agendamento.exchange──▶ queue-service, notification-service
+```
+
+**Fluxo de negócio ponta a ponta:**
+```
+[UBS / SOLICITANTE]
+      │  POST /api/v1/solicitacoes
+      ▼
+[regulacao-service]  ─── REGULADOR avalia e aprova/nega ───▶ SOLICITATION_APPROVED
+      │ (evento RabbitMQ)
+      ▼
+[queue-service]  ─── fila priorizada por tipoFila + riskColor + grupo + chegada ───▶ PATIENT_CALLED
+      │ (evento RabbitMQ)
+      ▼
+[agendamento-service]  ─── aloca slot, confirma ou devolve ───▶ APPOINTMENT_CONFIRMED
+      │ (eventos RabbitMQ)
+      ▼
+[notification-service]  ─── e-mail/notificação em cada etapa ───▶ [Paciente / UBS]
 ```
 
 ---
@@ -32,211 +60,375 @@ O sistema é composto por **três microsserviços** independentes que se comunic
 
 **Responsabilidade:** Autenticar usuários e emitir tokens JWT com a role do perfil.
 
-| Atributo         | Valor                                      |
-|------------------|--------------------------------------------|
-| Framework        | Spring Boot 4 + Spring Security            |
-| Padrão           | MVC                                        |
-| Porta            | `8082`                                     |
-| Banco de dados   | PostgreSQL (schema compartilhado)          |
-| Autenticação     | JWT assinado com HMAC-SHA256               |
+| Atributo       | Valor                                   |
+|----------------|-----------------------------------------|
+| Framework      | Spring Boot 4 + Spring Security         |
+| Padrão         | MVC                                     |
+| Porta          | `8082`                                  |
+| Banco de dados | PostgreSQL (schema `auth`)              |
+| Autenticação   | JWT assinado com HMAC-SHA256            |
 
 **Estrutura de pacotes:**
 ```
 auth-service/
-└── src/main/java/
-    └── br.com.sus.auth/
-        ├── config/          # SecurityConfig, JwtConfig, OpenApiConfig
-        ├── controller/      # AuthController
-        ├── model/           # User.java, UserRole.java (enum)
-        │   └── dto/         # RegisterRequest, LoginRequest, AuthResponse
-        ├── repository/      # UserRepository
-        └── service/         # AuthService, JwtService
+└── src/main/java/br.com.sus.auth/
+    ├── config/       # SecurityConfig, JwtConfig, OpenApiConfig
+    ├── controller/   # AuthController
+    ├── model/        # User.java, UserRole.java (enum)
+    │   └── dto/      # RegisterRequest, LoginRequest, AuthResponse
+    ├── repository/   # UserRepository
+    └── service/      # AuthService, JwtService
 ```
 
 **Endpoints expostos:**
 
-| Método | Path              | Auth | Descrição                          |
-|--------|-------------------|------|------------------------------------|
-| POST   | /auth/register    | ❌   | Cria novo usuário com role         |
-| POST   | /auth/login       | ❌   | Valida credenciais e retorna JWT   |
+| Método | Path           | Auth | Descrição                        |
+|--------|----------------|------|----------------------------------|
+| POST   | /auth/register | ❌   | Cria novo usuário com role       |
+| POST   | /auth/login    | ❌   | Valida credenciais e retorna JWT |
 
 **Roles disponíveis:**
 
-| Role           | Descrição                                              |
-|----------------|--------------------------------------------------------|
-| `ROLE_MEDICO`  | Profissional de saúde — gerencia a fila completa       |
-| `ROLE_PACIENTE`| Paciente — consulta apenas sua própria posição         |
+| Role               | Descrição                                                    |
+|--------------------|--------------------------------------------------------------|
+| `ROLE_MEDICO`      | Profissional de saúde — gerencia a fila completa             |
+| `ROLE_PACIENTE`    | Paciente — consulta posição e confirma presença              |
+| `ROLE_SOLICITANTE` | Operador de UBS — cria e complementa solicitações            |
+| `ROLE_REGULADOR`   | Médico regulador — avalia solicitações e emite pareceres     |
+| `ROLE_EXECUTANTE`  | Responsável da unidade executante — gerencia grade de slots  |
 
 ---
 
 ### 2.2 queue-service
 
-**Responsabilidade:** Núcleo do sistema — gerencia o cadastro de pacientes na fila, o algoritmo de prioridade, a chamada do próximo e a publicação de eventos.
+**Responsabilidade:** Núcleo do sistema — gerencia a fila priorizada de pacientes, com suporte a dois tipos de fila (FILA_ESPERA e FILA_REGULADA), controle de cotas e publicação de eventos.
 
-| Atributo         | Valor                                                  |
-|------------------|--------------------------------------------------------|
-| Framework        | Spring Boot 4.0.6 + Spring Data JPA + Spring AMQP     |
-| Padrão           | **Clean Architecture**                                 |
-| Porta            | `8080`                                                 |
-| Banco de dados   | PostgreSQL                                             |
-| Migrations       | Flyway                                                 |
-| Docs             | SpringDoc OpenAPI (Swagger UI em `/swagger-ui.html`)   |
+| Atributo       | Valor                                               |
+|----------------|-----------------------------------------------------|
+| Framework      | Spring Boot 4.0.6 + Spring Data JPA + Spring AMQP  |
+| Padrão         | **Clean Architecture**                              |
+| Porta          | `8080`                                              |
+| Banco de dados | PostgreSQL (schema `queue`)                         |
+| Migrations     | Flyway                                              |
+| Docs           | SpringDoc OpenAPI (Swagger UI em `/swagger-ui.html`)|
 
 **Estrutura de pacotes (Clean Architecture):**
 ```
 queue-service/
-└── src/main/java/
-    └── br.com.morbus.queueservice/
-        ├── domain/
-        │   ├── entity/          # Patient, QueueEntry, Procedure (POJO puro, Lombok @Builder @Getter)
-        │   ├── enums/           # ERiskColor, EPriorityGroup, EQueueStatus, EGender
-        │   ├── event/           # IQueueEventPublisher (contrato de saída — porta do domínio)
-        │   ├── exceptions/      # QueueNotExistException, QueueNotAllowedException, QueueEmptyException
-        │   ├── repository/      # IQueueEntryRepository, IPatientRepository, IProcedureRepository
-        │   ├── service/         # PriorityCalculator
-        │   └── usecase/         # CallNextPatient, CancelQueueEntry, GetQueuePosition, ReclassifyPriority
-        │       └── DTO/         # QueueCancelDTO, QueueUpdateRiskColorDTO, QueueEntryRiskQueuePosition
-        ├── application/
-        │   └── usecase/         # (reservado — use cases vivem em domain/usecase nesta fase)
-        ├── infrastructure/
-        │   ├── config/          # RabbitMQConfig
-        │   ├── messaging/       # RabbitMqQueueEventPublisher
-        │   │   └── DTO/         # QueueEventPayload (record)
-        │   ├── persistence/     # (a implementar — entidades JPA e repositórios Spring Data)
-        │   └── security/        # (a implementar — JwtAuthFilter, SecurityConfig)
-        └── interfaces/
-            ├── controller/      # (a implementar — QueueController, PatientController, ProcedureController)
-            └── dto/             # (a implementar — Request/Response DTOs, Mappers)
+└── src/main/java/br.com.morbus.queueservice/
+    ├── domain/
+    │   ├── entity/       # Patient, QueueEntry, Procedure, UnitProcedureQuota
+    │   ├── enums/        # ERiskColor, EPriorityGroup, EQueueStatus, EGender, ETipoFila
+    │   ├── event/        # IQueueEventPublisher (contrato de saída)
+    │   ├── exceptions/   # QueueNotExistException, QueueNotAllowedException,
+    │   │                 # QueueEmptyException, QuotaExceededException
+    │   ├── repository/   # IQueueEntryRepository, IPatientRepository,
+    │   │                 # IProcedureRepository, IUnitProcedureQuotaRepository
+    │   ├── service/      # PriorityCalculator
+    │   └── usecase/      # CallNextPatient, ReclassifyPriority, AddToQueue,
+    │       └── DTO/      # CancelQueueEntry, CheckAndEnforceQuota
+    ├── infrastructure/
+    │   ├── config/       # RabbitMQConfig
+    │   ├── messaging/    # RabbitMqQueueEventPublisher
+    │   │   ├── consumer/ # SolicitacaoEventConsumer, AgendamentoEventConsumer
+    │   │   └── dto/      # QueueEventDTO, SolicitacaoApprovedEventDTO, AppointmentEventDTO
+    │   ├── persistence/  # entidades JPA e repositórios Spring Data
+    │   └── security/     # JwtAuthFilter, SecurityConfig
+    └── interfaces/
+        ├── controller/   # QueueController, PatientController, ProcedureController
+        └── dto/          # Request/Response DTOs, Mappers
 ```
 
-**Regra de dependências (Clean Architecture):**
+**Regra de dependências:**
 ```
 interfaces → application → domain ← infrastructure
 ```
-Nenhuma classe do `domain` importa algo de `infrastructure`, `interfaces` ou qualquer framework (Spring, JPA, RabbitMQ).
+Nenhuma classe do `domain` importa Spring, JPA ou RabbitMQ.
 
 **Endpoints expostos:**
 
-| Método | Path                           | Role mínima    | Descrição                          |
-|--------|--------------------------------|----------------|------------------------------------|
-| POST   | /api/v1/queue                  | MEDICO         | Cadastra paciente na fila          |
-| GET    | /api/v1/queue                  | MEDICO         | Lista fila ordenada por prioridade |
-| GET    | /api/v1/queue/{id}/position    | PACIENTE       | Posição do paciente na fila        |
-| POST   | /api/v1/queue/call-next        | MEDICO         | Chama o próximo da fila            |
-| PATCH  | /api/v1/queue/{id}/priority    | MEDICO         | Reclassifica cor de risco          |
-| DELETE | /api/v1/queue/{id}             | MEDICO         | Cancela entrada na fila            |
-| POST   | /api/v1/patients               | MEDICO         | Cadastra paciente                  |
-| GET    | /api/v1/patients/{id}          | MEDICO         | Busca paciente por ID              |
-| GET    | /api/v1/procedures             | PACIENTE       | Lista procedimentos disponíveis    |
-| GET    | /api/v1/procedures/{id}        | PACIENTE       | Busca procedimento por ID          |
+| Método | Path                        | Role       | Descrição                          |
+|--------|-----------------------------|------------|------------------------------------|
+| POST   | /api/v1/queue               | MEDICO     | Cadastra paciente na fila          |
+| GET    | /api/v1/queue               | MEDICO     | Lista fila ordenada por prioridade |
+| GET    | /api/v1/queue/{id}/position | PACIENTE   | Posição do paciente na fila        |
+| POST   | /api/v1/queue/call-next     | MEDICO     | Chama o próximo da fila            |
+| PATCH  | /api/v1/queue/{id}/priority | MEDICO     | Reclassifica cor de risco          |
+| DELETE | /api/v1/queue/{id}          | MEDICO     | Cancela entrada na fila            |
+| POST   | /api/v1/patients            | MEDICO     | Cadastra paciente                  |
+| GET    | /api/v1/patients/{id}       | MEDICO     | Busca paciente por ID              |
+| GET    | /api/v1/procedures          | PACIENTE   | Lista procedimentos disponíveis    |
+| GET    | /api/v1/procedures/{id}     | PACIENTE   | Busca procedimento por ID          |
 
-**Algoritmo de prioridade:**
-```sql
-ORDER BY
-  risk_color ASC,        -- VERMELHO(1) > AMARELO(2) > VERDE(3) > AZUL(4)
-  priority_group ASC,    -- IDOSO(1) > GESTANTE(2) > DEFICIENTE(3) > LACTANTE(4) > OBESO(5) > GERAL(6)
-  registered_at ASC      -- Quem chegou primeiro dentro do mesmo nível
-```
+**Tipos de fila (ETipoFila):**
 
-**Classificação de risco (SISREG ambulatorial):**
+| Tipo            | Cor de risco     | Algoritmo de ordenação                  | Controle de cota |
+|-----------------|------------------|-----------------------------------------|------------------|
+| `FILA_ESPERA`   | Sempre `AZUL`    | Cronológico puro (registeredAt ASC)     | Sim — por UBS    |
+| `FILA_REGULADA` | Definido pelo regulador | riskColor → priorityGroup → registeredAt | Não         |
 
-| Cor        | Prioridade | Tempo máximo de espera |
-|------------|------------|------------------------|
-| VERMELHO   | 1          | 1 mês                  |
-| AMARELO    | 2          | 3 meses                |
-| VERDE      | 3          | 6 meses                |
-| AZUL       | 4          | 1 ano (entrada padrão) |
-
-**Grupos legais (Lei 10.048/2000 + Estatuto do Idoso):**
-
-| Grupo      | Prioridade | Critério                   |
-|------------|------------|----------------------------|
-| IDOSO      | 1          | Idade ≥ 60 anos            |
-| GESTANTE   | 2          | Campo gestante = true      |
-| DEFICIENTE | 3          | Campo deficiente = true    |
-| LACTANTE   | 4          | Campo lactante = true      |
-| OBESO      | 5          | Campo obeso = true         |
-| GERAL      | 6          | Default                    |
+> FILA_REGULADA sempre precede FILA_ESPERA na ordenação global.
 
 ---
 
 ### 2.3 notification-service
 
-**Responsabilidade:** Consumir eventos do RabbitMQ e enviar notificações (e-mail simulado em console) ao paciente afetado.
+**Responsabilidade:** Consumir eventos de todos os serviços e enviar notificações ao paciente e/ou à UBS.
 
-| Atributo         | Valor                                                         |
-|------------------|---------------------------------------------------------------|
-| Framework        | Quarkus + SmallRye Reactive Messaging + Hibernate Panache     |
-| Padrão           | **MVC**                                                       |
-| Porta            | `8081`                                                        |
-| Banco de dados   | PostgreSQL                                                    |
-| Docs             | Quarkus OpenAPI (Swagger UI em `/q/swagger-ui`)               |
+| Atributo       | Valor                                                     |
+|----------------|-----------------------------------------------------------|
+| Framework      | Quarkus + SmallRye Reactive Messaging + Hibernate Panache |
+| Padrão         | **Event-driven MVC**                                      |
+| Porta          | `8081`                                                    |
+| Banco de dados | PostgreSQL (schema `notification`)                        |
+| Docs           | Quarkus OpenAPI (`/q/swagger-ui`)                         |
 
-**Estrutura de pacotes (MVC):**
+**Estrutura de pacotes:**
 ```
 notification-service/
-└── src/main/java/
-    └── br.com.sus.notification/
-        ├── config/          # RabbitMQ bindings, OpenApiConfig
-        ├── consumer/        # QueueEventConsumer (@Incoming)
-        ├── controller/      # NotificationController
-        ├── model/           # Notification.java (@Entity Panache)
-        │   └── dto/         # QueueEventDTO (record)
-        ├── repository/      # NotificationRepository (PanacheRepository)
-        └── service/         # NotificationService, EmailService
+└── src/main/java/br.com.sus.notification/
+    ├── config/      # RabbitMQ bindings, OpenApiConfig
+    ├── consumer/    # QueueEventConsumer, AgendamentoEventConsumer,
+    │                # RegulacoesEventConsumer
+    ├── controller/  # NotificationController
+    ├── model/       # Notification.java (@Entity Panache)
+    │   └── dto/     # QueueEventDTO, AppointmentEventDTO, SolicitacaoEventDTO
+    ├── repository/  # NotificationRepository (PanacheRepository)
+    └── service/     # NotificationService, EmailService
 ```
 
 **Eventos consumidos:**
 
-| Fila RabbitMQ              | Tipo de evento      | Mensagem enviada ao paciente                                           |
-|----------------------------|---------------------|------------------------------------------------------------------------|
-| queue.patient.registered   | PATIENT_REGISTERED  | "Você foi cadastrado na fila para [procedimento]. Classificação: [cor]"|
-| queue.patient.called       | PATIENT_CALLED      | "É a sua vez! Compareça ao guichê para [procedimento]."               |
-| queue.priority.updated     | PRIORITY_UPDATED    | "Sua prioridade na fila foi atualizada para [cor]."                   |
-| queue.patient.cancelled    | PATIENT_CANCELLED   | "Seu agendamento para [procedimento] foi cancelado."                  |
+| Fila RabbitMQ                    | Evento                  | Destinatário       |
+|----------------------------------|-------------------------|--------------------|
+| queue.patient.registered         | PATIENT_REGISTERED      | Paciente           |
+| queue.patient.called             | PATIENT_CALLED          | Paciente           |
+| queue.priority.updated           | PRIORITY_UPDATED        | Paciente           |
+| queue.patient.cancelled          | PATIENT_CANCELLED       | Paciente           |
+| queue.patient.reinstated         | PATIENT_REINSTATED      | Paciente           |
+| notifications.agendamento        | APPOINTMENT_CONFIRMED   | Paciente           |
+| notifications.agendamento        | APPOINTMENT_CANCELLED   | Paciente           |
+| notifications.agendamento        | APPOINTMENT_RESCHEDULED | Paciente           |
+| notifications.agendamento        | APPOINTMENT_NO_SLOT     | Paciente           |
+| notifications.agendamento        | APPOINTMENT_EXPIRED     | Paciente           |
+| notifications.regulacao          | SOLICITATION_DENIED     | UBS Solicitante    |
+| notifications.regulacao          | SOLICITATION_DEVOLVED   | UBS Solicitante    |
+
+---
+
+### 2.4 regulacao-service
+
+**Responsabilidade:** Upstream do queue-service. Gerencia o ciclo de vida de solicitações ambulatoriais — desde a criação pela UBS até a decisão do médico regulador, determinando se o paciente entra na fila e com qual classificação de risco.
+
+| Atributo       | Valor                                               |
+|----------------|-----------------------------------------------------|
+| Framework      | Spring Boot 4 + Spring Data JPA + Spring AMQP       |
+| Padrão         | **Hexagonal Architecture (Ports & Adapters)**       |
+| Porta          | `8083`                                              |
+| Banco de dados | PostgreSQL (schema `regulacao`)                     |
+| Migrations     | Flyway                                              |
+| Docs           | SpringDoc OpenAPI (Swagger UI em `/swagger-ui.html`)|
+| API            | REST                                                |
+
+**Estrutura de pacotes (Hexagonal):**
+```
+regulacao-service/
+└── src/main/java/br.com.morbus.regulacao/
+    ├── domain/
+    │   ├── model/        # Solicitacao, Parecer, UnidadeSolicitante
+    │   ├── enums/        # EStatusSolicitacao, EDecisaoRegulador, EDestino
+    │   └── exception/    # SolicitacaoNotFoundException, RegulacaoNotAllowedException,
+    │                     # DuplicateSolicitacaoException, QuotaExceededException
+    ├── ports/
+    │   ├── in/           # CriarSolicitacaoUseCase, AvaliarSolicitacaoUseCase,
+    │   │                 # ComplementarSolicitacaoUseCase, ListarPendentesUseCase
+    │   └── out/          # ISolicitacaoRepository, IParecerRepository,
+    │                     # IQueueEventPort, INotificationPort
+    └── adapters/
+        ├── in/
+        │   └── rest/     # SolicitacaoController, RegulacaoController, DTOs
+        └── out/
+            ├── jpa/      # SolicitacaoJpaAdapter, ParecerJpaAdapter,
+            │             # entidades JPA, Spring Data repositories
+            ├── rabbitmq/ # QueueEventRabbitAdapter, NotificationRabbitAdapter
+            └── security/ # JwtAuthFilter, SecurityConfig
+```
+
+**Regra de dependências (Hexagonal):**
+```
+adapters/in ──▶ ports/in ──▶ domain ◀── ports/out ◀── adapters/out
+```
+O domínio não conhece Spring, JPA, RabbitMQ nem os adapters.
+
+**Decisões do regulador (EDecisaoRegulador):**
+
+| Decisão       | Efeito                                                              |
+|---------------|---------------------------------------------------------------------|
+| `AUTORIZAR`   | Entra em FILA_REGULADA com riskColor definido pelo regulador        |
+| `FILA_ESPERA` | Entra em FILA_ESPERA com riskColor fixo AZUL                        |
+| `NEGAR`       | Solicitação negada — notifica UBS com justificativa                 |
+| `DEVOLVER`    | Dados incompletos — UBS deve complementar e reenviar               |
+| `PENDENTE`    | Aprovado mas sem vaga disponível — aguarda abertura de cota         |
 
 **Endpoints expostos:**
 
-| Método | Path                       | Descrição                              |
-|--------|----------------------------|----------------------------------------|
-| GET    | /api/v1/notifications      | Lista notificações (paginado)          |
-| GET    | /api/v1/notifications/{id} | Busca notificação por ID               |
+| Método | Path                                  | Role                    | Descrição                                   |
+|--------|---------------------------------------|-------------------------|---------------------------------------------|
+| POST   | /api/v1/solicitacoes                  | SOLICITANTE             | Cria nova solicitação                       |
+| GET    | /api/v1/solicitacoes                  | SOLICITANTE / REGULADOR | Lista solicitações (filtros)                |
+| GET    | /api/v1/solicitacoes/{id}             | SOLICITANTE / REGULADOR | Detalhe + histórico de pareceres            |
+| POST   | /api/v1/solicitacoes/{id}/complementar| SOLICITANTE             | Complementa solicitação devolvida           |
+| POST   | /api/v1/regulacao/{id}/avaliar        | REGULADOR               | Emite parecer (decisão + riskColor)         |
+| GET    | /api/v1/regulacao/pendentes           | REGULADOR               | Lista solicitações aguardando avaliação     |
+| GET    | /api/v1/regulacao/pendentes-vaga      | REGULADOR               | Lista aprovadas sem vaga disponível         |
+
+---
+
+### 2.5 agendamento-service
+
+**Responsabilidade:** Downstream do queue-service. Gerencia a grade de horários das unidades executantes e aloca slots de data/hora/local assim que um paciente é chamado da fila.
+
+| Atributo       | Valor                                               |
+|----------------|-----------------------------------------------------|
+| Framework      | Spring Boot 4 + Spring Data JPA + Spring AMQP       |
+| Padrão         | **CQRS (Command Query Responsibility Segregation)** |
+| Porta          | `8084`                                              |
+| Banco de dados | PostgreSQL (schema `agendamento`)                   |
+| Migrations     | Flyway                                              |
+| Docs           | SpringDoc OpenAPI + GraphiQL (`/graphiql`)          |
+| API            | REST (commands) + GraphQL (queries)                 |
+| Scheduler      | Spring `@Scheduled` — job de expiração 72h          |
+
+**Estrutura de pacotes (CQRS):**
+```
+agendamento-service/
+└── src/main/java/br.com.morbus.agendamento/
+    ├── domain/
+    │   ├── model/        # HealthUnit, Provider, Schedule, Slot, Appointment
+    │   ├── enums/        # ESlotStatus, EAppointmentStatus
+    │   └── exception/    # SlotNotFoundException, SlotUnavailableException,
+    │                     # AppointmentNotFoundException, ExpiredConfirmationException
+    ├── application/
+    │   ├── command/      # AlocarSlotCommand, CancelarAgendamentoCommand,
+    │   │   └── handler/  # ReagendarCommand, RegistrarFaltaCommand
+    │   │                 # (handlers executam writes no banco transacional)
+    │   └── query/        # DisponibilidadeQuery, AgendamentosQuery, GradeQuery
+    │       └── handler/  # (handlers executam reads — podem usar projeções otimizadas)
+    ├── infrastructure/
+    │   ├── persistence/  # entidades JPA, Spring Data repositories
+    │   ├── messaging/    # PatientCalledConsumer (@RabbitListener)
+    │   │   └── publisher/# AgendamentoEventPublisher
+    │   ├── scheduler/    # ExpiracaoAgendamentoJob (@Scheduled)
+    │   ├── security/     # JwtAuthFilter, SecurityConfig
+    │   └── config/       # RabbitMQConfig, GraphQLConfig
+    └── interfaces/
+        ├── rest/         # AppointmentController, SlotController, ScheduleController
+        │   └── dto/      # Request/Response DTOs
+        └── graphql/      # AgendamentoQueryResolver, DisponibilidadeQueryResolver
+            └── type/     # AppointmentType, SlotType, ScheduleType (GraphQL schema types)
+```
+
+**Separação CQRS:**
+
+| Lado    | Operação                                | Canal |
+|---------|-----------------------------------------|-------|
+| Command | AlocarSlot, Cancelar, Reagendar, Falta  | REST  |
+| Command | VerificarExpiracoes (72h)               | `@Scheduled` |
+| Query   | Disponibilidade de slots                | GraphQL |
+| Query   | Agendamentos do paciente/unidade        | GraphQL |
+| Query   | Grade semanal da unidade                | GraphQL |
+
+**Schema GraphQL (consultas disponíveis):**
+```graphql
+type Query {
+  disponibilidade(
+    procedureId: ID!
+    unitId: ID
+    dateFrom: String!
+    dateTo: String!
+  ): [Slot!]!
+
+  agendamentos(
+    patientId: ID
+    unitId: ID
+    status: AppointmentStatus
+    dateFrom: String
+    dateTo: String
+  ): [Appointment!]!
+
+  grade(unitId: ID!, week: String!): [Schedule!]!
+  agendamento(id: ID!): Appointment
+}
+```
+
+**Endpoints REST (commands):**
+
+| Método | Path                                 | Role       | Descrição                        |
+|--------|--------------------------------------|------------|----------------------------------|
+| PATCH  | /api/v1/appointments/{id}/confirmar  | PACIENTE   | Confirma presença (prazo 72h)    |
+| DELETE | /api/v1/appointments/{id}            | PACIENTE / MEDICO | Cancela agendamento       |
+| PATCH  | /api/v1/appointments/{id}/reagendar  | MEDICO     | Reagenda para outro slot         |
+| POST   | /api/v1/appointments/{id}/falta      | EXECUTANTE | Registra falta do paciente       |
+| POST   | /api/v1/schedules                    | EXECUTANTE | Cria grade semanal               |
+| PUT    | /api/v1/schedules/{id}               | EXECUTANTE | Atualiza grade                   |
+| POST   | /api/v1/schedules/{id}/bloquear      | EXECUTANTE | Bloqueia slots (feriado etc.)    |
 
 ---
 
 ## 3. Comunicação entre Serviços
 
-### 3.1 Autenticação (síncrona — REST)
+### 3.1 Autenticação (síncrona — REST/JWT)
+
+O `auth-service` emite o JWT. Todos os demais serviços validam o token localmente com o `JWT_SECRET` compartilhado, sem chamadas ao auth-service em runtime.
 
 ```
 Cliente ──POST /auth/login──▶ auth-service
          ◀── { token: "eyJ..." } ──
 
-Cliente ──GET /api/v1/queue (Bearer eyJ...)──▶ queue-service
-                                               JwtAuthFilter valida token
-                                               extrai role → SecurityContext
-         ◀── 200 OK ou 401/403 ──
+Cliente ──Request (Bearer eyJ...)──▶ qualquer serviço
+                                     JwtAuthFilter valida localmente
+                                     extrai role → SecurityContext
 ```
 
-O `auth-service` e o `queue-service` **compartilham o mesmo `JWT_SECRET`**. O queue-service valida o token localmente, sem chamadas ao auth-service em runtime.
-
-### 3.2 Eventos de fila (assíncrona — RabbitMQ)
+### 3.2 Topologia RabbitMQ completa
 
 ```
-queue-service
-  │
-  ├── publica em: sus.queue.exchange (direct)
-  │     ├── routing key: patient.registered  →  fila: queue.patient.registered
-  │     ├── routing key: patient.called      →  fila: queue.patient.called
-  │     ├── routing key: priority.updated    →  fila: queue.priority.updated
-  │     └── routing key: patient.cancelled   →  fila: queue.patient.cancelled
-  │
-notification-service
-  │
-  └── consome todas as 4 filas via @Incoming (SmallRye Reactive Messaging)
+sus.regulacao.exchange (direct)        publicado por: regulacao-service
+├── solicitation.approved  →  queue.solicitation.approved
+│      consumido por: queue-service, notification-service
+├── solicitation.denied    →  queue.solicitation.denied
+│      consumido por: notification-service
+└── solicitation.devolved  →  queue.solicitation.devolved
+       consumido por: notification-service
+
+sus.queue.exchange (direct)            publicado por: queue-service
+├── patient.registered     →  queue.patient.registered
+│      consumido por: notification-service
+├── patient.called         →  queue.patient.called
+│      consumido por: agendamento-service, notification-service
+├── patient.reinstated     →  queue.patient.reinstated
+│      consumido por: notification-service
+├── priority.updated       →  queue.priority.updated
+│      consumido por: notification-service
+└── patient.cancelled      →  queue.patient.cancelled
+       consumido por: notification-service
+
+sus.agendamento.exchange (direct)      publicado por: agendamento-service
+├── appointment.confirmed   →  queue.appointment.confirmed
+│      consumido por: queue-service, notification-service
+├── appointment.cancelled   →  queue.appointment.cancelled
+│      consumido por: queue-service, notification-service
+├── appointment.rescheduled →  queue.appointment.rescheduled
+│      consumido por: notification-service
+├── appointment.no_slot     →  queue.appointment.no_slot
+│      consumido por: queue-service, notification-service
+├── appointment.expired     →  queue.appointment.expired
+│      consumido por: queue-service, notification-service
+└── patient.no_show         →  queue.patient.no_show
+       consumido por: queue-service, notification-service
 ```
 
-**Payload dos eventos (JSON) — `QueueEventPayload`:**
+**Payload base dos eventos (JSON):**
 ```json
 {
   "eventType": "PATIENT_CALLED",
@@ -244,101 +436,46 @@ notification-service
   "patientName": "João da Silva",
   "patientContact": "joao@email.com",
   "procedureName": "Consulta de Cardiologia",
+  "procedureId": "uuid",
+  "preferredUnitId": "uuid",
   "riskColor": "AMARELO",
-  "motivoCancelamento": null,
-  "timestamp": "2026-05-27T10:30:00Z"
+  "tipoFila": "FILA_REGULADA",
+  "timestamp": "2026-06-12T10:30:00Z"
 }
 ```
-
-> `motivoCancelamento` é preenchido apenas no evento `PATIENT_CANCELLED` (quando um motivo é fornecido); nos demais eventos o campo é `null`.
-
-**IQueueEventPublisher — métodos do contrato:**
-
-| Método                                               | Evento publicado   | Routing key         |
-|------------------------------------------------------|--------------------|---------------------|
-| `publishPatientRegistered(QueueEntry)`               | PATIENT_REGISTERED | `patient.registered`|
-| `publishPatientCalled(QueueEntry)`                   | PATIENT_CALLED     | `patient.called`    |
-| `publishPriorityUpdated(QueueEntry)`                 | PRIORITY_UPDATED   | `priority.updated`  |
-| `publishPatientCancelled(QueueEntry, String reason)` | PATIENT_CANCELLED  | `patient.cancelled` |
-
-> **Status do RabbitMQConfig:** atualmente apenas a fila `queue.patient.registered` está com binding declarado. As filas `queue.patient.called`, `queue.priority.updated` e `queue.patient.cancelled` têm Queue beans declarados mas ainda precisam de Binding.
 
 ---
 
 ## 4. Banco de Dados
 
-Todos os serviços apontam para o **mesmo servidor PostgreSQL**, mas utilizam schemas/tabelas independentes (sem foreign keys entre serviços).
+Cada serviço possui seu próprio schema PostgreSQL. Não existem foreign keys entre schemas — a consistência entre serviços é garantida por eventos.
 
-### Tabelas do auth-service
+| Schema          | Serviço               | Tabelas principais                                             |
+|-----------------|-----------------------|----------------------------------------------------------------|
+| `auth`          | auth-service          | `users`                                                        |
+| `queue`         | queue-service         | `patients`, `procedures`, `queue_entries`, `unit_procedure_quotas` |
+| `notification`  | notification-service  | `notifications`                                                |
+| `regulacao`     | regulacao-service     | `solicitacoes`, `pareceres`, `unidades_solicitantes`           |
+| `agendamento`   | agendamento-service   | `health_units`, `providers`, `schedules`, `slots`, `appointments` |
 
-```sql
-users
-  id            UUID PRIMARY KEY
-  username      VARCHAR(100) UNIQUE NOT NULL
-  email         VARCHAR(255) UNIQUE NOT NULL
-  password_hash VARCHAR(255) NOT NULL
-  role          VARCHAR(20) NOT NULL  -- 'MEDICO' | 'PACIENTE'
-  created_at    TIMESTAMP NOT NULL
-```
-
-### Tabelas do queue-service
-
-```sql
-procedures
-  id               UUID PRIMARY KEY
-  co_procedimento  VARCHAR(20) UNIQUE NOT NULL
-  no_procedimento  VARCHAR(255) NOT NULL
-  idade_minima     INTEGER
-  idade_maxima     INTEGER
-  grupo            VARCHAR(100)
-
-patients
-  id               UUID PRIMARY KEY
-  cpf              VARCHAR(14) UNIQUE NOT NULL
-  cns              VARCHAR(15) UNIQUE
-  nome_completo    VARCHAR(255) NOT NULL
-  data_nascimento  DATE NOT NULL
-  sexo             CHAR(1)
-  contato          VARCHAR(255)         -- e-mail ou telefone
-  grupo_legal      VARCHAR(20) NOT NULL -- enum PriorityGroup
-
-queue_entries
-  id            UUID PRIMARY KEY
-  patient_id    UUID NOT NULL REFERENCES patients(id)
-  procedure_id  UUID NOT NULL REFERENCES procedures(id)
-  risk_color    VARCHAR(10) NOT NULL  -- VERMELHO | AMARELO | VERDE | AZUL
-  status        VARCHAR(20) NOT NULL  -- AGUARDANDO | AGENDADO | ATENDIDO | FALTOU | CANCELADO | DEVOLVIDO
-  registered_at TIMESTAMP NOT NULL
-  updated_at    TIMESTAMP
-```
-
-### Tabelas do notification-service
-
-```sql
-notifications
-  id                UUID PRIMARY KEY
-  event_type        VARCHAR(30) NOT NULL
-  recipient_name    VARCHAR(255)
-  recipient_contact VARCHAR(255)
-  message           TEXT NOT NULL
-  sent_at           TIMESTAMP NOT NULL
-  status            VARCHAR(20) NOT NULL  -- SENT | FAILED
-```
+> Detalhamento completo das tabelas e relacionamentos: ver `erd.md`.
 
 ---
 
 ## 5. Infraestrutura (Docker Compose)
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                  Docker Network                      │
-│                                                     │
-│  postgres:15          :5432                         │
-│  rabbitmq:3-mgmt      :5672 (AMQP) / :15672 (UI)   │
-│  auth-service         :8082                         │
-│  queue-service        :8080                         │
-│  notification-service :8081                         │
-└─────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────┐
+│                         Docker Network                              │
+│                                                                    │
+│  postgres:15            :5432                                      │
+│  rabbitmq:3-management  :5672 (AMQP) / :15672 (Management UI)     │
+│  auth-service           :8082                                      │
+│  queue-service          :8080                                      │
+│  notification-service   :8081                                      │
+│  regulacao-service      :8083                                      │
+│  agendamento-service    :8084                                      │
+└────────────────────────────────────────────────────────────────────┘
 ```
 
 **Ordem de startup (depends_on + healthchecks):**
@@ -346,10 +483,10 @@ notifications
 postgres (healthy)
     ↓
 rabbitmq (healthy)
-    ↓              ↓
-auth-service   queue-service
-                   ↓
-          notification-service
+    ↓                ↓               ↓                ↓
+auth-service   queue-service   regulacao-service   agendamento-service
+                    ↓
+           notification-service
 ```
 
 ---
@@ -363,17 +500,16 @@ auth-service   queue-service
 2. auth-service valida credenciais no banco
 3. auth-service gera JWT:
      header:  { alg: "HS256", typ: "JWT" }
-     payload: { sub: "username", role: "ROLE_MEDICO", iat: ..., exp: ... }
+     payload: { sub: "username", role: "ROLE_REGULADOR", iat: ..., exp: ... }
      assinado com JWT_SECRET (variável de ambiente)
 4. Cliente envia token em todas as requests:
      Authorization: Bearer <token>
-5. JwtAuthFilter no queue-service intercepta a request,
-   valida a assinatura com JWT_SECRET,
+5. JwtAuthFilter em cada serviço valida a assinatura localmente,
    extrai a role e popula o SecurityContext
 6. Spring Security avalia a role contra as regras do SecurityConfig
 ```
 
-### Matriz de permissões
+### Matriz de permissões — serviços existentes
 
 | Endpoint                            | MEDICO | PACIENTE |
 |-------------------------------------|--------|----------|
@@ -386,73 +522,98 @@ auth-service   queue-service
 | POST /api/v1/patients               | ✅     | ❌       |
 | GET  /api/v1/patients/**            | ✅     | ❌       |
 | GET  /api/v1/procedures/**          | ✅     | ✅       |
-| POST /auth/register                 | público| público  |
-| POST /auth/login                    | público| público  |
+
+### Matriz de permissões — novos serviços
+
+| Endpoint                                      | SOLICITANTE | REGULADOR | MEDICO | PACIENTE | EXECUTANTE |
+|-----------------------------------------------|-------------|-----------|--------|----------|------------|
+| POST /api/v1/solicitacoes                     | ✅          | ❌        | ❌     | ❌       | ❌         |
+| GET  /api/v1/solicitacoes                     | ✅          | ✅        | ❌     | ❌       | ❌         |
+| POST /api/v1/solicitacoes/{id}/complementar   | ✅          | ❌        | ❌     | ❌       | ❌         |
+| POST /api/v1/regulacao/{id}/avaliar           | ❌          | ✅        | ❌     | ❌       | ❌         |
+| GET  /api/v1/regulacao/pendentes              | ❌          | ✅        | ❌     | ❌       | ❌         |
+| GraphQL queries (agendamento)                 | ❌          | ✅        | ✅     | ✅*      | ✅         |
+| PATCH /api/v1/appointments/{id}/confirmar     | ❌          | ❌        | ❌     | ✅       | ❌         |
+| DELETE /api/v1/appointments/{id}              | ❌          | ❌        | ✅     | ✅       | ❌         |
+| POST  /api/v1/appointments/{id}/falta         | ❌          | ❌        | ❌     | ❌       | ✅         |
+| POST  /api/v1/schedules                       | ❌          | ❌        | ❌     | ❌       | ✅         |
+
+> * PACIENTE vê apenas seus próprios agendamentos (filtro por patientId extraído do JWT).
 
 ---
 
 ## 7. Variáveis de Ambiente
 
-### auth-service
+### auth-service / queue-service
 
-| Variável              | Valor padrão (dev)        | Descrição                        |
-|-----------------------|---------------------------|----------------------------------|
-| `SPRING_DATASOURCE_URL` | `jdbc:postgresql://localhost:5432/sus_queue_db` | URL do banco |
-| `SPRING_DATASOURCE_USERNAME` | `sus_user`           | Usuário do banco                 |
-| `SPRING_DATASOURCE_PASSWORD` | `sus_pass`           | Senha do banco                   |
-| `JWT_SECRET`          | *(obrigatório)*           | Segredo HMAC-SHA256 (≥ 256 bits) |
-| `JWT_EXPIRATION_MS`   | `86400000` (24h)          | Validade do token em ms          |
+| Variável                    | Descrição                          |
+|-----------------------------|------------------------------------|
+| `SPRING_DATASOURCE_URL`     | URL JDBC do PostgreSQL             |
+| `SPRING_DATASOURCE_USERNAME`| Usuário do banco                   |
+| `SPRING_DATASOURCE_PASSWORD`| Senha do banco                     |
+| `SPRING_RABBITMQ_HOST`      | Host do RabbitMQ (queue-service)   |
+| `SPRING_RABBITMQ_PORT`      | Porta AMQP (queue-service)         |
+| `SPRING_RABBITMQ_USERNAME`  | Usuário RabbitMQ (queue-service)   |
+| `SPRING_RABBITMQ_PASSWORD`  | Senha RabbitMQ (queue-service)     |
+| `JWT_SECRET`                | Chave HMAC-SHA256 ≥ 256 bits       |
+| `JWT_EXPIRATION_MS`         | Validade do token (default: 86400000)|
 
-### queue-service
+### notification-service (Quarkus)
 
-| Variável              | Valor padrão (dev)        | Descrição                        |
-|-----------------------|---------------------------|----------------------------------|
-| `SPRING_DATASOURCE_URL` | `jdbc:postgresql://localhost:5432/sus_queue_db` | URL do banco |
-| `SPRING_DATASOURCE_USERNAME` | `sus_user`           | Usuário do banco                 |
-| `SPRING_DATASOURCE_PASSWORD` | `sus_pass`           | Senha do banco                   |
-| `SPRING_RABBITMQ_HOST` | `localhost`              | Host do RabbitMQ                 |
-| `SPRING_RABBITMQ_PORT` | `5672`                   | Porta AMQP                       |
-| `SPRING_RABBITMQ_USERNAME` | `admin`              | Usuário do RabbitMQ              |
-| `SPRING_RABBITMQ_PASSWORD` | `admin`              | Senha do RabbitMQ                |
-| `JWT_SECRET`          | *(obrigatório)*           | Mesmo valor do auth-service      |
+| Variável                         | Descrição              |
+|----------------------------------|------------------------|
+| `QUARKUS_DATASOURCE_JDBC_URL`    | URL JDBC do PostgreSQL |
+| `QUARKUS_DATASOURCE_USERNAME`    | Usuário do banco       |
+| `QUARKUS_DATASOURCE_PASSWORD`    | Senha do banco         |
+| `RABBITMQ_HOST/PORT/USERNAME/PASSWORD` | Conexão RabbitMQ |
 
-### notification-service
+### regulacao-service
 
-| Variável                             | Valor padrão (dev) | Descrição               |
-|--------------------------------------|--------------------|-------------------------|
-| `QUARKUS_DATASOURCE_JDBC_URL`        | `jdbc:postgresql://localhost:5432/sus_queue_db` | URL do banco |
-| `QUARKUS_DATASOURCE_USERNAME`        | `sus_user`         | Usuário do banco        |
-| `QUARKUS_DATASOURCE_PASSWORD`        | `sus_pass`         | Senha do banco          |
-| `RABBITMQ_HOST`                      | `localhost`        | Host do RabbitMQ        |
-| `RABBITMQ_PORT`                      | `5672`             | Porta AMQP              |
-| `RABBITMQ_USERNAME`                  | `admin`            | Usuário do RabbitMQ     |
-| `RABBITMQ_PASSWORD`                  | `admin`            | Senha do RabbitMQ       |
+| Variável                    | Descrição                    |
+|-----------------------------|------------------------------|
+| `SPRING_DATASOURCE_URL`     | URL JDBC do PostgreSQL       |
+| `SPRING_DATASOURCE_USERNAME`| Usuário do banco             |
+| `SPRING_DATASOURCE_PASSWORD`| Senha do banco               |
+| `SPRING_RABBITMQ_*`         | Conexão RabbitMQ             |
+| `JWT_SECRET`                | Mesmo valor dos demais       |
 
-> ⚠️ `JWT_SECRET` deve ser idêntico nos dois serviços que o utilizam (`auth-service` e `queue-service`). Recomendado externalizar via `.env` no Docker Compose ou secrets manager em produção.
+### agendamento-service
+
+| Variável                    | Descrição                              |
+|-----------------------------|----------------------------------------|
+| `SPRING_DATASOURCE_URL`     | URL JDBC do PostgreSQL                 |
+| `SPRING_DATASOURCE_USERNAME`| Usuário do banco                       |
+| `SPRING_DATASOURCE_PASSWORD`| Senha do banco                         |
+| `SPRING_RABBITMQ_*`         | Conexão RabbitMQ                       |
+| `JWT_SECRET`                | Mesmo valor dos demais                 |
+| `AGENDAMENTO_EXPIRACAO_HORAS`| Prazo para confirmação (default: 72)  |
+
+> ⚠️ `JWT_SECRET` deve ser **idêntico** em todos os serviços que validam JWT (queue, regulacao, agendamento). Recomendado externalizar via `.env` no Docker Compose ou secrets manager em produção.
 
 ---
 
 ## 8. Decisões de Arquitetura
 
-### Por que Clean Architecture no queue-service?
+### Clean Architecture no queue-service
+O queue-service é o núcleo de negócio. As regras de prioridade, os grupos legais e o algoritmo de ordenação são complexos e precisam ser testáveis de forma isolada. A Clean Architecture garante que o domínio nunca importa Spring, JPA ou RabbitMQ.
 
-O queue-service é o núcleo do negócio. As regras de prioridade, os grupos legais e o algoritmo de ordenação são complexos e precisam ser testáveis de forma isolada, sem depender de banco de dados ou framework. A Clean Architecture garante que a lógica de domínio (`PriorityCalculator`, `QueueEntry`, enums) nunca importa nada de Spring, JPA ou RabbitMQ — o que facilita testes unitários puros.
+### Hexagonal Architecture no regulacao-service
+O regulacao-service tem múltiplos adapters de entrada (REST hoje, potencialmente um portal web amanhã) e múltiplos adapters de saída (RabbitMQ, potencialmente SISREG real). Hexagonal torna esses adapters intercambiáveis sem tocar no domínio.
 
-### Por que MVC no notification-service?
+### CQRS no agendamento-service
+O agendamento-service tem escrita simples (reservar slot, cancelar) mas leitura complexa (disponibilidade cruzando grade, capacidade, faixa de idade, preferência de unidade). CQRS separa esses dois lados, permitindo otimizar cada um de forma independente.
 
-O notification-service tem uma responsabilidade simples e bem definida: ouvir eventos e disparar notificações. Não há lógica de domínio complexa, não há casos de uso com múltiplas variantes. MVC é mais direto e menos burocrático para esse nível de complexidade.
+### GraphQL apenas nas queries do agendamento-service
+Queries de disponibilidade têm muitas combinações de filtros e os clientes precisam de projeções diferentes (lista resumida vs detalhe completo). GraphQL elimina over-fetching e multiple round-trips. Commands (writes) continuam em REST por serem operações simples e bem definidas.
 
-### Por que Quarkus no notification-service?
+### MVC no auth-service
+Responsabilidade única e bem delimitada (autenticar + emitir JWT). Sem lógica de domínio complexa — MVC é mais direto.
 
-Quarkus tem startup mais rápido e menor footprint de memória, ideal para um serviço que fica sempre em escuta (long-running listener). O SmallRye Reactive Messaging integra nativamente com RabbitMQ/AMQP de forma reativa.
+### Quarkus no notification-service
+Startup rápido e menor footprint para um serviço que fica sempre em escuta. SmallRye Reactive Messaging integra nativamente com RabbitMQ de forma reativa.
 
-### Por que auth-service separado e não Spring Security no próprio queue-service?
-
-Um auth-service dedicado permite que futuros serviços (ex: um serviço de agendamento, um portal do paciente) reutilizem a autenticação sem duplicar código. Também demonstra uma arquitetura mais realista de microsserviços, onde a responsabilidade de autenticação é isolada.
-
-### Por que JWT stateless e não sessão?
-
-Microsserviços não compartilham estado de sessão. JWT permite que o queue-service valide a identidade do usuário localmente (sem consultar o auth-service em cada request), mantendo a independência entre os serviços.
+### Por que 5 serviços e não um monólito?
+Cada serviço pode escalar, ser implantado e evoluir de forma independente. O regulacao-service e o agendamento-service podem ser adicionados ao sistema já em produção sem downtime nos demais serviços.
 
 ---
 
@@ -463,36 +624,41 @@ Microsserviços não compartilham estado de sessão. JWT permite que o queue-ser
 
 # Clonar o repositório
 git clone <url-do-repo>
-cd <nome-do-repo>
+cd Morbus
 
-# Criar o arquivo .env na raiz (ou exportar as variáveis)
+# Criar o arquivo .env na raiz
 echo "JWT_SECRET=sua-chave-secreta-muito-longa-aqui-minimo-256-bits" > .env
 
-# Subir todos os serviços
+# Subir infraestrutura + todos os serviços
 docker-compose up --build
 
-# Verificar se está tudo saudável
+# Verificar saúde
 docker-compose ps
 ```
 
 **URLs disponíveis após o startup:**
 
-| Serviço               | URL                                          |
-|-----------------------|----------------------------------------------|
-| queue-service API     | http://localhost:8080/swagger-ui.html        |
-| auth-service API      | http://localhost:8082/swagger-ui.html        |
-| notification-service  | http://localhost:8081/q/swagger-ui           |
-| RabbitMQ Management   | http://localhost:15672 (admin / admin)       |
+| Serviço               | Swagger / Docs                                   |
+|-----------------------|--------------------------------------------------|
+| queue-service         | http://localhost:8080/swagger-ui.html            |
+| auth-service          | http://localhost:8082/swagger-ui.html            |
+| notification-service  | http://localhost:8081/q/swagger-ui               |
+| regulacao-service     | http://localhost:8083/swagger-ui.html            |
+| agendamento-service   | http://localhost:8084/swagger-ui.html            |
+| agendamento GraphiQL  | http://localhost:8084/graphiql                   |
+| RabbitMQ Management   | http://localhost:15672 (admin / admin)           |
 
-**Fluxo de teste básico via Swagger:**
-1. `POST /auth/register` no auth-service → criar um usuário MEDICO
-2. `POST /auth/login` → obter o token JWT
-3. Clicar em **Authorize** no Swagger do queue-service e colar `Bearer <token>`
-4. `POST /api/v1/patients` → cadastrar um paciente
-5. `POST /api/v1/queue` → inserir o paciente na fila
-6. `POST /api/v1/queue/call-next` → chamar o próximo
-7. Verificar `GET /api/v1/notifications` no notification-service → notificação gerada
+**Fluxo de teste básico:**
+1. `POST /auth/register` → criar usuários com roles MEDICO, SOLICITANTE, REGULADOR, EXECUTANTE, PACIENTE
+2. `POST /auth/login` → obter JWT de cada perfil
+3. `POST /api/v1/solicitacoes` (SOLICITANTE) → criar solicitação de procedimento
+4. `POST /api/v1/regulacao/{id}/avaliar` (REGULADOR) → aprovar com riskColor
+5. Verificar que entrada foi criada na fila (`GET /api/v1/queue`)
+6. `POST /api/v1/queue/call-next` (MEDICO) → chamar próximo
+7. Verificar disponibilidade via GraphQL: `query { disponibilidade(...) }`
+8. `PATCH /api/v1/appointments/{id}/confirmar` (PACIENTE) → confirmar presença
+9. `GET /api/v1/notifications` → verificar notificações geradas em cada etapa
 
 ---
 
-*Documento gerado em: maio/2026*
+*Documento atualizado em: junho/2026*
