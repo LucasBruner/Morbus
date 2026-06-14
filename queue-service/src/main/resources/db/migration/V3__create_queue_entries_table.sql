@@ -3,8 +3,7 @@ CREATE TABLE queue_entries (
     id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     patient_id    UUID        NOT NULL REFERENCES patients(id),
     procedure_id  UUID        NOT NULL REFERENCES procedures(id),
-    risk_color    VARCHAR(10) NOT NULL DEFAULT 'AZUL'
-                      CHECK (risk_color IN ('VERMELHO', 'AMARELO', 'VERDE', 'AZUL')),
+    risk_color    SMALLINT    NOT NULL DEFAULT 3, -- 0=VERMELHO, 1=AMARELO, 2=VERDE, 3=AZUL
     status        VARCHAR(20) NOT NULL DEFAULT 'AGUARDANDO'
                       CHECK (status IN ('AGUARDANDO', 'AGENDADO', 'ATENDIDO', 'FALTOU', 'CANCELADO', 'DEVOLVIDO')),
     registered_at TIMESTAMP   NOT NULL DEFAULT NOW(),
