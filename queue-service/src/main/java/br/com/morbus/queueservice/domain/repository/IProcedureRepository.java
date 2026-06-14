@@ -1,6 +1,7 @@
 package br.com.morbus.queueservice.domain.repository;
 
 import br.com.morbus.queueservice.domain.entity.Procedure;
+import org.springframework.data.domain.PageRequest;
 
 import java.util.List;
 import java.util.Optional;
@@ -10,5 +11,5 @@ public interface IProcedureRepository {
     void save(Procedure procedure);
     Optional<Procedure> findById(UUID id);
     Optional<Procedure> findByCoProcedimento(String coProcedimento);
-    List<Procedure> findAll();
+    List<Procedure> findAll(PageRequest pageRequest);
 }

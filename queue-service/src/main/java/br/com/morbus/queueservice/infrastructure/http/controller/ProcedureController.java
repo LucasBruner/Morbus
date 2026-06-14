@@ -1,11 +1,12 @@
 package br.com.morbus.queueservice.infrastructure.http.controller;
 
 import br.com.morbus.queueservice.domain.entity.Procedure;
+import br.com.morbus.queueservice.domain.repository.IProcedureRepository;
 import br.com.morbus.queueservice.domain.usecase.dto.ProcedureResponseDTO;
-import br.com.morbus.queueservice.infrastructure.database.persistence.ProcedureRepositoryImpl;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,9 +20,9 @@ import java.util.UUID;
 @Tag(name = "Procedures", description = "Endpoints para gerenciamento de procedimentos")
 public class ProcedureController {
 
-    private final ProcedureRepositoryImpl repository;
+    private final IProcedureRepository repository;
 
-    public ProcedureController(ProcedureRepositoryImpl repository) {
+    public ProcedureController(IProcedureRepository repository) {
         this.repository = repository;
     }
 
@@ -30,10 +31,11 @@ public class ProcedureController {
             summary = "Lista todos os procedimentos",
             description = "Retorna uma lista de procedimentos do catálogo SIGTAP disponível no sistema.",
             responses = {
-                    @ApiResponse(description = "Ok", responseCode = "200"),
-                    @ApiResponse(description = "Not found", responseCode = "404")})
-    public ResponseEntity<List<ProcedureResponseDTO>> listAllProcedures() {
-        List<Procedure> procedures = repository.findAll();
+                    @ApiResponse(description = "Ok", responseCode = "200")})
+    public ResponseEntity<List<ProcedureResponseDTO>> listAllProcedures(@RequestParam(value = "page", defaultValue = "1") Integer page,
+                                                                        @RequestParam(value = "size", defaultValue = "20") Integer size) {
+        List<Procedure> procedures = repository.findAll(PageRequest.of(page, size));
+
         return ResponseEntity.ok(procedures.stream().map(ProcedureResponseDTO::fromEntity).toList());
     }
 
