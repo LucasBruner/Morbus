@@ -37,6 +37,8 @@ public class RegisterPatientInQueue {
     }
 
     public QueueEntry execute(RegisterQueueRequestDTO patientDTO) {
+        validatePatient(patientDTO);
+
         Patient patient = patientRepository.findById(patientDTO.patientId())
                 .orElseThrow(() -> new PatientNotFoundException("Paciente não encontrado"));
 
@@ -58,6 +60,12 @@ public class RegisterPatientInQueue {
         eventPublisher.publishPatientRegistered(queueEntry);
 
         return queueEntry;
+    }
+
+    private void validatePatient(RegisterQueueRequestDTO patientDTO) {
+        if (patientDTO == null || patientDTO.patientId() == null || patientDTO.procedureId() == null) {
+            throw new IllegalArgumentException("Comando de registro inválido");
+        }
     }
 
     private void validateIfActivePatient(Patient patient) {

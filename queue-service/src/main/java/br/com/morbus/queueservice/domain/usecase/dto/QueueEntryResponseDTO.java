@@ -22,7 +22,7 @@ public record QueueEntryResponseDTO(
                 PatientResponseDTO.fromEntity(entry.getPatient()),
                 ProcedureResponseDTO.fromEntity(entry.getProcedure()),
                 entry.getRiskColor(),
-                entry.getStatus() != null ? entry.getStatus().name() : null,
+                entry.getQueueStatus() != null ? entry.getQueueStatus().name() : null,
                 entry.getRegisteredAt()
         );
     }
