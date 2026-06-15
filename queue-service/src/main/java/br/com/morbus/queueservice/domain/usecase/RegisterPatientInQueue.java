@@ -2,7 +2,6 @@ package br.com.morbus.queueservice.domain.usecase;
 
 import br.com.morbus.queueservice.domain.event.IQueueEventPublisher;
 import br.com.morbus.queueservice.domain.exception.*;
-import br.com.morbus.queueservice.domain.usecase.dto.RegisterPatientInQueueDTO;
 import br.com.morbus.queueservice.domain.entity.Patient;
 import br.com.morbus.queueservice.domain.entity.Procedure;
 import br.com.morbus.queueservice.domain.entity.QueueEntry;
@@ -13,6 +12,7 @@ import br.com.morbus.queueservice.domain.repository.IPatientRepository;
 import br.com.morbus.queueservice.domain.repository.IProcedureRepository;
 import br.com.morbus.queueservice.domain.repository.IQueueEntryRepository;
 import br.com.morbus.queueservice.domain.service.PriorityCalculator;
+import br.com.morbus.queueservice.domain.usecase.dto.RegisterQueueRequestDTO;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -36,10 +36,8 @@ public class RegisterPatientInQueue {
         return new RegisterPatientInQueue(patientRepository, procedureRepository, queueEntryRepository, eventPublisher);
     }
 
-    public QueueEntry execute(RegisterPatientInQueueDTO patientDTO) {
-        validatePatient(patientDTO);
-
-        Patient patient = patientRepository.findById(patientDTO.patient().getId())
+    public QueueEntry execute(RegisterQueueRequestDTO patientDTO) {
+        Patient patient = patientRepository.findById(patientDTO.patientId())
                 .orElseThrow(() -> new PatientNotFoundException("Paciente não encontrado"));
 
         Procedure procedure = procedureRepository.findById(patientDTO.procedureId())
@@ -60,12 +58,6 @@ public class RegisterPatientInQueue {
         eventPublisher.publishPatientRegistered(queueEntry);
 
         return queueEntry;
-    }
-
-    private void validatePatient(RegisterPatientInQueueDTO patientDTO) {
-        if (patientDTO == null || patientDTO.patient() == null || patientDTO.procedureId() == null) {
-            throw new IllegalArgumentException("Comando de registro inválido");
-        }
     }
 
     private void validateIfActivePatient(Patient patient) {
