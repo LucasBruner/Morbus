@@ -16,7 +16,7 @@ import br.com.morbus.queueservice.domain.exception.ProcedureNotFoundException;
 import br.com.morbus.queueservice.domain.repository.IPatientRepository;
 import br.com.morbus.queueservice.domain.repository.IProcedureRepository;
 import br.com.morbus.queueservice.domain.repository.IQueueEntryRepository;
-import br.com.morbus.queueservice.domain.usecase.dto.RegisterPatientInQueueDTO;
+import br.com.morbus.queueservice.domain.usecase.dto.RegisterQueueRequestDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -85,7 +85,7 @@ class RegisterPatientInQueueUseCaseTest {
     @Test
     @DisplayName("Registra paciente na fila com sucesso")
     void testExecuteSuccessfully() {
-        RegisterPatientInQueueDTO dto = new RegisterPatientInQueueDTO(patient, procedureId, ERiskColor.AZUL);
+        RegisterQueueRequestDTO dto = new RegisterQueueRequestDTO(patient.getId(), procedureId, ERiskColor.AZUL);
 
         when(patientRepository.findById(patientId)).thenReturn(Optional.of(patient));
         when(procedureRepository.findById(procedureId)).thenReturn(Optional.of(procedure));
@@ -119,7 +119,7 @@ class RegisterPatientInQueueUseCaseTest {
     @Test
     @DisplayName("Lança exceção quando paciente no DTO é nulo")
     void testExecuteWithNullPatient() {
-        RegisterPatientInQueueDTO dto = new RegisterPatientInQueueDTO(null, procedureId, ERiskColor.AZUL);
+        RegisterQueueRequestDTO dto = new RegisterQueueRequestDTO(null, procedureId, ERiskColor.AZUL);
 
         assertThatThrownBy(() -> useCase.execute(dto))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -131,7 +131,7 @@ class RegisterPatientInQueueUseCaseTest {
     @Test
     @DisplayName("Lança exceção quando procedureId no DTO é nulo")
     void testExecuteWithNullProcedureId() {
-        RegisterPatientInQueueDTO dto = new RegisterPatientInQueueDTO(patient, null, ERiskColor.AZUL);
+        RegisterQueueRequestDTO dto = new RegisterQueueRequestDTO(patient.getId(), null, ERiskColor.AZUL);
 
         assertThatThrownBy(() -> useCase.execute(dto))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -143,7 +143,7 @@ class RegisterPatientInQueueUseCaseTest {
     @Test
     @DisplayName("Lança PatientNotFoundException quando paciente não é encontrado")
     void testExecuteWithPatientNotFound() {
-        RegisterPatientInQueueDTO dto = new RegisterPatientInQueueDTO(patient, procedureId, ERiskColor.AZUL);
+        RegisterQueueRequestDTO dto = new RegisterQueueRequestDTO(patient.getId(), procedureId, ERiskColor.AZUL);
 
         when(patientRepository.findById(patientId)).thenReturn(Optional.empty());
 
@@ -157,7 +157,7 @@ class RegisterPatientInQueueUseCaseTest {
     @Test
     @DisplayName("Lança ProcedureNotFoundException quando procedimento não é encontrado")
     void testExecuteWithProcedureNotFound() {
-        RegisterPatientInQueueDTO dto = new RegisterPatientInQueueDTO(patient, procedureId, ERiskColor.AZUL);
+        RegisterQueueRequestDTO dto = new RegisterQueueRequestDTO(patient.getId(), procedureId, ERiskColor.AZUL);
 
         when(patientRepository.findById(patientId)).thenReturn(Optional.of(patient));
         when(procedureRepository.findById(procedureId)).thenReturn(Optional.empty());
@@ -184,7 +184,7 @@ class RegisterPatientInQueueUseCaseTest {
                 .grupoLegal(EPriorityGroup.GERAL)
                 .build();
 
-        RegisterPatientInQueueDTO dto = new RegisterPatientInQueueDTO(youngPatient, procedureId, ERiskColor.AZUL);
+        RegisterQueueRequestDTO dto = new RegisterQueueRequestDTO(youngPatient.getId(), procedureId, ERiskColor.AZUL);
 
         when(patientRepository.findById(patientId)).thenReturn(Optional.of(youngPatient));
         when(procedureRepository.findById(procedureId)).thenReturn(Optional.of(procedure));
@@ -212,7 +212,7 @@ class RegisterPatientInQueueUseCaseTest {
                 .grupoLegal(EPriorityGroup.GERAL)
                 .build();
 
-        RegisterPatientInQueueDTO dto = new RegisterPatientInQueueDTO(oldPatient, procedureId, ERiskColor.AZUL);
+        RegisterQueueRequestDTO dto = new RegisterQueueRequestDTO(oldPatient.getId(), procedureId, ERiskColor.AZUL);
 
         when(patientRepository.findById(patientId)).thenReturn(Optional.of(oldPatient));
         when(procedureRepository.findById(procedureId)).thenReturn(Optional.of(procedure));
@@ -240,7 +240,7 @@ class RegisterPatientInQueueUseCaseTest {
                 .grupoLegal(EPriorityGroup.GERAL)
                 .build();
 
-        RegisterPatientInQueueDTO dto = new RegisterPatientInQueueDTO(patientNoBirthDate, procedureId, ERiskColor.AZUL);
+        RegisterQueueRequestDTO dto = new RegisterQueueRequestDTO(patientNoBirthDate.getId(), procedureId, ERiskColor.AZUL);
 
         when(patientRepository.findById(patientId)).thenReturn(Optional.of(patientNoBirthDate));
         when(procedureRepository.findById(procedureId)).thenReturn(Optional.of(procedure));
@@ -255,7 +255,7 @@ class RegisterPatientInQueueUseCaseTest {
     @Test
     @DisplayName("Lança PatientAlreadyRegisteredException quando paciente já está na fila com status AGUARDANDO")
     void testExecuteWithPatientAlreadyRegisteredAguardando() {
-        RegisterPatientInQueueDTO dto = new RegisterPatientInQueueDTO(patient, procedureId, ERiskColor.AZUL);
+        RegisterQueueRequestDTO dto = new RegisterQueueRequestDTO(patient.getId(), procedureId, ERiskColor.AZUL);
 
         when(patientRepository.findById(patientId)).thenReturn(Optional.of(patient));
         when(procedureRepository.findById(procedureId)).thenReturn(Optional.of(procedure));
@@ -287,7 +287,7 @@ class RegisterPatientInQueueUseCaseTest {
                 .grupoLegal(EPriorityGroup.GERAL)
                 .build();
 
-        RegisterPatientInQueueDTO dto = new RegisterPatientInQueueDTO(patientIdoso, procedureId, ERiskColor.AZUL);
+        RegisterQueueRequestDTO dto = new RegisterQueueRequestDTO(patientIdoso.getId(), procedureId, ERiskColor.AZUL);
 
         when(patientRepository.findById(patientId)).thenReturn(Optional.of(patientIdoso));
         when(procedureRepository.findById(procedureId)).thenReturn(Optional.of(procedure));
@@ -313,7 +313,7 @@ class RegisterPatientInQueueUseCaseTest {
     @Test
     @DisplayName("validatePatient: Lança IllegalArgumentException quando paciente é nulo")
     void testValidatePatientWithNullPatientField() {
-        RegisterPatientInQueueDTO dto = new RegisterPatientInQueueDTO(null, procedureId, ERiskColor.AZUL);
+        RegisterQueueRequestDTO dto = new RegisterQueueRequestDTO(null, procedureId, ERiskColor.AZUL);
 
         assertThatThrownBy(() -> useCase.execute(dto))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -323,7 +323,7 @@ class RegisterPatientInQueueUseCaseTest {
     @Test
     @DisplayName("validatePatient: Lança IllegalArgumentException quando procedureId é nulo")
     void testValidatePatientWithNullProcedureIdField() {
-        RegisterPatientInQueueDTO dto = new RegisterPatientInQueueDTO(patient, null, ERiskColor.AZUL);
+        RegisterQueueRequestDTO dto = new RegisterQueueRequestDTO(patient.getId(), null, ERiskColor.AZUL);
 
         assertThatThrownBy(() -> useCase.execute(dto))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -349,7 +349,7 @@ class RegisterPatientInQueueUseCaseTest {
                 .grupoLegal(EPriorityGroup.GERAL)
                 .build();
 
-        RegisterPatientInQueueDTO dto = new RegisterPatientInQueueDTO(inactivePatient, procedureId, ERiskColor.AZUL);
+        RegisterQueueRequestDTO dto = new RegisterQueueRequestDTO(inactivePatient.getId(), procedureId, ERiskColor.AZUL);
 
         when(patientRepository.findById(patientId)).thenReturn(Optional.of(inactivePatient));
         when(procedureRepository.findById(procedureId)).thenReturn(Optional.of(procedure));
