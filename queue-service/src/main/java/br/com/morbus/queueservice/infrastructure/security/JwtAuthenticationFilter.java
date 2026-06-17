@@ -33,19 +33,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        String token  = authHeader.substring(7);
+        String token = authHeader.substring(7);
 
-        if(!jwtService.validateToken(token)) {
+        if (!jwtService.validateToken(token)) {
+            // Token presente mas inválido/expirado — não popula contexto; Spring retornará 401
             filterChain.doFilter(request, response);
             return;
         }
 
         String username = jwtService.extractUsername(token);
-        String role = jwtService.extractRole(token);
+        String role = jwtService.extractRole(token); // e.g. "MEDICO" ou "PACIENTE"
 
-        var authentication = new UsernamePasswordAuthenticationToken(username,
+        // Spring Security usa o prefixo "ROLE_" para hasRole(); normalizamos aqui.
+        String authority = role.startsWith("ROLE_") ? role : "ROLE_" + role;
+
+        var authentication = new UsernamePasswordAuthenticationToken(
+                username,
                 null,
-                List.of(new SimpleGrantedAuthority(role)));
+                List.of(new SimpleGrantedAuthority(authority))
+        );
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
         filterChain.doFilter(request, response);
