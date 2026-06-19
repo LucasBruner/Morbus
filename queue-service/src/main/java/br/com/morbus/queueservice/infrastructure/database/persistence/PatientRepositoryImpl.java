@@ -63,6 +63,7 @@ public class PatientRepositoryImpl implements IPatientRepository {
                 .gender(entity.getSexo())
                 .contato(entity.getContato())
                 .grupoLegal(entity.getGrupoLegal())
+                .ativo(entity.getAtivo() != null && entity.getAtivo())
                 .build();
     }
 
