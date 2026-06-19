@@ -84,10 +84,6 @@ public interface QueueEntryJpaRepository extends JpaRepository<QueueEntryEntity,
         WHERE q.patient.id = :patientId
         AND q.procedure.id = :procedureId
         AND q.status IN :statuses
-        ORDER BY
-            q.riskColor ASC,
-            q.patient.grupoLegal ASC,
-            q.registeredAt ASC
     """)
     Integer existsByPatientAndProcedureAndStatusIn(
             @Param("patientId") UUID patientId,

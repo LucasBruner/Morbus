@@ -19,7 +19,11 @@ import br.com.morbus.queueservice.domain.usecase.dto.QueueUpdateRiskColorDTO;
 import br.com.morbus.queueservice.domain.usecase.dto.ReclassifyPriorityRequestDTO;
 import br.com.morbus.queueservice.domain.usecase.dto.RegisterQueueRequestDTO;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -68,11 +72,42 @@ public class QueueController {
     @PreAuthorize("hasRole('MEDICO')")
     @Operation(
             summary = "Registra paciente na fila",
-            description = "Adiciona um paciente a uma fila específica com uma cor de risco.")
-    @ApiResponse(responseCode = "201", description = "Paciente registrado com sucesso")
-    @ApiResponse(responseCode = "401", description = "Token ausente ou inválido")
-    @ApiResponse(responseCode = "403", description = "Perfil sem permissão (requer ROLE_MEDICO)")
-    @ApiResponse(responseCode = "422", description = "Regra de negócio violada")
+            description = "Adiciona um paciente a uma fila específica com uma cor de risco.",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = RegisterQueueRequestDTO.class),
+                            examples = @ExampleObject(
+                                    name = "Exemplo",
+                                    value = """
+                                            {
+                                              "patientId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                                              "procedureId": "7b3c1a2d-9e4f-4a8b-b6d1-1f2e3a4b5c6d",
+                                              "riskColor": "AMARELO"
+                                            }"""
+                            )
+                    )
+            )
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Paciente registrado com sucesso",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = QueueEntryResponseDTO.class),
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "id": "a1b2c3d4-e5f6-7890-ab12-cd34ef567890",
+                                      "patient": { "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "nome": "Maria", "sobrenome": "Silva" },
+                                      "procedure": { "id": "7b3c1a2d-9e4f-4a8b-b6d1-1f2e3a4b5c6d", "codigo": "0301010064" },
+                                      "riskColor": "AMARELO",
+                                      "status": "AGUARDANDO",
+                                      "registeredAt": "2025-01-15T10:30:00"
+                                    }"""))),
+            @ApiResponse(responseCode = "400", description = "Dados de entrada inválidos", content = @Content),
+            @ApiResponse(responseCode = "401", description = "Token ausente ou inválido", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Perfil sem permissão (requer ROLE_MEDICO)", content = @Content),
+            @ApiResponse(responseCode = "422", description = "Regra de negócio violada (paciente inativo, procedimento não elegível, etc.)", content = @Content)
+    })
     public ResponseEntity<QueueEntryResponseDTO> registerQueue(@RequestBody @Valid RegisterQueueRequestDTO request) {
         QueueEntry entry = registerPatientInQueue.execute(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(QueueEntryResponseDTO.fromEntity(entry));
@@ -82,10 +117,14 @@ public class QueueController {
     @PreAuthorize("hasRole('MEDICO')")
     @Operation(
             summary = "Lista fila por prioridade",
-            description = "Retorna a fila de um procedimento ordenada pelos critérios do SUS.")
-    @ApiResponse(responseCode = "200", description = "Lista recuperada com sucesso")
-    @ApiResponse(responseCode = "401", description = "Token ausente ou inválido")
-    @ApiResponse(responseCode = "403", description = "Perfil sem permissão (requer ROLE_MEDICO)")
+            description = "Retorna a fila de um procedimento ordenada pelos critérios do SUS: FILA_REGULADA antes de FILA_ESPERA, cor de risco, grupo legal e tempo de espera.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Lista recuperada com sucesso",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = QueueEntryResponseDTO.class))),
+            @ApiResponse(responseCode = "400", description = "Parâmetros inválidos", content = @Content),
+            @ApiResponse(responseCode = "401", description = "Token ausente ou inválido", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Perfil sem permissão (requer ROLE_MEDICO)", content = @Content)
+    })
     public ResponseEntity<List<QueueEntryResponseDTO>> listQueue(
             @RequestParam UUID procedureId,
             @RequestParam(required = false) EQueueStatus status,
@@ -102,10 +141,13 @@ public class QueueController {
     @Operation(
             summary = "Busca posição do paciente",
             description = "Retorna a posição atual e os dados da entrada na fila.")
-    @ApiResponse(responseCode = "200", description = "Posição encontrada")
-    @ApiResponse(responseCode = "401", description = "Token ausente ou inválido")
-    @ApiResponse(responseCode = "403", description = "Perfil sem permissão")
-    @ApiResponse(responseCode = "404", description = "Entrada não encontrada")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Posição encontrada",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = QueuePositionResponseDTO.class))),
+            @ApiResponse(responseCode = "401", description = "Token ausente ou inválido", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Perfil sem permissão", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Entrada não encontrada", content = @Content)
+    })
     public ResponseEntity<QueuePositionResponseDTO> getQueuePosition(@PathVariable UUID id) {
         QueueEntryRiskQueuePosition result = getQueuePosition.run(id);
         return ResponseEntity.ok(new QueuePositionResponseDTO(
@@ -117,11 +159,14 @@ public class QueueController {
     @PreAuthorize("hasRole('MEDICO')")
     @Operation(
             summary = "Chama próximo paciente",
-            description = "Retira o próximo paciente da fila (maior prioridade) para atendimento.")
-    @ApiResponse(responseCode = "200", description = "Paciente chamado")
-    @ApiResponse(responseCode = "401", description = "Token ausente ou inválido")
-    @ApiResponse(responseCode = "403", description = "Perfil sem permissão (requer ROLE_MEDICO)")
-    @ApiResponse(responseCode = "404", description = "Fila vazia")
+            description = "Retira o próximo paciente da fila (maior prioridade) para atendimento. Muda o status da entrada para AGENDADO e publica evento via RabbitMQ.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Paciente chamado",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = QueueEntryResponseDTO.class))),
+            @ApiResponse(responseCode = "401", description = "Token ausente ou inválido", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Perfil sem permissão (requer ROLE_MEDICO)", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Fila vazia", content = @Content)
+    })
     public ResponseEntity<QueueEntryResponseDTO> callNext() {
         QueueEntry entry = callNextPatient.run();
         return ResponseEntity.ok(QueueEntryResponseDTO.fromEntity(entry));
@@ -131,12 +176,26 @@ public class QueueController {
     @PreAuthorize("hasRole('MEDICO')")
     @Operation(
             summary = "Reclassifica risco",
-            description = "Altera a cor de risco de uma entrada na fila, afetando sua prioridade.")
-    @ApiResponse(responseCode = "200", description = "Prioridade atualizada")
-    @ApiResponse(responseCode = "401", description = "Token ausente ou inválido")
-    @ApiResponse(responseCode = "403", description = "Perfil sem permissão (requer ROLE_MEDICO)")
-    @ApiResponse(responseCode = "404", description = "Entrada não encontrada")
-    @ApiResponse(responseCode = "422", description = "Status atual não permite reclassificação")
+            description = "Altera a cor de risco de uma entrada na fila, afetando sua prioridade. Permitido apenas para entradas com status AGUARDANDO ou DEVOLVIDO em FILA_REGULADA.",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ReclassifyPriorityRequestDTO.class),
+                            examples = @ExampleObject(value = """
+                                    { "riskColor": "VERMELHO" }""")
+                    )
+            )
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Prioridade atualizada",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = QueueEntryResponseDTO.class))),
+            @ApiResponse(responseCode = "400", description = "Dados de entrada inválidos", content = @Content),
+            @ApiResponse(responseCode = "401", description = "Token ausente ou inválido", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Perfil sem permissão (requer ROLE_MEDICO)", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Entrada não encontrada", content = @Content),
+            @ApiResponse(responseCode = "422", description = "Status atual não permite reclassificação ou entrada pertence a FILA_ESPERA", content = @Content)
+    })
     public ResponseEntity<QueueEntryResponseDTO> reclassifyPriority(
             @PathVariable UUID id,
             @RequestBody @Valid ReclassifyPriorityRequestDTO request) {
@@ -149,12 +208,25 @@ public class QueueController {
     @PreAuthorize("hasRole('MEDICO')")
     @Operation(
             summary = "Cancela entrada na fila",
-            description = "Cancela um paciente da fila mediante justificativa.")
-    @ApiResponse(responseCode = "204", description = "Cancelamento realizado")
-    @ApiResponse(responseCode = "401", description = "Token ausente ou inválido")
-    @ApiResponse(responseCode = "403", description = "Perfil sem permissão (requer ROLE_MEDICO)")
-    @ApiResponse(responseCode = "404", description = "Entrada não encontrada")
-    @ApiResponse(responseCode = "422", description = "Status não permite cancelamento")
+            description = "Cancela um paciente da fila mediante justificativa.",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = CancelQueueRequestDTO.class),
+                            examples = @ExampleObject(value = """
+                                    { "motivoCancelamento": "Paciente transferido para outra unidade" }""")
+                    )
+            )
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Cancelamento realizado", content = @Content),
+            @ApiResponse(responseCode = "400", description = "Dados de entrada inválidos", content = @Content),
+            @ApiResponse(responseCode = "401", description = "Token ausente ou inválido", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Perfil sem permissão (requer ROLE_MEDICO)", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Entrada não encontrada", content = @Content),
+            @ApiResponse(responseCode = "422", description = "Status não permite cancelamento", content = @Content)
+    })
     public ResponseEntity<Void> cancelQueueEntry(
             @PathVariable UUID id,
             @RequestBody @Valid CancelQueueRequestDTO request) {

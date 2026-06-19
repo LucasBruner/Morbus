@@ -21,18 +21,21 @@ erDiagram
     %% ── queue-service ─────────────────────────────────────────────────────────
     PATIENTS {
         UUID        id              PK
-        VARCHAR(14)  cpf            UK  "formato ###.###.###-##"
+        VARCHAR(14)  cpf            UK  "formato ###.###.###-##, NOT NULL"
         VARCHAR(15)  cns            UK  "Cartão Nacional de Saúde, nullable"
-        VARCHAR(255) nome_completo      "NOT NULL"
+        VARCHAR(100) nome               "NOT NULL"
+        VARCHAR(100) sobrenome          "NOT NULL"
         DATE         data_nascimento    "NOT NULL"
-        CHAR(1)      sexo               "M | F | O, nullable"
+        VARCHAR(10)  sexo               "MASCULINO|FEMININO|OUTROS, nullable"
         VARCHAR(255) contato            "e-mail ou telefone, nullable"
-        VARCHAR(20)  grupo_legal        "IDOSO|GESTANTE|DEFICIENTE|LACTANTE|OBESO|GERAL"
-        BOOLEAN      gestante           "default false"
-        BOOLEAN      deficiente         "default false"
-        BOOLEAN      lactante           "default false"
-        BOOLEAN      obeso              "default false"
-        TIMESTAMP    created_at         "NOT NULL"
+        SMALLINT     grupo_legal        "ordinal: 1=IDOSO,2=GESTANTE,3=DEFICIENTE,4=LACTANTE,5=OBESO,6=GERAL"
+        BOOLEAN      ativo              "NOT NULL, DEFAULT TRUE"
+    }
+
+    PATIENT_PROCEDURES {
+        UUID        patient_id      FK  "REFERENCES patients(id)"
+        UUID        procedure_id    FK  "REFERENCES procedures(id)"
+        TIMESTAMP    assigned_at        "NOT NULL, DEFAULT NOW()"
     }
 
     PROCEDURES {
@@ -48,13 +51,9 @@ erDiagram
         UUID        id              PK
         UUID        patient_id      FK  "REFERENCES patients(id)"
         UUID        procedure_id    FK  "REFERENCES procedures(id)"
-        VARCHAR(20)  tipo_fila          "FILA_ESPERA | FILA_REGULADA"
-        VARCHAR(10)  risk_color         "VERMELHO|AMARELO|VERDE|AZUL"
-        VARCHAR(30)  status             "AGUARDANDO|CHAMADO|AGENDADO|AGUARDANDO_VAGA|ATENDIDO|FALTOU|CANCELADO|DEVOLVIDO"
-        VARCHAR(20)  priority_group     "espelho de patients.grupo_legal no cadastro"
-        UUID         solicitacao_id     "nullable — ref. em regulacao-service"
-        UUID         preferred_unit_id  "nullable — unidade preferida pelo paciente"
-        TIMESTAMP    registered_at      "NOT NULL"
+        SMALLINT     risk_color         "ordinal: 0=VERMELHO,1=AMARELO,2=VERDE,3=AZUL, DEFAULT 3"
+        VARCHAR(20)  status             "AGUARDANDO|AGENDADO|ATENDIDO|FALTOU|CANCELADO|DEVOLVIDO, DEFAULT AGUARDANDO"
+        TIMESTAMP    registered_at      "NOT NULL, DEFAULT NOW()"
         TIMESTAMP    updated_at         "nullable"
     }
 
@@ -166,7 +165,9 @@ erDiagram
 
     %% ── relacionamentos ──────────────────────────────────────────────────────
     PATIENTS                ||--o{ QUEUE_ENTRIES          : "possui"
+    PATIENTS                ||--o{ PATIENT_PROCEDURES     : "vinculado a"
     PROCEDURES              ||--o{ QUEUE_ENTRIES          : "referenciado em"
+    PROCEDURES              ||--o{ PATIENT_PROCEDURES     : "vinculado a"
     PROCEDURES              ||--o{ UNIT_PROCEDURE_QUOTAS  : "tem cota por UBS"
     SOLICITACOES            ||--o{ PARECERES              : "recebe"
     UNIDADES_SOLICITANTES   ||--o{ SOLICITACOES           : "origina"
@@ -196,21 +197,20 @@ erDiagram
 
 ### PATIENTS *(queue-service)*
 
-| Coluna            | Tipo         | Restrições          | Descrição                                                              |
-|-------------------|--------------|---------------------|------------------------------------------------------------------------|
-| `id`              | UUID         | PK, NOT NULL        | Identificador único                                                    |
-| `cpf`             | VARCHAR(14)  | UK, NOT NULL        | CPF no formato `###.###.###-##`                                        |
-| `cns`             | VARCHAR(15)  | UK, nullable        | Cartão Nacional de Saúde                                               |
-| `nome_completo`   | VARCHAR(255) | NOT NULL            | Nome completo do paciente                                              |
-| `data_nascimento` | DATE         | NOT NULL            | Usada para calcular automaticamente o grupo `IDOSO` (≥ 60 anos)       |
-| `sexo`            | CHAR(1)      | nullable            | `M`, `F` ou `O`                                                       |
-| `contato`         | VARCHAR(255) | nullable            | E-mail ou telefone para notificações                                   |
-| `grupo_legal`     | VARCHAR(20)  | NOT NULL            | Calculado automaticamente pelo `PriorityCalculator`                    |
-| `gestante`        | BOOLEAN      | NOT NULL, DEFAULT F | Determina grupo `GESTANTE`                                             |
-| `deficiente`      | BOOLEAN      | NOT NULL, DEFAULT F | Determina grupo `DEFICIENTE`                                           |
-| `lactante`        | BOOLEAN      | NOT NULL, DEFAULT F | Determina grupo `LACTANTE`                                             |
-| `obeso`           | BOOLEAN      | NOT NULL, DEFAULT F | Determina grupo `OBESO`                                                |
-| `created_at`      | TIMESTAMP    | NOT NULL            | Data de cadastro no sistema                                            |
+> Implementado em: **V2** (`create_patients_table`) + **V5** (`add_ativo_to_patients`)
+
+| Coluna            | Tipo         | Restrições             | Descrição                                                              |
+|-------------------|--------------|------------------------|------------------------------------------------------------------------|
+| `id`              | UUID         | PK, NOT NULL           | Identificador único                                                    |
+| `cpf`             | VARCHAR(14)  | UK, NOT NULL           | CPF no formato `###.###.###-##`                                        |
+| `cns`             | VARCHAR(15)  | UK, nullable           | Cartão Nacional de Saúde                                               |
+| `nome`            | VARCHAR(100) | NOT NULL               | Primeiro nome do paciente                                              |
+| `sobrenome`       | VARCHAR(100) | NOT NULL               | Sobrenome do paciente                                                  |
+| `data_nascimento` | DATE         | NOT NULL               | Usada para calcular automaticamente o grupo `IDOSO` (≥ 60 anos)       |
+| `sexo`            | VARCHAR(10)  | nullable               | `MASCULINO`, `FEMININO` ou `OUTROS`                                   |
+| `contato`         | VARCHAR(255) | nullable               | E-mail ou telefone para notificações                                   |
+| `grupo_legal`     | SMALLINT     | NOT NULL               | Ordinal do `EPriorityGroup`: 1=IDOSO, 2=GESTANTE, 3=DEFICIENTE, 4=LACTANTE, 5=OBESO, 6=GERAL |
+| `ativo`           | BOOLEAN      | NOT NULL, DEFAULT TRUE | Indica se o paciente está ativo no sistema                             |
 
 ---
 
@@ -229,48 +229,44 @@ erDiagram
 
 ### QUEUE_ENTRIES *(queue-service)*
 
-| Coluna               | Tipo        | Restrições                     | Descrição                                                      |
-|----------------------|-------------|--------------------------------|----------------------------------------------------------------|
-| `id`                 | UUID        | PK, NOT NULL                   | Identificador único                                            |
-| `patient_id`         | UUID        | FK → patients(id), NOT NULL    | Paciente na fila                                               |
-| `procedure_id`       | UUID        | FK → procedures(id), NOT NULL  | Procedimento solicitado                                        |
-| `tipo_fila`          | VARCHAR(20) | NOT NULL                       | `FILA_ESPERA` ou `FILA_REGULADA`                               |
-| `risk_color`         | VARCHAR(10) | NOT NULL, DEFAULT `AZUL`       | `VERMELHO`, `AMARELO`, `VERDE`, `AZUL`                         |
-| `status`             | VARCHAR(30) | NOT NULL, DEFAULT `AGUARDANDO` | Ver ciclo de vida abaixo                                       |
-| `priority_group`     | VARCHAR(20) | NOT NULL                       | Espelho do `grupo_legal` no momento do cadastro                |
-| `solicitacao_id`     | UUID        | nullable                       | Referência à solicitação no regulacao-service (sem FK)         |
-| `preferred_unit_id`  | UUID        | nullable                       | Unidade preferida pelo paciente                                |
-| `registered_at`      | TIMESTAMP   | NOT NULL                       | Timestamp de entrada — desempate final do algoritmo            |
-| `updated_at`         | TIMESTAMP   | nullable                       | Última atualização                                             |
+> Implementado em: **V3** (`create_queue_entries_table`)
 
-**Ciclo de vida do status:**
+| Coluna          | Tipo        | Restrições                     | Descrição                                                           |
+|-----------------|-------------|--------------------------------|---------------------------------------------------------------------|
+| `id`            | UUID        | PK, NOT NULL                   | Identificador único                                                 |
+| `patient_id`    | UUID        | FK → patients(id), NOT NULL    | Paciente na fila                                                    |
+| `procedure_id`  | UUID        | FK → procedures(id), NOT NULL  | Procedimento solicitado                                             |
+| `risk_color`    | SMALLINT    | NOT NULL, DEFAULT 3            | Ordinal do `ERiskColor`: 0=VERMELHO, 1=AMARELO, 2=VERDE, 3=AZUL    |
+| `status`        | VARCHAR(20) | NOT NULL, DEFAULT `AGUARDANDO` | Ver ciclo de vida abaixo                                            |
+| `registered_at` | TIMESTAMP   | NOT NULL, DEFAULT NOW()        | Timestamp de entrada — desempate final do algoritmo                 |
+| `updated_at`    | TIMESTAMP   | nullable                       | Última atualização                                                  |
 
-```
-               cadastro
-              ──────────▶ AGUARDANDO ◀──────────────────────────────┐
-                               │                                     │ PATIENT_REINSTATED
-                   call-next   │                                     │ (no-show / expired)
-                               ▼                                     │
-                            CHAMADO ──────────────────────────▶ AGUARDANDO_VAGA
-                               │ (slot alocado)                (sem slot disponível)
-                               ▼
-                            AGENDADO
-                         ┌─────┴──────┐
-                         ▼            ▼
-                      ATENDIDO      FALTOU ──────────────────────────▶ (ver acima)
-                                         └──▶ CANCELADO
+**Índice de prioridade:**
+```sql
+CREATE INDEX idx_queue_entries_priority
+    ON queue_entries (risk_color, status, registered_at)
+    WHERE status = 'AGUARDANDO';
 ```
 
-| Status               | Descrição                                                          |
-|----------------------|--------------------------------------------------------------------|
-| `AGUARDANDO`         | Na fila, aguardando ser chamado                                    |
-| `CHAMADO`            | Chamado pelo `call-next`; aguardando slot do agendamento-service   |
-| `AGENDADO`           | Slot confirmado pelo agendamento-service                           |
-| `AGUARDANDO_VAGA`    | Chamado, mas sem slot disponível no momento                        |
-| `ATENDIDO`           | Compareceu e foi atendido                                          |
-| `FALTOU`             | Não compareceu                                                     |
-| `CANCELADO`          | Cancelado manualmente                                              |
-| `DEVOLVIDO`          | Devolvido à fila após falta (status intermediário)                 |
+**Ciclo de vida do status (implementado):**
+
+```
+cadastro ──▶ AGUARDANDO ──call-next──▶ AGENDADO ──▶ ATENDIDO
+                                               └──▶ FALTOU
+                                               └──▶ CANCELADO
+             AGUARDANDO ◀── DEVOLVIDO (reinserção)
+```
+
+| Status       | Descrição                                            |
+|--------------|------------------------------------------------------|
+| `AGUARDANDO` | Na fila, aguardando ser chamado                      |
+| `AGENDADO`   | Chamado — status atualizado pelo `CallNextPatient`   |
+| `ATENDIDO`   | Compareceu e foi atendido                            |
+| `FALTOU`     | Não compareceu                                       |
+| `CANCELADO`  | Cancelado manualmente                                |
+| `DEVOLVIDO`  | Devolvido à fila (status intermediário para reinserção)|
+
+> **Planejado (integração com regulacao/agendamento):** adicionar colunas `tipo_fila`, `priority_group`, `solicitacao_id`, `preferred_unit_id` e ampliar o check de status para incluir `CHAMADO` e `AGUARDANDO_VAGA` via migration futura.
 
 ---
 
@@ -286,6 +282,22 @@ Controla a cota de inserções em FILA_ESPERA por UBS e por procedimento dentro 
 | `max_per_period`| INTEGER     | NOT NULL                      | Máximo de inserções por período        |
 | `current_count` | INTEGER     | NOT NULL, DEFAULT 0           | Contador do período atual              |
 | `period_start`  | DATE        | NOT NULL                      | Início do período corrente             |
+
+---
+
+### PATIENT_PROCEDURES *(queue-service)*
+
+> Implementado em: **V6** (`create_patient_procedures_table`)
+
+Tabela de junção que vincula procedimentos SUS a pacientes, controlando elegibilidade e permitindo atribuição prévia ao cadastro na fila.
+
+| Coluna         | Tipo      | Restrições                      | Descrição                                         |
+|----------------|-----------|---------------------------------|---------------------------------------------------|
+| `patient_id`   | UUID      | PK, FK → patients(id), NOT NULL | Paciente                                          |
+| `procedure_id` | UUID      | PK, FK → procedures(id), NOT NULL | Procedimento vinculado                          |
+| `assigned_at`  | TIMESTAMP | NOT NULL, DEFAULT NOW()         | Data e hora da atribuição                         |
+
+> Chave primária composta por `(patient_id, procedure_id)` — impede duplicidade.
 
 ---
 
@@ -452,7 +464,65 @@ CONFIRMADO ──▶ ATENDIDO
 
 ---
 
-## Scripts de Criação — Novos Serviços (referência)
+## Scripts de Criação — Migrations Implementadas (V1–V6)
+
+```sql
+-- V1__create_procedures_table.sql
+CREATE TABLE procedures (
+    id               UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    co_procedimento  VARCHAR(20)  NOT NULL UNIQUE,
+    no_procedimento  VARCHAR(255) NOT NULL,
+    idade_minima     INTEGER,
+    idade_maxima     INTEGER,
+    grupo            VARCHAR(100)
+);
+
+-- V2__create_patients_table.sql
+CREATE TABLE patients (
+    id               UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    cpf              VARCHAR(14)  NOT NULL UNIQUE,
+    cns              VARCHAR(15)  UNIQUE,
+    nome             VARCHAR(100) NOT NULL,
+    sobrenome        VARCHAR(100) NOT NULL,
+    data_nascimento  DATE         NOT NULL,
+    sexo             VARCHAR(10)  CHECK (sexo IN ('MASCULINO', 'FEMININO', 'OUTROS')),
+    contato          VARCHAR(255),
+    grupo_legal      SMALLINT     NOT NULL
+);
+
+-- V3__create_queue_entries_table.sql
+CREATE TABLE queue_entries (
+    id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    patient_id    UUID        NOT NULL REFERENCES patients(id),
+    procedure_id  UUID        NOT NULL REFERENCES procedures(id),
+    risk_color    SMALLINT    NOT NULL DEFAULT 3,
+    status        VARCHAR(20) NOT NULL DEFAULT 'AGUARDANDO'
+                      CHECK (status IN ('AGUARDANDO', 'AGENDADO', 'ATENDIDO', 'FALTOU', 'CANCELADO', 'DEVOLVIDO')),
+    registered_at TIMESTAMP   NOT NULL DEFAULT NOW(),
+    updated_at    TIMESTAMP
+);
+
+CREATE INDEX idx_queue_entries_priority
+    ON queue_entries (risk_color, status, registered_at)
+    WHERE status = 'AGUARDANDO';
+
+-- V4__seed_procedures.sql (seed de procedimentos SIGTAP — sem alterações de schema)
+
+-- V5__add_ativo_to_patients.sql
+ALTER TABLE patients ADD COLUMN ativo BOOLEAN NOT NULL DEFAULT TRUE;
+
+-- V6__create_patient_procedures_table.sql
+CREATE TABLE patient_procedures (
+    patient_id    UUID NOT NULL REFERENCES patients(id),
+    procedure_id  UUID NOT NULL REFERENCES procedures(id),
+    assigned_at   TIMESTAMP NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (patient_id, procedure_id)
+);
+```
+
+---
+
+## Scripts de Criação — Novos Serviços (referência / planejado)
 
 ```sql
 -- ── auth-service — novos valores de role ───────────────────────────────────
@@ -462,8 +532,7 @@ ALTER TABLE users
     ADD CONSTRAINT users_role_check
     CHECK (role IN ('MEDICO','PACIENTE','SOLICITANTE','REGULADOR','EXECUTANTE'));
 
--- ── queue-service — alterações ─────────────────────────────────────────────
--- V4__add_tipo_fila_and_solicitacao.sql
+-- ── queue-service — integrações planejadas ─────────────────────────────────
 ALTER TABLE queue_entries
     ADD COLUMN tipo_fila         VARCHAR(20) NOT NULL DEFAULT 'FILA_REGULADA',
     ADD COLUMN solicitacao_id    UUID,
@@ -476,7 +545,6 @@ ALTER TABLE queue_entries
     CHECK (status IN ('AGUARDANDO','CHAMADO','AGENDADO','AGUARDANDO_VAGA',
                       'ATENDIDO','FALTOU','CANCELADO','DEVOLVIDO'));
 
--- V5__create_unit_procedure_quotas.sql
 CREATE TABLE unit_procedure_quotas (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     unit_id         UUID        NOT NULL,

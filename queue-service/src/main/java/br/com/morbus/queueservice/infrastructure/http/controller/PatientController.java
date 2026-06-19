@@ -16,7 +16,11 @@ import br.com.morbus.queueservice.domain.usecase.dto.ProcedureResponseDTO;
 import br.com.morbus.queueservice.domain.usecase.dto.RegisterPatientDTO;
 import br.com.morbus.queueservice.domain.usecase.dto.UpdatePatientDTO;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -69,11 +73,36 @@ public class PatientController {
     @Operation(
             summary = "Cadastra novo paciente",
             description = "Cria um novo registro de paciente no sistema.",
-            responses = {
-                    @ApiResponse(description = "Criado com sucesso", responseCode = "201"),
-                    @ApiResponse(description = "CPF já cadastrado", responseCode = "409"),
-                    @ApiResponse(description = "Não autorizado", responseCode = "401"),
-                    @ApiResponse(description = "Acesso negado", responseCode = "403")})
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = RegisterPatientDTO.class),
+                            examples = @ExampleObject(
+                                    name = "Exemplo",
+                                    value = """
+                                            {
+                                              "cpf": "123.456.789-09",
+                                              "cns": "123456789012345",
+                                              "nome": "Maria",
+                                              "sobrenome": "Silva",
+                                              "dataNascimento": "1990-05-15",
+                                              "gender": "FEMININO",
+                                              "contato": "maria.silva@email.com",
+                                              "grupoLegal": "GERAL"
+                                            }"""
+                            )
+                    )
+            )
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Paciente criado com sucesso",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = PatientResponseDTO.class))),
+            @ApiResponse(responseCode = "400", description = "Dados de entrada inválidos (CPF malformado, campos obrigatórios ausentes)", content = @Content),
+            @ApiResponse(responseCode = "401", description = "Token ausente ou inválido", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Acesso negado (requer ROLE_MEDICO)", content = @Content),
+            @ApiResponse(responseCode = "409", description = "CPF já cadastrado no sistema", content = @Content)
+    })
     public ResponseEntity<PatientResponseDTO> registerPatient(@RequestBody @Valid RegisterPatientDTO request) {
         Patient patient = registerPatient.run(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(PatientResponseDTO.fromEntity(patient));
@@ -84,10 +113,13 @@ public class PatientController {
     @Operation(
             summary = "Busca paciente por ID",
             description = "Retorna os detalhes de um paciente através do seu UUID.")
-    @ApiResponse(responseCode = "200", description = "Paciente encontrado")
-    @ApiResponse(responseCode = "401", description = "Token ausente ou inválido")
-    @ApiResponse(responseCode = "403", description = "Acesso negado (requer ROLE_MEDICO)")
-    @ApiResponse(responseCode = "404", description = "Paciente não encontrado")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Paciente encontrado",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = PatientResponseDTO.class))),
+            @ApiResponse(responseCode = "401", description = "Token ausente ou inválido", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Acesso negado (requer ROLE_MEDICO)", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Paciente não encontrado", content = @Content)
+    })
     public ResponseEntity<PatientResponseDTO> getPatientById(@PathVariable UUID id) {
         Patient patient = getPatientById.run(id);
         return ResponseEntity.ok(PatientResponseDTO.fromEntity(patient));
@@ -98,10 +130,13 @@ public class PatientController {
     @Operation(
             summary = "Busca paciente por CPF",
             description = "Localiza um paciente utilizando o número do CPF.")
-    @ApiResponse(responseCode = "200", description = "Paciente encontrado")
-    @ApiResponse(responseCode = "401", description = "Token ausente ou inválido")
-    @ApiResponse(responseCode = "403", description = "Acesso negado (requer ROLE_MEDICO)")
-    @ApiResponse(responseCode = "404", description = "Paciente não encontrado")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Paciente encontrado",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = PatientResponseDTO.class))),
+            @ApiResponse(responseCode = "401", description = "Token ausente ou inválido", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Acesso negado (requer ROLE_MEDICO)", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Paciente não encontrado", content = @Content)
+    })
     public ResponseEntity<PatientResponseDTO> getPatientByCpf(@RequestParam String cpf) {
         Patient patient = getPatientByCpf.run(cpf);
         return ResponseEntity.ok(PatientResponseDTO.fromEntity(patient));
@@ -112,10 +147,14 @@ public class PatientController {
     @Operation(
             summary = "Atualiza dados do paciente",
             description = "Permite a edição de campos como nome, CNS, contato, etc.")
-    @ApiResponse(responseCode = "200", description = "Paciente atualizado com sucesso")
-    @ApiResponse(responseCode = "401", description = "Token ausente ou inválido")
-    @ApiResponse(responseCode = "403", description = "Acesso negado (requer ROLE_MEDICO)")
-    @ApiResponse(responseCode = "404", description = "Paciente não encontrado")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Paciente atualizado com sucesso",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = PatientResponseDTO.class))),
+            @ApiResponse(responseCode = "400", description = "Dados de entrada inválidos", content = @Content),
+            @ApiResponse(responseCode = "401", description = "Token ausente ou inválido", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Acesso negado (requer ROLE_MEDICO)", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Paciente não encontrado", content = @Content)
+    })
     public ResponseEntity<PatientResponseDTO> updatePatient(@PathVariable UUID id,
                                                             @RequestBody @Valid PatientRequestDTO request) {
         UpdatePatientDTO updateDTO = new UpdatePatientDTO(
@@ -136,11 +175,14 @@ public class PatientController {
     @PreAuthorize("hasRole('MEDICO')")
     @Operation(
             summary = "Inativa um paciente",
-            description = "Altera o status do paciente para inativo.")
-    @ApiResponse(responseCode = "204", description = "Paciente inativado com sucesso")
-    @ApiResponse(responseCode = "401", description = "Token ausente ou inválido")
-    @ApiResponse(responseCode = "403", description = "Acesso negado (requer ROLE_MEDICO)")
-    @ApiResponse(responseCode = "404", description = "Paciente não encontrado")
+            description = "Altera o status do paciente para inativo. Bloqueado se houver entradas ativas na fila.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Paciente inativado com sucesso", content = @Content),
+            @ApiResponse(responseCode = "401", description = "Token ausente ou inválido", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Acesso negado (requer ROLE_MEDICO)", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Paciente não encontrado", content = @Content),
+            @ApiResponse(responseCode = "422", description = "Paciente possui entradas ativas na fila", content = @Content)
+    })
     public ResponseEntity<Void> inactivate(@PathVariable UUID id) {
         inactivatePatient.run(id);
         return ResponseEntity.noContent().build();
@@ -151,12 +193,15 @@ public class PatientController {
     @Operation(
             summary = "Atribui procedimento ao paciente",
             description = "Vincula um procedimento SUS a um paciente, verificando elegibilidade de idade e status ativo.")
-    @ApiResponse(responseCode = "200", description = "Procedimento atribuído com sucesso")
-    @ApiResponse(responseCode = "401", description = "Token ausente ou inválido")
-    @ApiResponse(responseCode = "403", description = "Acesso negado (requer ROLE_MEDICO)")
-    @ApiResponse(responseCode = "404", description = "Paciente ou procedimento não encontrado")
-    @ApiResponse(responseCode = "409", description = "Procedimento já atribuído ao paciente")
-    @ApiResponse(responseCode = "422", description = "Paciente inativo ou fora da faixa etária")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Procedimento atribuído com sucesso",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ProcedureResponseDTO.class))),
+            @ApiResponse(responseCode = "401", description = "Token ausente ou inválido", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Acesso negado (requer ROLE_MEDICO)", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Paciente ou procedimento não encontrado", content = @Content),
+            @ApiResponse(responseCode = "409", description = "Procedimento já atribuído ao paciente", content = @Content),
+            @ApiResponse(responseCode = "422", description = "Paciente inativo ou fora da faixa etária do procedimento", content = @Content)
+    })
     public ResponseEntity<ProcedureResponseDTO> assignProcedure(@PathVariable UUID patientId,
                                                                  @PathVariable UUID procedureId) {
         IdProcedureAndPatientDTO dto = new IdProcedureAndPatientDTO(patientId, procedureId);
@@ -169,11 +214,13 @@ public class PatientController {
     @Operation(
             summary = "Remove procedimento do paciente",
             description = "Desvincula um procedimento SUS do paciente. Bloqueia remoção se houver entradas ativas na fila.")
-    @ApiResponse(responseCode = "204", description = "Procedimento removido com sucesso")
-    @ApiResponse(responseCode = "401", description = "Token ausente ou inválido")
-    @ApiResponse(responseCode = "403", description = "Acesso negado (requer ROLE_MEDICO)")
-    @ApiResponse(responseCode = "404", description = "Paciente ou procedimento não encontrado")
-    @ApiResponse(responseCode = "409", description = "Existem entradas ativas na fila para este procedimento")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Procedimento removido com sucesso", content = @Content),
+            @ApiResponse(responseCode = "401", description = "Token ausente ou inválido", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Acesso negado (requer ROLE_MEDICO)", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Paciente ou procedimento não encontrado", content = @Content),
+            @ApiResponse(responseCode = "409", description = "Existem entradas ativas na fila para este procedimento", content = @Content)
+    })
     public ResponseEntity<Void> removeProcedure(@PathVariable UUID patientId,
                                                  @PathVariable UUID procedureId) {
         IdProcedureAndPatientDTO dto = new IdProcedureAndPatientDTO(patientId, procedureId);
