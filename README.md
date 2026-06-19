@@ -15,7 +15,7 @@ O SUS atende cerca de 150 milhões de brasileiros em procedimentos ambulatoriais
 - **Notificações automáticas** quando o paciente é chamado, via RabbitMQ e e-mail.
 - **Controle de acesso por papel** (médico vs. paciente), com autenticação JWT centralizada.
 
-O sistema é composto por três microsserviços independentes e se comunica internamente por REST (autenticação) e AMQP (eventos).
+O sistema é composto por cinco microsserviços independentes e se comunica internamente por REST (autenticação), AMQP (eventos assíncronos via RabbitMQ) e GraphQL (consultas do agendamento-service).
 
 ---
 
@@ -46,16 +46,20 @@ O sistema é composto por três microsserviços independentes e se comunica inte
 └──────────────────────────┘
 ```
 
-| Serviço               | Porta | Stack                         | Responsabilidade                                      |
-|-----------------------|-------|-------------------------------|-------------------------------------------------------|
-| `auth-service`        | 8082  | Spring Boot 4, MVC, JWT       | Cadastro de usuários, login, emissão de tokens JWT    |
-| `queue-service`       | 8080  | Spring Boot 4, JPA, RabbitMQ  | Núcleo do sistema: filas, pacientes, procedimentos    |
-| `notification-service`| 8081  | Quarkus, Panache, Mailer      | Consome eventos do RabbitMQ e envia e-mails simulados |
+| Serviço                | Porta | Stack                                  | Responsabilidade                                            |
+|------------------------|-------|----------------------------------------|-------------------------------------------------------------|
+| `auth-service`         | 8082  | Spring Boot 4, MVC, JWT                | Cadastro de usuários, login, emissão de tokens JWT          |
+| `queue-service`        | 8080  | Spring Boot 4, Clean Arch, JPA, AMQP  | Núcleo do sistema: filas, pacientes, procedimentos          |
+| `notification-service` | 8081  | Quarkus, Panache, Mailer               | Consome eventos do RabbitMQ e envia e-mails simulados       |
+| `regulacao-service`    | 8083  | Spring Boot 4, Hexagonal Arch, JPA, AMQP | Avaliação regulatória: aprovação/negação de solicitações (*em desenvolvimento*) |
+| `agendamento-service`  | 8084  | Spring Boot 4, CQRS, GraphQL, JPA, AMQP | Gestão de grades, slots e agendamentos (*em desenvolvimento*) |
 
 **Comunicação entre serviços:**
 
-- `auth-service` → `queue-service`: REST — o queue-service valida localmente o JWT com a mesma `JWT_SECRET`.
-- `queue-service` → `notification-service`: AMQP via RabbitMQ — eventos publicados no exchange `sus.queue.exchange` com routing keys `patient.registered` e `patient.called`.
+- `auth-service` → todos: JWT — cada serviço valida o token localmente com a mesma `JWT_SECRET`.
+- `queue-service` ↔ `notification-service`: AMQP via RabbitMQ — exchange `sus.queue.exchange`.
+- `regulacao-service` → `queue-service` / `agendamento-service`: AMQP — exchange `sus.regula.exchange`.
+- `agendamento-service` → `queue-service` / `notification-service`: AMQP — exchange `sus.agenda.exchange`.
 
 ---
 
@@ -338,10 +342,11 @@ O script `init.sql` cria os schemas e concede permissões ao usuário `sus_user`
 
 ## Documentação
 
-| Documento                                               | Conteúdo                                                   |
-|---------------------------------------------------------|------------------------------------------------------------|
-| [Arquitetura do Sistema](docs/arquitetura-sistema-sus.md) | Visão detalhada dos microsserviços, fluxos e decisões de design |
-| [Lógica de Priorização](docs/logica_priorizacao_sus.md)  | Algoritmo completo do `PriorityCalculator` com exemplos    |
-| [Contrato de API](docs/api-contract.md)                  | Especificação dos endpoints, payloads e códigos HTTP        |
-| [Diagramas de Sequência](docs/sequencias-diagrama.md)    | Fluxos de chamar próximo, registrar e reclassificar         |
-| [Modelo de Dados (ERD)](docs/erd.md)                     | Diagrama entidade-relacionamento do banco de dados          |
+| Documento                                                     | Conteúdo                                                           |
+|---------------------------------------------------------------|--------------------------------------------------------------------|
+| [Arquitetura do Sistema](docs/arquitetura-sistema-sus.md)     | Visão detalhada dos microsserviços, fluxos e decisões de design    |
+| [Lógica de Priorização](docs/logica_priorizacao_sus.md)       | Algoritmo completo do `PriorityCalculator` com exemplos            |
+| [Contrato de API](docs/api-contract.md)                       | Especificação dos endpoints, payloads e códigos HTTP               |
+| [Diagramas de Sequência](docs/sequencias-diagrama.md)         | Fluxos de chamar próximo, registrar, reclassificar e muito mais    |
+| [Modelo de Dados (ERD)](docs/erd.md)                          | Diagrama entidade-relacionamento do banco de dados                 |
+| [Requisitos e Domínio SUS](docs/requisitos-dominio-sus.md)    | Protocolo de cores, grupos legais, legislação e fluxo SISREG       |

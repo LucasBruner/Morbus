@@ -3,7 +3,12 @@ package br.com.morbus.queueservice.infrastructure.database.entity;
 import br.com.morbus.queueservice.domain.enums.EQueueStatus;
 import br.com.morbus.queueservice.domain.enums.ERiskColor;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -18,7 +23,6 @@ import java.util.UUID;
 public class QueueEntryEntity {
 
     @Id
-    @GeneratedValue
     @Column(name = "id", nullable = false)
     private UUID id;
 

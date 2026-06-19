@@ -127,16 +127,18 @@ queue-service/
     │   ├── service/      # PriorityCalculator
     │   └── usecase/      # CallNextPatient, ReclassifyPriority, AddToQueue,
     │       └── DTO/      # CancelQueueEntry, CheckAndEnforceQuota
-    ├── infrastructure/
-    │   ├── config/       # RabbitMQConfig
-    │   ├── messaging/    # RabbitMqQueueEventPublisher
-    │   │   ├── consumer/ # SolicitacaoEventConsumer, AgendamentoEventConsumer
-    │   │   └── dto/      # QueueEventDTO, SolicitacaoApprovedEventDTO, AppointmentEventDTO
-    │   ├── persistence/  # entidades JPA e repositórios Spring Data
-    │   └── security/     # JwtAuthFilter, SecurityConfig
-    └── interfaces/
-        ├── controller/   # QueueController, PatientController, ProcedureController
-        └── dto/          # Request/Response DTOs, Mappers
+    └── infrastructure/
+        ├── config/       # RabbitMQConfig
+        ├── database/
+        │   ├── entity/       # PatientEntity, QueueEntryEntity, ProcedureEntity
+        │   ├── persistence/  # PatientRepositoryImpl, QueueEntryRepositoryImpl, ProcedureRepositoryImpl
+        │   └── repository/   # PatientJpaRepository, QueueEntryJpaRepository, ProcedureJpaRepository
+        ├── http/
+        │   └── controller/   # QueueController, PatientController, ProcedureController
+        ├── messaging/    # RabbitMqQueueEventPublisher
+        │   ├── consumer/ # SolicitacaoEventConsumer, AgendamentoEventConsumer
+        │   └── dto/      # QueueEventDTO, SolicitacaoApprovedEventDTO, AppointmentEventDTO
+        └── security/     # JwtAuthFilter, SecurityConfig
 ```
 
 **Regra de dependências:**
@@ -147,18 +149,24 @@ Nenhuma classe do `domain` importa Spring, JPA ou RabbitMQ.
 
 **Endpoints expostos:**
 
-| Método | Path                        | Role       | Descrição                          |
-|--------|-----------------------------|------------|------------------------------------|
-| POST   | /api/v1/queue               | MEDICO     | Cadastra paciente na fila          |
-| GET    | /api/v1/queue               | MEDICO     | Lista fila ordenada por prioridade |
-| GET    | /api/v1/queue/{id}/position | PACIENTE   | Posição do paciente na fila        |
-| POST   | /api/v1/queue/call-next     | MEDICO     | Chama o próximo da fila            |
-| PATCH  | /api/v1/queue/{id}/priority | MEDICO     | Reclassifica cor de risco          |
-| DELETE | /api/v1/queue/{id}          | MEDICO     | Cancela entrada na fila            |
-| POST   | /api/v1/patients            | MEDICO     | Cadastra paciente                  |
-| GET    | /api/v1/patients/{id}       | MEDICO     | Busca paciente por ID              |
-| GET    | /api/v1/procedures          | PACIENTE   | Lista procedimentos disponíveis    |
-| GET    | /api/v1/procedures/{id}     | PACIENTE   | Busca procedimento por ID          |
+| Método | Path                                        | Role             | Descrição                          |
+|--------|---------------------------------------------|------------------|------------------------------------|
+| POST   | /api/v1/queue                               | MEDICO           | Cadastra paciente na fila          |
+| GET    | /api/v1/queue?procedureId=                  | MEDICO           | Lista fila ordenada por prioridade |
+| GET    | /api/v1/queue/{id}/position                 | MEDICO, PACIENTE | Posição do paciente na fila        |
+| POST   | /api/v1/queue/call-next                     | MEDICO           | Chama o próximo da fila            |
+| PATCH  | /api/v1/queue/{id}/priority                 | MEDICO           | Reclassifica cor de risco          |
+| DELETE | /api/v1/queue/{id}                          | MEDICO           | Cancela entrada na fila            |
+| POST   | /api/v1/patients                            | MEDICO           | Cadastra paciente                  |
+| GET    | /api/v1/patients/{id}                       | MEDICO           | Busca paciente por ID              |
+| GET    | /api/v1/patients?cpf=                       | MEDICO           | Busca paciente por CPF             |
+| PATCH  | /api/v1/patients/{id}                       | MEDICO           | Atualiza dados do paciente         |
+| PATCH  | /api/v1/patients/{id}/inactivate            | MEDICO           | Inativa paciente                   |
+| POST   | /api/v1/patients/{pId}/procedures/{procId}  | MEDICO           | Vincula procedimento ao paciente   |
+| DELETE | /api/v1/patients/{pId}/procedures/{procId}  | MEDICO           | Desvincula procedimento do paciente|
+| GET    | /api/v1/procedures                          | MEDICO, PACIENTE | Lista procedimentos disponíveis    |
+| GET    | /api/v1/procedures?codigo=                  | MEDICO, PACIENTE | Busca procedimento por código SIGTAP|
+| GET    | /api/v1/procedures/{id}                     | MEDICO, PACIENTE | Busca procedimento por ID          |
 
 **Tipos de fila (ETipoFila):**
 

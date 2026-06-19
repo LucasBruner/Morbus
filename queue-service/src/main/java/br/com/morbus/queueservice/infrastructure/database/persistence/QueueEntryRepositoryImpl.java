@@ -9,6 +9,8 @@ import br.com.morbus.queueservice.domain.repository.IQueueEntryRepository;
 import br.com.morbus.queueservice.infrastructure.database.entity.PatientEntity;
 import br.com.morbus.queueservice.infrastructure.database.entity.ProcedureEntity;
 import br.com.morbus.queueservice.infrastructure.database.entity.QueueEntryEntity;
+import br.com.morbus.queueservice.infrastructure.database.repository.PatientJpaRepository;
+import br.com.morbus.queueservice.infrastructure.database.repository.ProcedureJpaRepository;
 import br.com.morbus.queueservice.infrastructure.database.repository.QueueEntryJpaRepository;
 import org.springframework.stereotype.Component;
 
@@ -20,19 +22,47 @@ import java.util.UUID;
 public class QueueEntryRepositoryImpl implements IQueueEntryRepository {
 
     private final QueueEntryJpaRepository repository;
+    private final PatientJpaRepository patientJpaRepository;
+    private final ProcedureJpaRepository procedureJpaRepository;
     private final PatientRepositoryImpl patientRepositoryImpl;
     private final ProcedureRepositoryImpl procedureRepositoryImpl;
 
-    public QueueEntryRepositoryImpl(QueueEntryJpaRepository queueEntryJpaRepository, PatientRepositoryImpl patientRepositoryImpl, ProcedureRepositoryImpl procedureRepositoryImpl) {
+    public QueueEntryRepositoryImpl(
+            QueueEntryJpaRepository queueEntryJpaRepository,
+            PatientJpaRepository patientJpaRepository,
+            ProcedureJpaRepository procedureJpaRepository,
+            PatientRepositoryImpl patientRepositoryImpl,
+            ProcedureRepositoryImpl procedureRepositoryImpl) {
         this.repository = queueEntryJpaRepository;
+        this.patientJpaRepository = patientJpaRepository;
+        this.procedureJpaRepository = procedureJpaRepository;
         this.patientRepositoryImpl = patientRepositoryImpl;
         this.procedureRepositoryImpl = procedureRepositoryImpl;
     }
 
     @Override
     public void save(QueueEntry entry) {
-        QueueEntryEntity queueEntryEntity = mapToEntityQueue(entry);
-        repository.save(queueEntryEntity);
+        repository.findById(entry.getId()).ifPresentOrElse(
+                existing -> {
+                    existing.setRiskColor(entry.getRiskColor());
+                    existing.setStatus(entry.getQueueStatus());
+                    existing.setUpdatedAt(entry.getUpdatedAt());
+                },
+                () -> {
+                    PatientEntity patientRef = patientJpaRepository.getReferenceById(entry.getPatient().getId());
+                    ProcedureEntity procedureRef = procedureJpaRepository.getReferenceById(entry.getProcedure().getId());
+                    QueueEntryEntity entity = QueueEntryEntity.builder()
+                            .id(entry.getId())
+                            .patient(patientRef)
+                            .procedure(procedureRef)
+                            .riskColor(entry.getRiskColor())
+                            .status(entry.getQueueStatus())
+                            .registeredAt(entry.getRegisteredAt())
+                            .updatedAt(entry.getUpdatedAt())
+                            .build();
+                    repository.save(entity);
+                }
+        );
     }
 
     @Override
@@ -106,21 +136,6 @@ public class QueueEntryRepositoryImpl implements IQueueEntryRepository {
                 .queueStatus(entity.getStatus())
                 .registeredAt(entity.getRegisteredAt())
                 .updatedAt(entity.getUpdatedAt())
-                .build();
-    }
-
-    private QueueEntryEntity mapToEntityQueue(QueueEntry queueEntry){
-        PatientEntity patient = patientRepositoryImpl.mapToEntityPatient(queueEntry.getPatient());
-        ProcedureEntity procedure = procedureRepositoryImpl.mapToEntityProcedure(queueEntry.getProcedure());
-
-        return QueueEntryEntity.builder()
-                .id(queueEntry.getId())
-                .patient(patient)
-                .procedure(procedure)
-                .riskColor(queueEntry.getRiskColor())
-                .status(queueEntry.getQueueStatus())
-                .registeredAt(queueEntry.getRegisteredAt())
-                .updatedAt(queueEntry.getUpdatedAt())
                 .build();
     }
 }

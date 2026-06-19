@@ -28,7 +28,12 @@
   - [POST /api/v1/patients](#post-apiv1patients)
   - [GET /api/v1/patients/{id}](#get-apiv1patientsid)
   - [GET /api/v1/patients?cpf={cpf}](#get-apiv1patientscpfcpf)
+  - [PATCH /api/v1/patients/{id}](#patch-apiv1patientsid)
+  - [PATCH /api/v1/patients/{id}/inactivate](#patch-apiv1patientsidiactivate)
+  - [POST /api/v1/patients/{patientId}/procedures/{procedureId}](#post-apiv1patientspatientidproceduresprocedureid)
+  - [DELETE /api/v1/patients/{patientId}/procedures/{procedureId}](#delete-apiv1patientspatientidproceduresprocedureid)
   - [GET /api/v1/procedures](#get-apiv1procedures)
+  - [GET /api/v1/procedures?codigo={codigo}](#get-apiv1procedurescodigocodigo)
   - [GET /api/v1/procedures/{id}](#get-apiv1proceduresid)
 - [notification-service `:8081`](#notification-service-8081)
   - [GET /api/v1/notifications](#get-apiv1notifications)
@@ -217,51 +222,44 @@ Cadastra um paciente em uma fila de procedimento. A cor de entrada é sempre **A
 
 ### GET /api/v1/queue
 
-Lista a fila ordenada por prioridade com suporte a filtros e paginação.
+Lista a fila de um procedimento ordenada por prioridade (riskColor → grupoLegal → registeredAt).
 
 **Auth:** `ROLE_MEDICO`
 
 **Query Parameters:**
 
-| Parâmetro   | Tipo    | Obrigatório | Padrão      | Descrição                                |
-|-------------|---------|-------------|-------------|------------------------------------------|
-| `status`    | enum    | ❌          | `AGUARDANDO`| Filtrar por status da entrada            |
-| `riskColor` | enum    | ❌          | —           | Filtrar por cor de risco                 |
-| `page`      | integer | ❌          | `0`         | Número da página (zero-based)            |
-| `size`      | integer | ❌          | `20`        | Itens por página (máx. 100)              |
+| Parâmetro     | Tipo    | Obrigatório | Padrão      | Descrição                                |
+|---------------|---------|-------------|-------------|------------------------------------------|
+| `procedureId` | UUID    | ✅          | —           | ID do procedimento para filtrar a fila   |
+| `status`      | enum    | ❌          | —           | Filtrar por status da entrada            |
+| `riskColor`   | enum    | ❌          | —           | Filtrar por cor de risco                 |
+| `page`        | integer | ❌          | `0`         | Número da página (zero-based)            |
+| `size`        | integer | ❌          | `20`        | Itens por página                         |
 
-**Exemplo:** `GET /api/v1/queue?status=AGUARDANDO&riskColor=VERMELHO&page=0&size=10`
+**Exemplo:** `GET /api/v1/queue?procedureId=c0d1e2f3-...&status=AGUARDANDO&riskColor=VERMELHO`
 
 **Response `200 OK`:**
 ```json
-{
-  "content": [
-    {
-      "id": "e5f6a7b8-c9d0-1234-ef56-789012345678",
-      "position": 1,
-      "patient": {
-        "id": "f1e2d3c4-b5a6-7890-fedc-ba0987654321",
-        "nomeCompleto": "Maria Oliveira",
-        "cpf": "987.654.321-00",
-        "grupoLegal": "IDOSO"
-      },
-      "procedure": {
-        "id": "c0d1e2f3-a4b5-6789-cdef-012345678901",
-        "coProcedimento": "0301010072",
-        "noProcedimento": "Consulta de Cardiologia"
-      },
-      "riskColor": "VERMELHO",
-      "priorityGroup": "IDOSO",
-      "status": "AGUARDANDO",
-      "registeredAt": "2026-05-20T08:00:00Z",
-      "updatedAt": null
-    }
-  ],
-  "page": 0,
-  "size": 10,
-  "totalElements": 1,
-  "totalPages": 1
-}
+[
+  {
+    "id": "e5f6a7b8-c9d0-1234-ef56-789012345678",
+    "patient": {
+      "id": "f1e2d3c4-b5a6-7890-fedc-ba0987654321",
+      "nome": "Maria",
+      "sobrenome": "Oliveira",
+      "grupoLegal": "IDOSO"
+    },
+    "procedure": {
+      "id": "c0d1e2f3-a4b5-6789-cdef-012345678901",
+      "coProcedimento": "0301010072",
+      "noProcedimento": "CONSULTA MEDICA EM ATENCAO ESPECIALIZADA"
+    },
+    "riskColor": "VERMELHO",
+    "status": "AGUARDANDO",
+    "registeredAt": "2026-05-20T08:00:00",
+    "updatedAt": null
+  }
+]
 ```
 
 ---
@@ -409,11 +407,16 @@ Cancela a entrada de um paciente na fila. Publica o evento `PATIENT_CANCELLED`.
 |-----------|------|----------------------|
 | `id`      | UUID | ID da entrada na fila|
 
-**Query Parameters:**
+**Request Body:**
+```json
+{
+  "motivoCancelamento": "Paciente transferido para outra unidade"
+}
+```
 
-| Parâmetro | Tipo   | Obrigatório | Descrição             |
-|-----------|--------|-------------|-----------------------|
-| `motivo`  | string | ❌          | Motivo do cancelamento|
+| Campo                | Tipo   | Obrigatório | Descrição             |
+|----------------------|--------|-------------|-----------------------|
+| `motivoCancelamento` | string | ✅          | Motivo do cancelamento|
 
 **Response `204 No Content`**
 
@@ -435,46 +438,43 @@ Cadastra um novo paciente no sistema.
 **Request Body:**
 ```json
 {
-  "cpf": "123.456.789-00",
-  "cns": "700 0000 0000 0001",
-  "nomeCompleto": "João da Silva",
+  "cpf": "123.456.789-09",
+  "cns": "123456789012345",
+  "nome": "João",
+  "sobrenome": "da Silva",
   "dataNascimento": "1960-03-15",
-  "sexo": "M",
+  "gender": "MASCULINO",
   "contato": "joao@email.com",
-  "gestante": false,
-  "deficiente": false,
-  "lactante": false,
-  "obeso": false
+  "grupoLegal": "GERAL"
 }
 ```
 
-| Campo            | Tipo    | Obrigatório | Validações                                      |
-|------------------|---------|-------------|-------------------------------------------------|
-| `cpf`            | string  | ✅          | Formato `###.###.###-##`, válido e único         |
-| `cns`            | string  | ❌          | Cartão Nacional de Saúde, único                 |
-| `nomeCompleto`   | string  | ✅          | 3–255 caracteres                                |
-| `dataNascimento` | date    | ✅          | Formato `yyyy-MM-dd`, não pode ser no futuro    |
-| `sexo`           | string  | ❌          | `M` \| `F` \| `O`                              |
-| `contato`        | string  | ❌          | E-mail ou telefone para notificações            |
-| `gestante`       | boolean | ❌          | Padrão `false`                                  |
-| `deficiente`     | boolean | ❌          | Padrão `false`                                  |
-| `lactante`       | boolean | ❌          | Padrão `false`                                  |
-| `obeso`          | boolean | ❌          | Padrão `false`                                  |
+| Campo            | Tipo   | Obrigatório | Validações                                              |
+|------------------|--------|-------------|---------------------------------------------------------|
+| `cpf`            | string | ✅          | Formato `###.###.###-##`, válido e único                |
+| `cns`            | string | ❌          | Cartão Nacional de Saúde, único se informado            |
+| `nome`           | string | ✅          | Primeiro nome do paciente                               |
+| `sobrenome`      | string | ✅          | Sobrenome do paciente                                   |
+| `dataNascimento` | date   | ✅          | Formato `yyyy-MM-dd`, não pode ser no futuro            |
+| `gender`         | enum   | ❌          | `MASCULINO` \| `FEMININO` \| `OUTROS`                  |
+| `contato`        | string | ❌          | E-mail ou telefone para notificações                    |
+| `grupoLegal`     | enum   | ✅          | `IDOSO` \| `GESTANTE` \| `DEFICIENTE` \| `LACTANTE` \| `OBESO` \| `GERAL` |
 
-> **Detecção automática de grupo legal:** o sistema calcula o `grupoLegal` automaticamente. Paciente com 60+ anos é classificado como `IDOSO` independentemente dos campos booleanos. A prioridade de detecção é: `IDOSO > GESTANTE > DEFICIENTE > LACTANTE > OBESO > GERAL`.
+> **Detecção automática de IDOSO:** paciente com 60+ anos recebe `grupoLegal = IDOSO` automaticamente via `PriorityCalculator.getPriorityGroup()`, sobrescrevendo o valor informado.
 
 **Response `201 Created`:**
 ```json
 {
   "id": "f1e2d3c4-b5a6-7890-fedc-ba0987654321",
-  "cpf": "123.456.789-00",
-  "cns": "700 0000 0000 0001",
-  "nomeCompleto": "João da Silva",
+  "cpf": "123.456.789-09",
+  "cns": "123456789012345",
+  "nome": "João",
+  "sobrenome": "da Silva",
   "dataNascimento": "1960-03-15",
-  "sexo": "M",
+  "gender": "MASCULINO",
   "contato": "joao@email.com",
   "grupoLegal": "IDOSO",
-  "createdAt": "2026-05-27T10:00:00Z"
+  "ativo": true
 }
 ```
 
@@ -503,14 +503,15 @@ Busca um paciente pelo seu ID.
 ```json
 {
   "id": "f1e2d3c4-b5a6-7890-fedc-ba0987654321",
-  "cpf": "123.456.789-00",
-  "cns": "700 0000 0000 0001",
-  "nomeCompleto": "João da Silva",
+  "cpf": "123.456.789-09",
+  "cns": "123456789012345",
+  "nome": "João",
+  "sobrenome": "da Silva",
   "dataNascimento": "1960-03-15",
-  "sexo": "M",
+  "gender": "MASCULINO",
   "contato": "joao@email.com",
   "grupoLegal": "IDOSO",
-  "createdAt": "2026-05-27T10:00:00Z"
+  "ativo": true
 }
 ```
 
@@ -543,6 +544,101 @@ Busca um paciente pelo CPF.
 | Status | Motivo                    |
 |--------|---------------------------|
 | `404`  | Paciente não encontrado   |
+
+---
+
+### PATCH /api/v1/patients/{id}
+
+Atualiza dados cadastrais de um paciente.
+
+**Auth:** `ROLE_MEDICO`
+
+**Path Parameters:**
+
+| Parâmetro | Tipo | Descrição    |
+|-----------|------|--------------|
+| `id`      | UUID | ID do paciente|
+
+**Request Body:**
+```json
+{
+  "cns": "123456789012345",
+  "nome": "João",
+  "sobrenome": "da Silva",
+  "dataNascimento": "1960-03-15",
+  "gender": "MASCULINO",
+  "contato": "joao@email.com",
+  "grupoLegal": "GERAL"
+}
+```
+
+**Response `200 OK`:** mesmo schema de `GET /api/v1/patients/{id}`
+
+**Erros:**
+
+| Status | Motivo                      |
+|--------|-----------------------------|
+| `400`  | Dados de entrada inválidos  |
+| `404`  | Paciente não encontrado     |
+
+---
+
+### PATCH /api/v1/patients/{id}/inactivate
+
+Inativa um paciente. Bloqueado se houver entradas ativas na fila.
+
+**Auth:** `ROLE_MEDICO`
+
+**Response `204 No Content`**
+
+**Erros:**
+
+| Status | Motivo                                            |
+|--------|---------------------------------------------------|
+| `404`  | Paciente não encontrado                           |
+| `422`  | Paciente possui entradas ativas na fila           |
+
+---
+
+### POST /api/v1/patients/{patientId}/procedures/{procedureId}
+
+Vincula um procedimento SUS a um paciente, verificando elegibilidade de idade e status ativo.
+
+**Auth:** `ROLE_MEDICO`
+
+**Path Parameters:**
+
+| Parâmetro     | Tipo | Descrição         |
+|---------------|------|-------------------|
+| `patientId`   | UUID | ID do paciente    |
+| `procedureId` | UUID | ID do procedimento|
+
+**Response `200 OK`:** schema do procedimento vinculado (`id`, `coProcedimento`, `noProcedimento`, `idadeMinima`, `idadeMaxima`, `grupo`)
+
+**Erros:**
+
+| Status | Motivo                                                      |
+|--------|-------------------------------------------------------------|
+| `404`  | Paciente ou procedimento não encontrado                     |
+| `409`  | Procedimento já vinculado ao paciente                       |
+| `422`  | Paciente inativo ou fora da faixa etária do procedimento    |
+
+---
+
+### DELETE /api/v1/patients/{patientId}/procedures/{procedureId}
+
+Desvincula um procedimento SUS do paciente. Bloqueado se houver entradas ativas na fila.
+
+**Auth:** `ROLE_MEDICO`
+
+**Response `204 No Content`**
+
+**Erros:**
+
+| Status | Motivo                                                      |
+|--------|-------------------------------------------------------------|
+| `404`  | Paciente ou procedimento não encontrado                     |
+| `409`  | Existem entradas ativas na fila para este procedimento      |
 
 ---
 
@@ -579,6 +675,30 @@ Lista os procedimentos disponíveis para agendamento na fila, com suporte a pagi
   "totalPages": 1
 }
 ```
+
+---
+
+### GET /api/v1/procedures?codigo={codigo}
+
+Busca um procedimento pelo código SIGTAP.
+
+**Auth:** `ROLE_MEDICO` ou `ROLE_PACIENTE`
+
+**Query Parameters:**
+
+| Parâmetro | Tipo   | Obrigatório | Exemplo        |
+|-----------|--------|-------------|----------------|
+| `codigo`  | string | ✅          | `0301010072`   |
+
+**Exemplo:** `GET /api/v1/procedures?codigo=0301010072`
+
+**Response `200 OK`:** mesmo schema de `GET /api/v1/procedures/{id}`
+
+**Erros:**
+
+| Status | Motivo                       |
+|--------|------------------------------|
+| `404`  | Procedimento não encontrado  |
 
 ---
 
