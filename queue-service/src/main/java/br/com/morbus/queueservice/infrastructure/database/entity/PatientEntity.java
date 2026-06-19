@@ -3,7 +3,12 @@ package br.com.morbus.queueservice.infrastructure.database.entity;
 import br.com.morbus.queueservice.domain.enums.EGender;
 import br.com.morbus.queueservice.domain.enums.EPriorityGroup;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 
 import java.time.LocalDate;
 import java.util.UUID;
@@ -18,7 +23,6 @@ import java.util.UUID;
 public class PatientEntity {
 
     @Id
-    @GeneratedValue
     @Column(name = "id", nullable = false)
     private UUID id;
 

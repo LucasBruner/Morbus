@@ -21,8 +21,28 @@ public class PatientRepositoryImpl implements IPatientRepository {
 
     @Override
     public void save(Patient patient) {
-        PatientEntity patientEntity = mapToEntityPatient(patient);
-        repository.save(patientEntity);
+        if (patient.getId() != null) {
+            repository.findById(patient.getId()).ifPresentOrElse(
+                    existing -> {
+                        updateEntityFields(existing, patient);
+                    },
+                    () -> repository.save(mapToEntityPatient(patient))
+            );
+        } else {
+            repository.save(mapToEntityPatient(patient));
+        }
+    }
+
+    private void updateEntityFields(PatientEntity existing, Patient patient) {
+        existing.setCpf(patient.getCpf());
+        existing.setCns(patient.getCns());
+        existing.setNome(patient.getNome());
+        existing.setSobrenome(patient.getSobrenome());
+        existing.setDataNascimento(patient.getDataNascimento());
+        existing.setSexo(patient.getGender());
+        existing.setContato(patient.getContato());
+        existing.setGrupoLegal(patient.getGrupoLegal());
+        existing.setAtivo(patient.isAtivo());
     }
 
     @Override
@@ -63,6 +83,7 @@ public class PatientRepositoryImpl implements IPatientRepository {
                 .gender(entity.getSexo())
                 .contato(entity.getContato())
                 .grupoLegal(entity.getGrupoLegal())
+                .ativo(entity.getAtivo() != null && entity.getAtivo())
                 .build();
     }
 
@@ -77,6 +98,7 @@ public class PatientRepositoryImpl implements IPatientRepository {
                 .sexo(patient.getGender())
                 .contato(patient.getContato())
                 .grupoLegal(patient.getGrupoLegal())
+                .ativo(patient.isAtivo())
                 .build();
     }
 }
