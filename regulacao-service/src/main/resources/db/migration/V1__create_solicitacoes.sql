@@ -5,9 +5,10 @@ CREATE TABLE IF NOT EXISTS regulacao.solicitacoes (
     unidade_solicitante_id  UUID            NOT NULL,
     unidade_executante_id   UUID,
     status                  VARCHAR(30)     NOT NULL DEFAULT 'PENDENTE',
-    risco_solicitado        VARCHAR(20)     NOT NULL,
+    risco_solicitado        VARCHAR(20),
     justificativa_negacao   TEXT,
     solicitado_por          UUID            NOT NULL,
+    observacoes             TEXT,
     created_at              TIMESTAMP       NOT NULL DEFAULT now(),
     updated_at              TIMESTAMP       NOT NULL DEFAULT now(),
 

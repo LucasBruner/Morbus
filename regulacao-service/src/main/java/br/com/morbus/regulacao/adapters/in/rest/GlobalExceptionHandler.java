@@ -27,8 +27,8 @@ public class GlobalExceptionHandler {
                 .map(e -> e.getField() + ": " + e.getDefaultMessage())
                 .collect(Collectors.joining("; "));
 
-        ProblemDetail problem = ProblemDetail.forStatus(422);
-        problem.setType(URI.create("https://httpstatuses.com/422"));
+        ProblemDetail problem = ProblemDetail.forStatus(400);
+        problem.setType(URI.create("https://httpstatuses.com/400"));
         problem.setTitle("Dados inválidos");
         problem.setDetail(detail);
         return problem;
