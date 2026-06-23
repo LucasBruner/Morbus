@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS regulacao.solicitacoes (
 
     CONSTRAINT pk_solicitacoes PRIMARY KEY (id),
     CONSTRAINT chk_solicitacoes_status CHECK (
-        status IN ('PENDENTE', 'EM_ANALISE', 'APROVADA', 'NEGADA', 'CANCELADA')
+        status IN ('PENDENTE', 'EM_ANALISE', 'APROVADA', 'NEGADA', 'CANCELADA', 'DEVOLVIDA')
     ),
     CONSTRAINT chk_solicitacoes_risco CHECK (
         risco_solicitado IN ('VERMELHO', 'AMARELO', 'VERDE', 'AZUL')

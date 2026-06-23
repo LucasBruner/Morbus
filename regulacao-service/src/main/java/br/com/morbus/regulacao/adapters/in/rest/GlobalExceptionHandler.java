@@ -39,7 +39,7 @@ public class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatus(500);
         problem.setType(URI.create("https://httpstatuses.com/500"));
         problem.setTitle("Erro interno");
-        problem.setDetail(ex.getMessage());
+        problem.setDetail("Ocorreu um erro inesperado. Tente novamente mais tarde.");
         return problem;
     }
 }

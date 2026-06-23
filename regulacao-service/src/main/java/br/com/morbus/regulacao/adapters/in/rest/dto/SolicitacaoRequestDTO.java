@@ -13,13 +13,17 @@ public record SolicitacaoRequestDTO(@NotNull(message = "pacienteId é obrigatór
                                     String observacoes) {
 
     public CriarSolicitacaoCommand toCommand(String solicitadoPor) {
-        return new CriarSolicitacaoCommand(
-                pacienteId,
-                procedureId,
-                unidadeSolicitanteId,
-                riscoSolicitado,
-                observacoes,
-                UUID.fromString(solicitadoPor)
-        );
+        try {
+            return new CriarSolicitacaoCommand(
+                    pacienteId,
+                    procedureId,
+                    unidadeSolicitanteId,
+                    riscoSolicitado,
+                    observacoes,
+                    UUID.fromString(solicitadoPor)
+            );
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException("Principal do token não é um UUID válido", e);
+        }
     }
 }
