@@ -1,5 +1,6 @@
 package br.com.morbus.regulacao.adapters.out.rabbitmq;
 
+import tools.jackson.databind.json.JsonMapper;
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -176,14 +177,20 @@ public class RabbitMQConfig {
     }
 
     @Bean
-    public JacksonJsonMessageConverter messageConverter() {
-        return new JacksonJsonMessageConverter();
+    public JsonMapper objectMapper() {
+        return JsonMapper.builder().build();
     }
 
     @Bean
-    public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory) {
+    public JacksonJsonMessageConverter messageConverter(JsonMapper objectMapper) {
+        return new JacksonJsonMessageConverter(objectMapper);
+    }
+
+    @Bean
+    public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory,
+                                          JacksonJsonMessageConverter messageConverter) {
         RabbitTemplate template = new RabbitTemplate(connectionFactory);
-        template.setMessageConverter(messageConverter());
+        template.setMessageConverter(messageConverter);
         return template;
     }
 }
