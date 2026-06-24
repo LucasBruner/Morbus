@@ -24,7 +24,7 @@ COPY --from=builder /app/target/extracted/application/           ./
 
 USER appuser
 
-EXPOSE 8080
+EXPOSE 8084
 
 ENV SPRING_PROFILES_ACTIVE=docker
 ENV JWT_SECRET=""
