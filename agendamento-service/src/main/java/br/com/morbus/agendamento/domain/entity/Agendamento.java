@@ -1,4 +1,4 @@
-package br.com.morbus.agendamento.domain.model;
+package br.com.morbus.agendamento.domain.entity;
 
 import br.com.morbus.agendamento.domain.enums.EStatusAgendamento;
 import lombok.Getter;

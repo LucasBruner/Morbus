@@ -1,4 +1,4 @@
-package br.com.morbus.agendamento.infrastructure.usecase;
+package br.com.morbus.agendamento.infrastructure.config;
 
 import br.com.morbus.agendamento.domain.CriarAgendamentoUseCase;
 import br.com.morbus.agendamento.domain.port.in.ICriarAgendamentoUseCase;
@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-public class AgendamentoUseCase {
+public class UseCaseConfig {
 
     @Bean
     public ICriarAgendamentoUseCase criarAgendamentoUseCase(IAgendamentoRepository agendamentoRepository) {
