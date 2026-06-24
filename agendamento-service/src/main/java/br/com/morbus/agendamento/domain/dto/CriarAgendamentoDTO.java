@@ -1,4 +1,4 @@
-package br.com.morbus.agendamento.application.command;
+package br.com.morbus.agendamento.domain.dto;
 
 import java.time.LocalDateTime;
 import java.util.UUID;

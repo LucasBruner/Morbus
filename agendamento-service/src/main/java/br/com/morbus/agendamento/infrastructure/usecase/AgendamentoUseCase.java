@@ -1,4 +1,4 @@
-package br.com.morbus.agendamento.infrastructure.config;
+package br.com.morbus.agendamento.infrastructure.usecase;
 
 import br.com.morbus.agendamento.domain.CriarAgendamentoUseCase;
 import br.com.morbus.agendamento.domain.port.in.ICriarAgendamentoUseCase;
