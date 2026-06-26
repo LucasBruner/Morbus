@@ -36,6 +36,10 @@ public class JwtService {
         return parseClaims(token).get("role", String.class);
     }
 
+    public String extractUnitId(String token) {
+        return parseClaims(token).get("unit_id", String.class);
+    }
+
     private Claims parseClaims(String token) {
         return Jwts.parser()
                 .verifyWith(secretKey)

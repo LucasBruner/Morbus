@@ -2,7 +2,7 @@ package br.com.morbus.regulacao.domain;
 
 import br.com.morbus.regulacao.domain.exception.DuplicateSolicitacaoException;
 import br.com.morbus.regulacao.domain.model.Solicitacao;
-import br.com.morbus.regulacao.ports.in.CriarSolicitacaoCommand;
+import br.com.morbus.regulacao.ports.in.dto.CriarSolicitacaoCommand;
 import br.com.morbus.regulacao.ports.in.ICriarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.out.ISolicitacaoRepository;
 
