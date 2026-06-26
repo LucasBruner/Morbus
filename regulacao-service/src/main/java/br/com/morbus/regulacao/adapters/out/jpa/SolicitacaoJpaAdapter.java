@@ -2,7 +2,7 @@ package br.com.morbus.regulacao.adapters.out.jpa;
 
 import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
 import br.com.morbus.regulacao.domain.model.Solicitacao;
-import br.com.morbus.regulacao.ports.in.dto.ListarSolicitacoesQuery;
+import br.com.morbus.regulacao.domain.dto.ListarSolicitacoesQuery;
 import br.com.morbus.regulacao.ports.out.ISolicitacaoRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -40,17 +40,17 @@ public class SolicitacaoJpaAdapter implements ISolicitacaoRepository {
 
     @Override
     public Page<Solicitacao> listar(ListarSolicitacoesQuery query) {
-        Specification<SolicitacaoEntity> spec = (r, q, cb) -> cb.conjunction();
+        Specification<SolicitacaoEntity> spec = (r, cq, cb) -> cb.conjunction();
         if(query.unidadeId() != null) {
-            spec = spec.and((r, q, cb) -> cb.equal(r.get("unidadeSolicitanteId"), query.unidadeId()));
+            spec = spec.and((r, cq, cb) -> cb.equal(r.get("unidadeSolicitanteId"), query.unidadeId()));
         }
 
         if(query.status() != null) {
-            spec = spec.and((r, b, cb) -> cb.equal(r.get("status"), query.status()));
+            spec = spec.and((r, cq, cb) -> cb.equal(r.get("status"), query.status()));
         }
 
         if(query.procedureId() != null) {
-            spec = spec.and((r, b, cb) -> cb.equal(r.get("procedureId"), query.procedureId()));
+            spec = spec.and((r, cq, cb) -> cb.equal(r.get("procedureId"), query.procedureId()));
         }
 
         Pageable pageable = PageRequest.of(query.page(), query.size(),

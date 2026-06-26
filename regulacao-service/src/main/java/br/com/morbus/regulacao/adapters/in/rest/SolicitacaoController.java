@@ -3,22 +3,26 @@ package br.com.morbus.regulacao.adapters.in.rest;
 import br.com.morbus.regulacao.adapters.in.rest.dto.SolicitacaoCreatedResponseDTO;
 import br.com.morbus.regulacao.adapters.in.rest.dto.SolicitacaoRequestDTO;
 import br.com.morbus.regulacao.adapters.in.rest.dto.SolicitacaoSummaryDTO;
-import br.com.morbus.regulacao.adapters.out.security.UserPrincipal;
+import br.com.morbus.regulacao.adapters.security.UserPrincipal;
+import br.com.morbus.regulacao.domain.dto.ListarSolicitacoesQuery;
 import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
 import br.com.morbus.regulacao.domain.model.Solicitacao;
 import br.com.morbus.regulacao.ports.in.ICriarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.in.IListarSolicitacoesUseCase;
-import br.com.morbus.regulacao.ports.in.dto.ListarSolicitacoesQuery;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
 import java.util.UUID;
 
+@Validated
 @RestController
 @RequestMapping("/api/v1/solicitacoes")
 public class SolicitacaoController {
@@ -52,8 +56,8 @@ public class SolicitacaoController {
             @RequestParam(required = false) UUID unidadeId,
             @RequestParam(required = false) EStatusSolicitacao status,
             @RequestParam(required = false) UUID procedureId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
 
         UUID unidadeFiltro = "ROLE_SOLICITANTE".equals(principal.role())
                 ? principal.unitId()

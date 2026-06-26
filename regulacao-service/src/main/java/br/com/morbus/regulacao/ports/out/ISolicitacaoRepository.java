@@ -1,7 +1,7 @@
 package br.com.morbus.regulacao.ports.out;
 
+import br.com.morbus.regulacao.domain.dto.ListarSolicitacoesQuery;
 import br.com.morbus.regulacao.domain.model.Solicitacao;
-import br.com.morbus.regulacao.ports.in.dto.ListarSolicitacoesQuery;
 import org.springframework.data.domain.Page;
 
 import java.util.UUID;

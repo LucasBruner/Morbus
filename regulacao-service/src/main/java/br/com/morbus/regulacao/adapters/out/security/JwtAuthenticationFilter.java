@@ -1,5 +1,6 @@
 package br.com.morbus.regulacao.adapters.out.security;
 
+import br.com.morbus.regulacao.adapters.security.UserPrincipal;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

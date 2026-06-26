@@ -1,4 +1,4 @@
-package br.com.morbus.regulacao.ports.in.dto;
+package br.com.morbus.regulacao.domain.dto;
 
 import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
 
