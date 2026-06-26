@@ -9,6 +9,5 @@ import java.util.UUID;
 public interface IAgendamentoRepository {
 
     Agendamento save(Agendamento agendamento);
-
     Optional<Agendamento> findByPacienteIdAndDataHora(UUID pacienteId, LocalDateTime dataHora);
 }
