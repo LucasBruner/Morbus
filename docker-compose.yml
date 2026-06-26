@@ -103,7 +103,7 @@ services:
       dockerfile: docker/Dockerfile
     container_name: agendamento-service
     ports:
-      - "8084:8080"
+      - "8084:8084"
     environment:
       SPRING_PROFILES_ACTIVE: docker
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/agendamento_db

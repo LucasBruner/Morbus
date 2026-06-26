@@ -44,7 +44,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String username = jwtService.extractUsername(token);
         String role = jwtService.extractRole(token);
-        String authority = role != null && role.startsWith("ROLE_") ? role : "ROLE_" + role;
+
+        if (role == null) {
+            // token inválido para esse serviço — rejeitar sem autenticar
+            filterChain.doFilter(request, response);
+            return;
+        }
+        String authority = role.startsWith("ROLE_") ? role : "ROLE_" + role;
 
         String unitIdStr = jwtService.extractUnitId(token);
         UUID unitId = unitIdStr != null ? UUID.fromString(unitIdStr) : null;

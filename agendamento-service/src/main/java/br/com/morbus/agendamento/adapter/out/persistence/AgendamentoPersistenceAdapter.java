@@ -11,13 +11,19 @@ import java.util.UUID;
 @Repository
 public class AgendamentoPersistenceAdapter implements IAgendamentoRepository {
 
+    private final IAgendamentoRepository jpaRepository;
+
+    public AgendamentoPersistenceAdapter(IAgendamentoRepository jpaRepository) {
+        this.jpaRepository = jpaRepository;
+    }
+
     @Override
     public Agendamento save(Agendamento agendamento) {
-        return agendamento;
+        return jpaRepository.save(agendamento);
     }
 
     @Override
     public Optional<Agendamento> findByPacienteIdAndDataHora(UUID pacienteId, LocalDateTime dataHora) {
-        return Optional.empty();
+        return jpaRepository.findByPacienteIdAndDataHora(pacienteId, dataHora);
     }
 }

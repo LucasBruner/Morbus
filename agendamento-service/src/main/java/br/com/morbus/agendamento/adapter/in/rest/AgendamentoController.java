@@ -24,11 +24,10 @@ public class AgendamentoController {
     }
 
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<AgendamentoCreatedResponseDTO> criar (
             @Valid @RequestBody AgendamentoRequestDTO request) {
         Agendamento agendamento = criarAgendamentoUseCase.execute(request.toCommand());
-        return ResponseEntity.ok()
+        return ResponseEntity.status(HttpStatus.CREATED)
                 .body(AgendamentoCreatedResponseDTO.fromDomain(agendamento));
     }
 }
