@@ -1,0 +1,81 @@
+schema {
+    query: Query
+}
+
+type Query {
+    disponibilidade(input: DisponibilidadeInput!): [Slot!]!
+    agendamentos(pacienteId: ID, status: AppointmentStatus): [Appointment!]!
+    agendamento(id: ID!): Appointment
+    grade(input: GradeInput!): [Slot!]!
+}
+
+input DisponibilidadeInput {
+    unitId: ID
+    providerId: ID
+    especialidade: String
+    dataInicio: String!
+    dataFim: String!
+}
+
+input GradeInput {
+    unitId: ID
+    providerId: ID
+    dataInicio: String!
+    dataFim: String!
+}
+
+type Slot {
+    id: ID!
+    scheduleId: ID!
+    dataHora: String!
+    duracaoMinutos: Int!
+    status: SlotStatus!
+    provider: Provider
+    healthUnit: HealthUnit
+}
+
+type Appointment {
+    id: ID!
+    slot: Slot!
+    pacienteId: ID!
+    solicitacaoId: ID
+    status: AppointmentStatus!
+    expiresAt: String
+    confirmedAt: String
+    attendedAt: String
+    createdAt: String!
+}
+
+type Provider {
+    id: ID!
+    nome: String!
+    crm: String!
+    especialidade: String!
+    healthUnit: HealthUnit!
+    ativo: Boolean!
+}
+
+type HealthUnit {
+    id: ID!
+    nome: String!
+    cnes: String!
+    municipio: String!
+    uf: String!
+    ativo: Boolean!
+}
+
+enum SlotStatus {
+    DISPONIVEL
+    RESERVADO
+    OCUPADO
+    INDISPONIVEL
+}
+
+enum AppointmentStatus {
+    AGUARDANDO_CONFIRMACAO
+    CONFIRMADO
+    ATENDIDO
+    FALTOU
+    EXPIRADO
+    CANCELADO
+}
