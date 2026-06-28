@@ -22,6 +22,7 @@ public class DeletarSolicitacaoUseCase implements IDeletarSolicitacaoUseCase {
         if(!solicitacao.getStatus().equals(EStatusSolicitacao.PENDENTE))
             throw new SolicitacaoNaoPendenteException("A solicitação informada não está com status de pendênte");
 
-        solicitacaoRepository.delete(solicitacao);
+        solicitacao.changeStatus(EStatusSolicitacao.CANCELADA);
+        solicitacaoRepository.save(solicitacao);
     }
 }

@@ -1,9 +1,9 @@
 package br.com.morbus.regulacao.adapters.out.jpa;
 
+import br.com.morbus.regulacao.domain.dto.ListarSolicitacoesQuery;
 import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
 import br.com.morbus.regulacao.domain.exception.SolicitacaoNaoEncontradaException;
 import br.com.morbus.regulacao.domain.model.Solicitacao;
-import br.com.morbus.regulacao.domain.dto.ListarSolicitacoesQuery;
 import br.com.morbus.regulacao.ports.out.ISolicitacaoRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -13,7 +13,6 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -64,11 +63,5 @@ public class SolicitacaoJpaAdapter implements ISolicitacaoRepository {
         Pageable pageable = PageRequest.of(query.page(), query.size(),
                 Sort.by(Sort.Direction.DESC, "createdAt"));
         return jpaRepository.findAll(spec, pageable).map(SolicitacaoEntity::toDomain);
-    }
-
-    @Override
-    public void delete(Solicitacao solicitacao) {
-        SolicitacaoEntity entity = SolicitacaoEntity.fromDomain(solicitacao);
-        jpaRepository.deleteById(solicitacao.getId());
     }
 }

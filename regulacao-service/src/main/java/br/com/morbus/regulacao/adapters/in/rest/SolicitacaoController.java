@@ -6,8 +6,6 @@ import br.com.morbus.regulacao.adapters.in.rest.dto.SolicitacaoSummaryDTO;
 import br.com.morbus.regulacao.adapters.security.UserPrincipal;
 import br.com.morbus.regulacao.domain.dto.ListarSolicitacoesQuery;
 import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
-import br.com.morbus.regulacao.domain.exception.SolicitacaoNaoEncontradaException;
-import br.com.morbus.regulacao.domain.exception.SolicitacaoNaoPendenteException;
 import br.com.morbus.regulacao.domain.model.Solicitacao;
 import br.com.morbus.regulacao.ports.in.ICriarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.in.IDeletarSolicitacaoUseCase;
@@ -78,14 +76,8 @@ public class SolicitacaoController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('MEDICO', 'SOLICITANTE')")
-    public ResponseEntity<?> delete(@RequestParam UUID id) {
-        try {
-            deletarSolicitacaoUseCase.execute(id);
-            return ResponseEntity.noContent().build();
-        } catch (SolicitacaoNaoEncontradaException e) {
-            return ResponseEntity.notFound().build();
-        } catch (SolicitacaoNaoPendenteException e) {
-            return ResponseEntity.unprocessableContent().build();
-        }
+    public ResponseEntity<?> delete(@PathVariable UUID id) {
+        deletarSolicitacaoUseCase.execute(id);
+        return ResponseEntity.noContent().build();
     }
 }

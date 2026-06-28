@@ -1,5 +1,7 @@
 package br.com.morbus.regulacao.adapters.in.rest;
 
+import br.com.morbus.regulacao.domain.exception.SolicitacaoNaoEncontradaException;
+import br.com.morbus.regulacao.domain.exception.SolicitacaoNaoPendenteException;
 import org.springframework.http.ProblemDetail;
 import br.com.morbus.regulacao.domain.exception.DuplicateSolicitacaoException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -40,6 +42,24 @@ public class GlobalExceptionHandler {
         problem.setType(URI.create("https://httpstatuses.com/500"));
         problem.setTitle("Erro interno");
         problem.setDetail("Ocorreu um erro inesperado. Tente novamente mais tarde.");
+        return problem;
+    }
+
+    @ExceptionHandler(SolicitacaoNaoPendenteException.class)
+    public ProblemDetail handleSolicitacaoNaoPendente(SolicitacaoNaoPendenteException e) {
+        ProblemDetail problem = ProblemDetail.forStatus(422);
+        problem.setType(URI.create("https://httpstatuses.com/422"));
+        problem.setTitle("Solicitação não pendente");
+        problem.setDetail(e.getMessage());
+        return problem;
+    }
+
+    @ExceptionHandler(SolicitacaoNaoEncontradaException.class)
+    public ProblemDetail handleSolicitacaoNotFound(SolicitacaoNaoEncontradaException e) {
+        ProblemDetail problem = ProblemDetail.forStatus(404);
+        problem.setType(URI.create("https://httpstatuses.com/404"));
+        problem.setTitle("Solicitacao não encontrada");
+        problem.setDetail(e.getMessage());
         return problem;
     }
 }
