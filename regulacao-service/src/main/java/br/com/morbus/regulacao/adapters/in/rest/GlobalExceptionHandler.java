@@ -1,5 +1,6 @@
 package br.com.morbus.regulacao.adapters.in.rest;
 
+import br.com.morbus.regulacao.domain.exception.IdPacienteIncorretoException;
 import br.com.morbus.regulacao.domain.exception.SolicitacaoNaoEncontradaException;
 import br.com.morbus.regulacao.domain.exception.SolicitacaoNaoPendenteException;
 import org.springframework.http.ProblemDetail;
@@ -59,6 +60,15 @@ public class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatus(404);
         problem.setType(URI.create("https://httpstatuses.com/solicitacao-not-found"));
         problem.setTitle("Solicitacao não encontrada");
+        problem.setDetail(e.getMessage());
+        return problem;
+    }
+
+    @ExceptionHandler(IdPacienteIncorretoException.class)
+    public ProblemDetail handleIdPacienteIncorreto(IdPacienteIncorretoException e) {
+        ProblemDetail problem = ProblemDetail.forStatus(403);
+        problem.setTitle("Id incorreto");
+        problem.setType(URI.create("https://httpstatuses.com/403"));
         problem.setDetail(e.getMessage());
         return problem;
     }

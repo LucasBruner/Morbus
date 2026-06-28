@@ -1,8 +1,10 @@
 package br.com.morbus.regulacao.adapters.out.config;
 
+import br.com.morbus.regulacao.domain.ConsultarStatusSolicitacaoUseCase;
 import br.com.morbus.regulacao.domain.CriarSolicitacaoUseCase;
 import br.com.morbus.regulacao.domain.DeletarSolicitacaoUseCase;
 import br.com.morbus.regulacao.domain.ListarSolicitacoesUseCase;
+import br.com.morbus.regulacao.ports.in.IConsultarStatusSolicitacao;
 import br.com.morbus.regulacao.ports.in.ICriarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.in.IDeletarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.in.IListarSolicitacoesUseCase;
@@ -26,5 +28,10 @@ public class UseCaseConfig {
     @Bean
     public IDeletarSolicitacaoUseCase deletarSolicitacaoUseCase(ISolicitacaoRepository solicitacaoRepository) {
         return new DeletarSolicitacaoUseCase(solicitacaoRepository);
+    }
+
+    @Bean
+    public IConsultarStatusSolicitacao consultarStatusSolicitacao(ISolicitacaoRepository solicitacaoRepository) {
+        return new ConsultarStatusSolicitacaoUseCase(solicitacaoRepository);
     }
 }

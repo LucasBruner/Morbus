@@ -2,11 +2,13 @@ package br.com.morbus.regulacao.adapters.in.rest;
 
 import br.com.morbus.regulacao.adapters.in.rest.dto.SolicitacaoCreatedResponseDTO;
 import br.com.morbus.regulacao.adapters.in.rest.dto.SolicitacaoRequestDTO;
+import br.com.morbus.regulacao.adapters.in.rest.dto.SolicitacaoStatusResponseDTO;
 import br.com.morbus.regulacao.adapters.in.rest.dto.SolicitacaoSummaryDTO;
 import br.com.morbus.regulacao.adapters.security.UserPrincipal;
 import br.com.morbus.regulacao.domain.dto.ListarSolicitacoesQuery;
 import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
 import br.com.morbus.regulacao.domain.model.Solicitacao;
+import br.com.morbus.regulacao.ports.in.IConsultarStatusSolicitacao;
 import br.com.morbus.regulacao.ports.in.ICriarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.in.IDeletarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.in.IListarSolicitacoesUseCase;
@@ -31,13 +33,16 @@ public class SolicitacaoController {
     private final ICriarSolicitacaoUseCase criarSolicitacaoUseCase;
     private final IListarSolicitacoesUseCase listarSolicitacoesUseCase;
     private final IDeletarSolicitacaoUseCase deletarSolicitacaoUseCase;
+    private final IConsultarStatusSolicitacao statusSolicitacao;
 
     public SolicitacaoController(ICriarSolicitacaoUseCase criarSolicitacaoUseCase,
                                  IListarSolicitacoesUseCase listarSolicitacoesUseCase,
-                                 IDeletarSolicitacaoUseCase deletarSolicitacaoUseCase) {
+                                 IDeletarSolicitacaoUseCase deletarSolicitacaoUseCase,
+                                 IConsultarStatusSolicitacao statusSolicitacao) {
         this.criarSolicitacaoUseCase = criarSolicitacaoUseCase;
         this.listarSolicitacoesUseCase = listarSolicitacoesUseCase;
         this.deletarSolicitacaoUseCase = deletarSolicitacaoUseCase;
+        this.statusSolicitacao = statusSolicitacao;
     }
 
     @PostMapping
@@ -79,5 +84,14 @@ public class SolicitacaoController {
     public ResponseEntity<?> delete(@PathVariable UUID id) {
         deletarSolicitacaoUseCase.execute(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("{id}")
+    @PreAuthorize("hasAnyRole('PACIENTE', 'MEDICO', 'SOLICITANTE')")
+    public ResponseEntity<SolicitacaoStatusResponseDTO> consultarStatusSolicitacao (@PathVariable UUID id,
+                                                                                    @AuthenticationPrincipal UserPrincipal principal) {
+        SolicitacaoStatusResponseDTO solicitacao = SolicitacaoStatusResponseDTO
+                .fromDomain(statusSolicitacao.execute(id, principal));
+        return ResponseEntity.ok(solicitacao);
     }
 }
