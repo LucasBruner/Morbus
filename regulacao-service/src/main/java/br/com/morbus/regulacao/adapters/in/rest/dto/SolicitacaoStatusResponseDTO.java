@@ -23,7 +23,7 @@ public record SolicitacaoStatusResponseDTO(UUID id,
                 solicitacao.getRiscoSolicitado(),
                 solicitacao.getCreatedAt(),
                 solicitacao.getUpdatedAt(),
-                solicitacao.getObservacoes()
+                solicitacao.getJustificativaNegacao()
         );
     }
 }

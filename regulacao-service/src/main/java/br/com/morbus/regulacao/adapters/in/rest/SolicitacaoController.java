@@ -80,7 +80,7 @@ public class SolicitacaoController {
         return ResponseEntity.ok(result);
     }
 
-    @PatchMapping("/{id}")
+    @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('MEDICO', 'SOLICITANTE')")
     public ResponseEntity<?> cancelarSolicitacao(@PathVariable UUID id) {
         deletarSolicitacaoUseCase.execute(id);

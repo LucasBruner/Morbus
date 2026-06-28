@@ -20,7 +20,7 @@ public class ConsultarStatusSolicitacaoUseCase implements IConsultarStatusSolici
     @Override
     public Solicitacao execute(UUID solicitacaoId, UsuarioContexto principal) {
         Solicitacao solicitacao = solicitacaoRepository.findById(solicitacaoId);
-        if("PACIENTE".equals(principal.role())
+        if("ROLE_PACIENTE".equals(principal.role())
                 && !principal.pacienteId().equals(solicitacao.getPacienteId()))
             throw new IdPacienteIncorretoException("Paciente não pode acessar essa solicitação.");
 
