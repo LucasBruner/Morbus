@@ -9,9 +9,9 @@ import br.com.morbus.regulacao.domain.dto.ListarSolicitacoesQuery;
 import br.com.morbus.regulacao.domain.dto.UsuarioContexto;
 import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
 import br.com.morbus.regulacao.domain.model.Solicitacao;
+import br.com.morbus.regulacao.ports.in.ICancelarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.in.IConsultarStatusSolicitacao;
 import br.com.morbus.regulacao.ports.in.ICriarSolicitacaoUseCase;
-import br.com.morbus.regulacao.ports.in.ICancelarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.in.IListarSolicitacoesUseCase;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -92,7 +92,7 @@ public class SolicitacaoController {
     public ResponseEntity<SolicitacaoStatusResponseDTO> consultarStatusSolicitacao (@PathVariable UUID id,
                                                                                     @AuthenticationPrincipal UserPrincipal principal) {
         SolicitacaoStatusResponseDTO solicitacao = SolicitacaoStatusResponseDTO
-                .fromDomain(statusSolicitacao.execute(id, UsuarioContexto.userPrincipalToContexto(principal)));
+                .fromDomain(statusSolicitacao.execute(id, new UsuarioContexto(principal.role(), principal.userId())));
         return ResponseEntity.ok(solicitacao);
     }
 }

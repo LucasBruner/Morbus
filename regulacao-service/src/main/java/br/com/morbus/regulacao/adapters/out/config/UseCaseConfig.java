@@ -26,7 +26,7 @@ public class UseCaseConfig {
     }
 
     @Bean
-    public ICancelarSolicitacaoUseCase deletarSolicitacaoUseCase(ISolicitacaoRepository solicitacaoRepository) {
+    public ICancelarSolicitacaoUseCase cancelarSolicitacaoUseCase(ISolicitacaoRepository solicitacaoRepository) {
         return new CancelarSolicitacaoUseCase(solicitacaoRepository);
     }
 
