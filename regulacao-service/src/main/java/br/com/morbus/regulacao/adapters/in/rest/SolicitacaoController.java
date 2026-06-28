@@ -6,8 +6,11 @@ import br.com.morbus.regulacao.adapters.in.rest.dto.SolicitacaoSummaryDTO;
 import br.com.morbus.regulacao.adapters.security.UserPrincipal;
 import br.com.morbus.regulacao.domain.dto.ListarSolicitacoesQuery;
 import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
+import br.com.morbus.regulacao.domain.exception.SolicitacaoNaoEncontradaException;
+import br.com.morbus.regulacao.domain.exception.SolicitacaoNaoPendenteException;
 import br.com.morbus.regulacao.domain.model.Solicitacao;
 import br.com.morbus.regulacao.ports.in.ICriarSolicitacaoUseCase;
+import br.com.morbus.regulacao.ports.in.IDeletarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.in.IListarSolicitacoesUseCase;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -29,11 +32,14 @@ public class SolicitacaoController {
 
     private final ICriarSolicitacaoUseCase criarSolicitacaoUseCase;
     private final IListarSolicitacoesUseCase listarSolicitacoesUseCase;
+    private final IDeletarSolicitacaoUseCase deletarSolicitacaoUseCase;
 
     public SolicitacaoController(ICriarSolicitacaoUseCase criarSolicitacaoUseCase,
-                                 IListarSolicitacoesUseCase listarSolicitacoesUseCase) {
+                                 IListarSolicitacoesUseCase listarSolicitacoesUseCase,
+                                 IDeletarSolicitacaoUseCase deletarSolicitacaoUseCase) {
         this.criarSolicitacaoUseCase = criarSolicitacaoUseCase;
         this.listarSolicitacoesUseCase = listarSolicitacoesUseCase;
+        this.deletarSolicitacaoUseCase = deletarSolicitacaoUseCase;
     }
 
     @PostMapping
@@ -68,5 +74,18 @@ public class SolicitacaoController {
                 .map(SolicitacaoSummaryDTO::fromDomain);
 
         return ResponseEntity.ok(result);
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('MEDICO', 'SOLICITANTE')")
+    public ResponseEntity<?> delete(@RequestParam UUID id) {
+        try {
+            deletarSolicitacaoUseCase.execute(id);
+            return ResponseEntity.noContent().build();
+        } catch (SolicitacaoNaoEncontradaException e) {
+            return ResponseEntity.notFound().build();
+        } catch (SolicitacaoNaoPendenteException e) {
+            return ResponseEntity.unprocessableContent().build();
+        }
     }
 }
