@@ -1,6 +1,7 @@
 package br.com.morbus.regulacao.domain;
 
 import br.com.morbus.regulacao.adapters.security.UserPrincipal;
+import br.com.morbus.regulacao.domain.dto.UsuarioContexto;
 import br.com.morbus.regulacao.domain.exception.IdPacienteIncorretoException;
 import br.com.morbus.regulacao.domain.model.Solicitacao;
 import br.com.morbus.regulacao.ports.in.IConsultarStatusSolicitacao;
@@ -17,10 +18,10 @@ public class ConsultarStatusSolicitacaoUseCase implements IConsultarStatusSolici
     }
 
     @Override
-    public Solicitacao execute(UUID solicitacaoId, UserPrincipal principal) {
+    public Solicitacao execute(UUID solicitacaoId, UsuarioContexto principal) {
         Solicitacao solicitacao = solicitacaoRepository.findById(solicitacaoId);
         if("PACIENTE".equals(principal.role())
-                && principal.userId().equals(solicitacao.getPacienteId()))
+                && !principal.pacienteId().equals(solicitacao.getPacienteId()))
             throw new IdPacienteIncorretoException("Paciente não pode acessar essa solicitação.");
 
         return solicitacao;

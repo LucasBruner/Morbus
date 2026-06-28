@@ -3,15 +3,15 @@ package br.com.morbus.regulacao.domain;
 import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
 import br.com.morbus.regulacao.domain.exception.SolicitacaoNaoPendenteException;
 import br.com.morbus.regulacao.domain.model.Solicitacao;
-import br.com.morbus.regulacao.ports.in.IDeletarSolicitacaoUseCase;
+import br.com.morbus.regulacao.ports.in.ICancelarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.out.ISolicitacaoRepository;
 
 import java.util.UUID;
 
-public class DeletarSolicitacaoUseCase implements IDeletarSolicitacaoUseCase {
+public class CancelarSolicitacaoUseCase implements ICancelarSolicitacaoUseCase {
     private final ISolicitacaoRepository solicitacaoRepository;
 
-    public DeletarSolicitacaoUseCase(ISolicitacaoRepository solicitacaoRepository) {
+    public CancelarSolicitacaoUseCase(ISolicitacaoRepository solicitacaoRepository) {
         this.solicitacaoRepository = solicitacaoRepository;
     }
 
