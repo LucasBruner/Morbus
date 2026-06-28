@@ -27,7 +27,7 @@ public class SolicitacaoJpaAdapter implements ISolicitacaoRepository {
     @Override
     public Solicitacao findById(UUID solicitacaoId) {
         return jpaRepository.findById(solicitacaoId)
-                .orElseThrow(() -> new SolicitacaoNaoEncontradaException("Id informado não possuí nenhuma solicitação na fila!")).toDomain();
+                .orElseThrow(() -> new SolicitacaoNaoEncontradaException("Id informado não possui nenhuma solicitação.")).toDomain();
     }
 
     @Override

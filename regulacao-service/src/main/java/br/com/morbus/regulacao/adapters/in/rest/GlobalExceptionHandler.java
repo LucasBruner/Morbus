@@ -48,7 +48,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(SolicitacaoNaoPendenteException.class)
     public ProblemDetail handleSolicitacaoNaoPendente(SolicitacaoNaoPendenteException e) {
         ProblemDetail problem = ProblemDetail.forStatus(422);
-        problem.setType(URI.create("https://httpstatuses.com/422"));
+        problem.setType(URI.create("https://httpstatuses.com/regulacao-not-allowed"));
         problem.setTitle("Solicitação não pendente");
         problem.setDetail(e.getMessage());
         return problem;
@@ -57,7 +57,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(SolicitacaoNaoEncontradaException.class)
     public ProblemDetail handleSolicitacaoNotFound(SolicitacaoNaoEncontradaException e) {
         ProblemDetail problem = ProblemDetail.forStatus(404);
-        problem.setType(URI.create("https://httpstatuses.com/404"));
+        problem.setType(URI.create("https://httpstatuses.com/solicitacao-not-found"));
         problem.setTitle("Solicitacao não encontrada");
         problem.setDetail(e.getMessage());
         return problem;

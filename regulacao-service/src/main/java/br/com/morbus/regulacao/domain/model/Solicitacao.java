@@ -67,7 +67,7 @@ public class Solicitacao {
         this.updatedAt = updatedAt;
     }
 
-    public void changeStatus (EStatusSolicitacao status) {
-        this.status = status;
+    public void cancelar() {
+        this.status = EStatusSolicitacao.CANCELADA;
     }
 }
