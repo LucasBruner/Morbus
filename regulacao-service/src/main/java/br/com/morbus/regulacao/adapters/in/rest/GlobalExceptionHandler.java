@@ -5,6 +5,7 @@ import br.com.morbus.regulacao.domain.exception.SolicitacaoNaoEncontradaExceptio
 import br.com.morbus.regulacao.domain.exception.SolicitacaoNaoPendenteException;
 import org.springframework.http.ProblemDetail;
 import br.com.morbus.regulacao.domain.exception.DuplicateSolicitacaoException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -34,6 +35,15 @@ public class GlobalExceptionHandler {
         problem.setType(URI.create("https://httpstatuses.com/400"));
         problem.setTitle("Dados inválidos");
         problem.setDetail(detail);
+        return problem;
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ProblemDetail handleAccessDenied(AccessDeniedException ex) {
+        ProblemDetail problem = ProblemDetail.forStatus(403);
+        problem.setType(URI.create("https://httpstatuses.com/403"));
+        problem.setTitle("Acesso negado");
+        problem.setDetail("Seu perfil não tem permissão para esta operação.");
         return problem;
     }
 

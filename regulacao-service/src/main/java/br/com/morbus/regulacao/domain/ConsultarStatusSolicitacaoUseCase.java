@@ -1,6 +1,5 @@
 package br.com.morbus.regulacao.domain;
 
-import br.com.morbus.regulacao.adapters.security.UserPrincipal;
 import br.com.morbus.regulacao.domain.dto.UsuarioContexto;
 import br.com.morbus.regulacao.domain.exception.IdPacienteIncorretoException;
 import br.com.morbus.regulacao.domain.model.Solicitacao;
