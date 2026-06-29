@@ -1,8 +1,12 @@
 package br.com.morbus.regulacao.adapters.out.config;
 
+import br.com.morbus.regulacao.domain.ConsultarStatusSolicitacaoUseCase;
 import br.com.morbus.regulacao.domain.CriarSolicitacaoUseCase;
+import br.com.morbus.regulacao.domain.CancelarSolicitacaoUseCase;
 import br.com.morbus.regulacao.domain.ListarSolicitacoesUseCase;
+import br.com.morbus.regulacao.ports.in.IConsultarStatusSolicitacao;
 import br.com.morbus.regulacao.ports.in.ICriarSolicitacaoUseCase;
+import br.com.morbus.regulacao.ports.in.ICancelarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.in.IListarSolicitacoesUseCase;
 import br.com.morbus.regulacao.ports.out.ISolicitacaoRepository;
 import org.springframework.context.annotation.Bean;
@@ -19,5 +23,15 @@ public class UseCaseConfig {
     @Bean
     public IListarSolicitacoesUseCase listarSolicitacoesUseCase(ISolicitacaoRepository solicitacaoRepository) {
         return new ListarSolicitacoesUseCase(solicitacaoRepository);
+    }
+
+    @Bean
+    public ICancelarSolicitacaoUseCase cancelarSolicitacaoUseCase(ISolicitacaoRepository solicitacaoRepository) {
+        return new CancelarSolicitacaoUseCase(solicitacaoRepository);
+    }
+
+    @Bean
+    public IConsultarStatusSolicitacao consultarStatusSolicitacao(ISolicitacaoRepository solicitacaoRepository) {
+        return new ConsultarStatusSolicitacaoUseCase(solicitacaoRepository);
     }
 }

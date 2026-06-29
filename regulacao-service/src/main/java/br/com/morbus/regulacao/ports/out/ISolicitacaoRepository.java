@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import java.util.UUID;
 
 public interface ISolicitacaoRepository {
+    Solicitacao findById(UUID solicitacaoId);
     boolean existsAtiva(UUID pacienteId, UUID procedureId);
     Solicitacao save(Solicitacao solicitacao);
     Page<Solicitacao> listar(ListarSolicitacoesQuery query);

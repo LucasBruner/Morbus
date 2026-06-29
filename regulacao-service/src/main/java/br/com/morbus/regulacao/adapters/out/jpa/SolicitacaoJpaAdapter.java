@@ -1,8 +1,9 @@
 package br.com.morbus.regulacao.adapters.out.jpa;
 
-import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
-import br.com.morbus.regulacao.domain.model.Solicitacao;
 import br.com.morbus.regulacao.domain.dto.ListarSolicitacoesQuery;
+import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
+import br.com.morbus.regulacao.domain.exception.SolicitacaoNaoEncontradaException;
+import br.com.morbus.regulacao.domain.model.Solicitacao;
 import br.com.morbus.regulacao.ports.out.ISolicitacaoRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -21,6 +22,12 @@ public class SolicitacaoJpaAdapter implements ISolicitacaoRepository {
 
     public SolicitacaoJpaAdapter(ISolicitacaoJpaRepository jpaRepository) {
         this.jpaRepository = jpaRepository;
+    }
+
+    @Override
+    public Solicitacao findById(UUID solicitacaoId) {
+        return jpaRepository.findById(solicitacaoId)
+                .orElseThrow(() -> new SolicitacaoNaoEncontradaException("Id informado não possui nenhuma solicitação.")).toDomain();
     }
 
     @Override
