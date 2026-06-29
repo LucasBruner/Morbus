@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS agendamento.appointments (
     slot_id          UUID        NOT NULL,
     paciente_id      UUID        NOT NULL,
     solicitacao_id   UUID,
-    status           VARCHAR(30) NOT NULL DEFAULT 'AGENDADO',
+    status           VARCHAR(30) NOT NULL DEFAULT 'AGUARDANDO_CONFIRMACAO',
     expires_at       TIMESTAMP,
     confirmed_at     TIMESTAMP,
     attended_at      TIMESTAMP,
