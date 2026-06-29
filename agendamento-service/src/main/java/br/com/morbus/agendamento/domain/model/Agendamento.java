@@ -28,7 +28,7 @@ public class Agendamento {
                 procedimentoId,
                 unidadeId,
                 dataHora,
-                EStatusAgendamento.AGENDADO,
+                EStatusAgendamento.AGUARDANDO_CONFIRMACAO,
                 LocalDateTime.now(),
                 LocalDateTime.now()
         );

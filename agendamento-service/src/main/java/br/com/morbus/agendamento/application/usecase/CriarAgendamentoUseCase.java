@@ -1,4 +1,4 @@
-package br.com.morbus.agendamento.domain;
+package br.com.morbus.agendamento.application.usecase;
 
 import br.com.morbus.agendamento.application.command.CriarAgendamentoCommand;
 import br.com.morbus.agendamento.domain.exception.DuplicateAgendamentoException;
@@ -18,7 +18,7 @@ public class CriarAgendamentoUseCase implements ICriarAgendamentoUseCase {
     public Agendamento execute(CriarAgendamentoCommand command) {
         agendamentoRepository.findByPacienteIdAndDataHora(command.pacienteId(), command.dataHora())
                 .ifPresent(agendamento -> {
-                    throw new DuplicateAgendamentoException("Paciente ja possui agendamento para o horario informado.");
+                    throw new DuplicateAgendamentoException("Paciente ja possui agendamento para o horário informado.");
                 });
 
         Agendamento agendamento = new Agendamento(
