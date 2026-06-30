@@ -3,6 +3,7 @@ package br.com.morbus.regulacao.domain;
 import br.com.morbus.regulacao.domain.dto.ListarSolicitacoesQuery;
 import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
 import br.com.morbus.regulacao.domain.model.Solicitacao;
+import br.com.morbus.regulacao.domain.usecase.solicitacao.ListarSolicitacoesUseCase;
 import br.com.morbus.regulacao.ports.out.ISolicitacaoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -44,7 +45,7 @@ class ListarSolicitacoesUseCaseTest {
         @Test
         @DisplayName("deve delegar ao repositório com a mesma query")
         void deveDelegarAoRepositorio() {
-            ListarSolicitacoesQuery query = new ListarSolicitacoesQuery(UUID.randomUUID(), EStatusSolicitacao.PENDENTE, UUID.randomUUID(), 0, 20);
+            ListarSolicitacoesQuery query = new ListarSolicitacoesQuery(UUID.randomUUID(), EStatusSolicitacao.AGUARDANDO, UUID.randomUUID(), 0, 20);
             when(repository.listar(query)).thenReturn(Page.empty());
 
             useCase.execute(query);

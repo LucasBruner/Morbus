@@ -1,4 +1,4 @@
-package br.com.morbus.regulacao.domain;
+package br.com.morbus.regulacao.domain.usecase.solicitacao;
 
 import br.com.morbus.regulacao.domain.model.Solicitacao;
 import br.com.morbus.regulacao.ports.in.IListarSolicitacoesUseCase;

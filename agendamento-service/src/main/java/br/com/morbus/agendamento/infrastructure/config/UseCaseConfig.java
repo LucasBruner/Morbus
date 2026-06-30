@@ -1,8 +1,8 @@
 package br.com.morbus.agendamento.infrastructure.config;
 
-import br.com.morbus.agendamento.application.usecase.CriarAgendamentoUseCase;
-import br.com.morbus.agendamento.domain.port.in.ICriarAgendamentoUseCase;
-import br.com.morbus.agendamento.domain.port.out.IAgendamentoRepository;
+import br.com.morbus.agendamento.application.usecase.AlocarSlotUseCase;
+import br.com.morbus.agendamento.domain.port.in.IAlocarSlotUseCase;
+import br.com.morbus.agendamento.domain.port.out.IAppointmentRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Configuration;
 public class UseCaseConfig {
 
     @Bean
-    public ICriarAgendamentoUseCase criarAgendamentoUseCase(IAgendamentoRepository agendamentoRepository) {
-        return new CriarAgendamentoUseCase(agendamentoRepository);
+    public IAlocarSlotUseCase alocarSlotUseCase(IAppointmentRepository appointmentRepository) {
+        return new AlocarSlotUseCase(appointmentRepository);
     }
 }

@@ -1,10 +1,12 @@
 package br.com.morbus.regulacao.domain;
 
+import br.com.morbus.regulacao.domain.enums.EDestino;
 import br.com.morbus.regulacao.domain.enums.ERiscoSolicitado;
 import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
 import br.com.morbus.regulacao.domain.exception.SolicitacaoNaoEncontradaException;
 import br.com.morbus.regulacao.domain.exception.SolicitacaoNaoPendenteException;
 import br.com.morbus.regulacao.domain.model.Solicitacao;
+import br.com.morbus.regulacao.domain.usecase.solicitacao.CancelarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.out.ISolicitacaoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -38,8 +40,6 @@ class CancelarSolicitacaoUseCaseTest {
         useCase = new CancelarSolicitacaoUseCase(repository);
     }
 
-    // ── Fixtures ──────────────────────────────────────────────────────────────
-
     private Solicitacao buildSolicitacao(EStatusSolicitacao status) {
         return new Solicitacao(
                 UUID.randomUUID(),
@@ -48,8 +48,12 @@ class CancelarSolicitacaoUseCaseTest {
                 UUID.randomUUID(),
                 null,
                 status,
-                ERiscoSolicitado.VERDE,
-                "observação",
+                ERiscoSolicitado.AZUL,
+                "I10",
+                "justificativa clinica",
+                "Dr. Silva",
+                null,
+                EDestino.FILA_REGULADA,
                 null,
                 UUID.randomUUID(),
                 LocalDateTime.now().minusHours(1),
@@ -57,16 +61,14 @@ class CancelarSolicitacaoUseCaseTest {
         );
     }
 
-    // ── Fluxo feliz ───────────────────────────────────────────────────────────
-
     @Nested
-    @DisplayName("quando solicitação está PENDENTE")
-    class QuandoPendente {
+    @DisplayName("quando solicitacao esta AGUARDANDO")
+    class QuandoAguardando {
 
         @Test
         @DisplayName("deve transicionar o status para CANCELADA")
         void deveTransicionarParaCancelada() {
-            Solicitacao solicitacao = buildSolicitacao(EStatusSolicitacao.PENDENTE);
+            Solicitacao solicitacao = buildSolicitacao(EStatusSolicitacao.AGUARDANDO);
             when(repository.findById(solicitacao.getId())).thenReturn(solicitacao);
             when(repository.save(any())).thenReturn(solicitacao);
 
@@ -76,9 +78,9 @@ class CancelarSolicitacaoUseCaseTest {
         }
 
         @Test
-        @DisplayName("deve persistir a solicitação cancelada")
+        @DisplayName("deve persistir a solicitacao cancelada")
         void devePersistir() {
-            Solicitacao solicitacao = buildSolicitacao(EStatusSolicitacao.PENDENTE);
+            Solicitacao solicitacao = buildSolicitacao(EStatusSolicitacao.AGUARDANDO);
             when(repository.findById(solicitacao.getId())).thenReturn(solicitacao);
             when(repository.save(any())).thenReturn(solicitacao);
 
@@ -88,27 +90,25 @@ class CancelarSolicitacaoUseCaseTest {
         }
     }
 
-    // ── Não encontrado ────────────────────────────────────────────────────────
-
     @Nested
-    @DisplayName("quando a solicitação não existe")
+    @DisplayName("quando a solicitacao nao existe")
     class QuandoNaoExiste {
 
         @Test
         @DisplayName("deve propagar SolicitacaoNaoEncontradaException")
         void devePropagarSolicitacaoNaoEncontradaException() {
             UUID id = UUID.randomUUID();
-            when(repository.findById(id)).thenThrow(new SolicitacaoNaoEncontradaException("não encontrada"));
+            when(repository.findById(id)).thenThrow(new SolicitacaoNaoEncontradaException("nao encontrada"));
 
             assertThatThrownBy(() -> useCase.execute(id))
                     .isInstanceOf(SolicitacaoNaoEncontradaException.class);
         }
 
         @Test
-        @DisplayName("não deve salvar quando a solicitação não existe")
+        @DisplayName("nao deve salvar quando a solicitacao nao existe")
         void naoDeveSalvar() {
             UUID id = UUID.randomUUID();
-            when(repository.findById(id)).thenThrow(new SolicitacaoNaoEncontradaException("não encontrada"));
+            when(repository.findById(id)).thenThrow(new SolicitacaoNaoEncontradaException("nao encontrada"));
 
             assertThatThrownBy(() -> useCase.execute(id))
                     .isInstanceOf(SolicitacaoNaoEncontradaException.class);
@@ -117,15 +117,14 @@ class CancelarSolicitacaoUseCaseTest {
         }
     }
 
-    // ── Status não permite cancelamento ──────────────────────────────────────
-
     @Nested
-    @DisplayName("quando status não permite cancelamento")
+    @DisplayName("quando status nao permite cancelamento")
     class QuandoStatusNaoPermitido {
 
-        @ParameterizedTest(name = "status {0} deve lançar SolicitacaoNaoPendenteException")
-        @EnumSource(value = EStatusSolicitacao.class, names = {"EM_ANALISE", "APROVADA", "NEGADA", "CANCELADA", "DEVOLVIDA"})
-        @DisplayName("deve lançar SolicitacaoNaoPendenteException para status inválidos")
+        @ParameterizedTest(name = "status {0} deve lancar SolicitacaoNaoPendenteException")
+        @EnumSource(value = EStatusSolicitacao.class,
+                names = {"APROVADA", "NEGADA", "CANCELADA", "DEVOLVIDA", "PENDENTE", "AGENDADA", "ATENDIDA", "FALTOU"})
+        @DisplayName("deve lancar SolicitacaoNaoPendenteException para status invalidos")
         void deveLancarSolicitacaoNaoPendenteException(EStatusSolicitacao status) {
             Solicitacao solicitacao = buildSolicitacao(status);
             when(repository.findById(solicitacao.getId())).thenReturn(solicitacao);
@@ -135,7 +134,7 @@ class CancelarSolicitacaoUseCaseTest {
         }
 
         @Test
-        @DisplayName("não deve salvar quando status não permite cancelamento")
+        @DisplayName("nao deve salvar quando status nao permite cancelamento")
         void naoDeveSalvar() {
             Solicitacao solicitacao = buildSolicitacao(EStatusSolicitacao.APROVADA);
             when(repository.findById(solicitacao.getId())).thenReturn(solicitacao);

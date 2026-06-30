@@ -1,10 +1,9 @@
 package br.com.morbus.agendamento.domain.enums;
 
-public enum EStatusAgendamento {
+public enum EAppointmentStatus {
     AGUARDANDO_CONFIRMACAO,
     CONFIRMADO,
+    CANCELADO,
     ATENDIDO,
-    FALTOU,
-    EXPIRADO,
-    CANCELADO
+    FALTOU
 }

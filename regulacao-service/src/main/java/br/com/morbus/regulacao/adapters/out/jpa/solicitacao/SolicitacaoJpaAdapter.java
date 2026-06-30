@@ -1,4 +1,4 @@
-package br.com.morbus.regulacao.adapters.out.jpa;
+package br.com.morbus.regulacao.adapters.out.jpa.solicitacao;
 
 import br.com.morbus.regulacao.domain.dto.ListarSolicitacoesQuery;
 import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
@@ -27,15 +27,15 @@ public class SolicitacaoJpaAdapter implements ISolicitacaoRepository {
     @Override
     public Solicitacao findById(UUID solicitacaoId) {
         return jpaRepository.findById(solicitacaoId)
-                .orElseThrow(() -> new SolicitacaoNaoEncontradaException("Id informado não possui nenhuma solicitação.")).toDomain();
+                .orElseThrow(() -> new SolicitacaoNaoEncontradaException("Id informado nao possui nenhuma solicitacao.")).toDomain();
     }
 
     @Override
-    public boolean existsAtiva(UUID pacienteId, UUID procedureId) {
-        return jpaRepository.existsByPacienteIdAndProcedureIdAndStatusIn(
-                pacienteId,
+    public boolean existsAtiva(UUID patientId, UUID procedureId) {
+        return jpaRepository.existsByPatientIdAndProcedureIdAndStatusIn(
+                patientId,
                 procedureId,
-                List.of(EStatusSolicitacao.PENDENTE, EStatusSolicitacao.APROVADA)
+                List.of(EStatusSolicitacao.AGUARDANDO, EStatusSolicitacao.APROVADA)
         );
     }
 
@@ -48,15 +48,15 @@ public class SolicitacaoJpaAdapter implements ISolicitacaoRepository {
     @Override
     public Page<Solicitacao> listar(ListarSolicitacoesQuery query) {
         Specification<SolicitacaoEntity> spec = (r, cq, cb) -> cb.conjunction();
-        if(query.unidadeId() != null) {
+        if (query.unidadeId() != null) {
             spec = spec.and((r, cq, cb) -> cb.equal(r.get("unidadeSolicitanteId"), query.unidadeId()));
         }
 
-        if(query.status() != null) {
+        if (query.status() != null) {
             spec = spec.and((r, cq, cb) -> cb.equal(r.get("status"), query.status()));
         }
 
-        if(query.procedureId() != null) {
+        if (query.procedureId() != null) {
             spec = spec.and((r, cq, cb) -> cb.equal(r.get("procedureId"), query.procedureId()));
         }
 

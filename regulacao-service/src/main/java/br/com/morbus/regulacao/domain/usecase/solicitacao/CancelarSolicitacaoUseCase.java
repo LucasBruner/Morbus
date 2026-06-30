@@ -1,4 +1,4 @@
-package br.com.morbus.regulacao.domain;
+package br.com.morbus.regulacao.domain.usecase.solicitacao;
 
 import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
 import br.com.morbus.regulacao.domain.exception.SolicitacaoNaoPendenteException;
@@ -19,8 +19,8 @@ public class CancelarSolicitacaoUseCase implements ICancelarSolicitacaoUseCase {
     public void execute(UUID idSolicitacao) {
         Solicitacao solicitacao = solicitacaoRepository.findById(idSolicitacao);
 
-        if(!solicitacao.getStatus().equals(EStatusSolicitacao.PENDENTE))
-            throw new SolicitacaoNaoPendenteException("A solicitação informada não está com status PENDENTE.");
+        if (!solicitacao.getStatus().equals(EStatusSolicitacao.AGUARDANDO))
+            throw new SolicitacaoNaoPendenteException("A solicitacao informada nao esta com status AGUARDANDO.");
 
         solicitacao.cancelar();
         solicitacaoRepository.save(solicitacao);

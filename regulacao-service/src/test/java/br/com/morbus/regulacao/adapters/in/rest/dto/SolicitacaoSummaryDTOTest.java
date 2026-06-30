@@ -1,5 +1,6 @@
 package br.com.morbus.regulacao.adapters.in.rest.dto;
 
+import br.com.morbus.regulacao.domain.enums.EDestino;
 import br.com.morbus.regulacao.domain.enums.ERiscoSolicitado;
 import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
 import br.com.morbus.regulacao.domain.model.Solicitacao;
@@ -18,23 +19,25 @@ class SolicitacaoSummaryDTOTest {
     @DisplayName("fromDomain deve mapear todos os campos corretamente")
     void fromDomainMapeiaCorretamente() {
         UUID id = UUID.randomUUID();
-        UUID pacienteId = UUID.randomUUID();
+        UUID patientId = UUID.randomUUID();
         UUID procedureId = UUID.randomUUID();
         UUID unidadeId = UUID.randomUUID();
         LocalDateTime createdAt = LocalDateTime.now().minusHours(1);
 
-        Solicitacao s = new Solicitacao(id, pacienteId, procedureId, unidadeId, null,
-                EStatusSolicitacao.PENDENTE, ERiscoSolicitado.AZUL, "obs",
-                null, UUID.randomUUID(), createdAt, createdAt);
+        Solicitacao s = new Solicitacao(id, patientId, procedureId, unidadeId, null,
+                EStatusSolicitacao.AGUARDANDO, ERiscoSolicitado.AZUL,
+                "I10", "Hipertensao grave", "Dr. Silva", null,
+                EDestino.FILA_REGULADA, null, UUID.randomUUID(), createdAt, createdAt);
 
         SolicitacaoSummaryDTO dto = SolicitacaoSummaryDTO.fromDomain(s);
 
         assertThat(dto.id()).isEqualTo(id);
-        assertThat(dto.pacienteId()).isEqualTo(pacienteId);
+        assertThat(dto.patientId()).isEqualTo(patientId);
         assertThat(dto.procedureId()).isEqualTo(procedureId);
-        assertThat(dto.unidadeSolicitanteId()).isEqualTo(unidadeId);
-        assertThat(dto.status()).isEqualTo(EStatusSolicitacao.PENDENTE);
-        assertThat(dto.riscoSolicitado()).isEqualTo(ERiscoSolicitado.AZUL);
-        assertThat(dto.createdAt()).isEqualTo(createdAt);
+        assertThat(dto.unitSolicitanteId()).isEqualTo(unidadeId);
+        assertThat(dto.status()).isEqualTo(EStatusSolicitacao.AGUARDANDO);
+        assertThat(dto.riskColor()).isEqualTo(ERiscoSolicitado.AZUL);
+        assertThat(dto.destino()).isEqualTo(EDestino.FILA_REGULADA);
+        assertThat(dto.criadaEm()).isEqualTo(createdAt);
     }
 }
