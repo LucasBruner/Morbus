@@ -10,48 +10,44 @@ import java.util.UUID;
 public class Agendamento {
 
     private final UUID id;
-    private final UUID queueEntryId;
-    private final UUID slotId;
     private final UUID pacienteId;
+    private final UUID procedimentoId;
+    private final UUID unidadeId;
+    private final LocalDateTime dataHora;
     private final EStatusAgendamento status;
-    private final LocalDateTime expiresAt;
-    private final String motivoCancelamento;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
 
-    public Agendamento(UUID queueEntryId,
-                       UUID slotId,
-                       UUID pacienteId,
-                       LocalDateTime expiresAt) {
+    public Agendamento(UUID pacienteId,
+                       UUID procedimentoId,
+                       UUID unidadeId,
+                       LocalDateTime dataHora) {
         this(
                 UUID.randomUUID(),
-                queueEntryId,
-                slotId,
                 pacienteId,
+                procedimentoId,
+                unidadeId,
+                dataHora,
                 EStatusAgendamento.AGUARDANDO_CONFIRMACAO,
-                expiresAt,
-                null,
                 LocalDateTime.now(),
-                null
+                LocalDateTime.now()
         );
     }
 
     public Agendamento(UUID id,
-                       UUID queueEntryId,
-                       UUID slotId,
                        UUID pacienteId,
+                       UUID procedimentoId,
+                       UUID unidadeId,
+                       LocalDateTime dataHora,
                        EStatusAgendamento status,
-                       LocalDateTime expiresAt,
-                       String motivoCancelamento,
                        LocalDateTime createdAt,
                        LocalDateTime updatedAt) {
         this.id = id;
-        this.queueEntryId = queueEntryId;
-        this.slotId = slotId;
         this.pacienteId = pacienteId;
+        this.procedimentoId = procedimentoId;
+        this.unidadeId = unidadeId;
+        this.dataHora = dataHora;
         this.status = status;
-        this.expiresAt = expiresAt;
-        this.motivoCancelamento = motivoCancelamento;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }

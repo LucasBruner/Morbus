@@ -3,82 +3,79 @@ schema {
 }
 
 type Query {
-    disponibilidade(
-        procedureId: ID!
-        unitId: ID
-        dateFrom: String!
-        dateTo: String!
-    ): [Slot!]!
-
-    agendamentos(
-        patientId: ID
-        unitId: ID
-        status: AppointmentStatus
-        dateFrom: String
-        dateTo: String
-    ): [Appointment!]!
-
+    disponibilidade(input: DisponibilidadeInput!): [Slot!]!
+    agendamentos(pacienteId: ID, status: AppointmentStatus): [Appointment!]!
     agendamento(id: ID!): Appointment
+    grade(input: GradeInput!): [Slot!]!
+}
 
-    grade(unitId: ID!, week: String!): [Schedule!]!
+input DisponibilidadeInput {
+    unitId: ID
+    providerId: ID
+    especialidade: String
+    dataInicio: String!
+    dataFim: String!
+}
+
+input GradeInput {
+    unitId: ID
+    providerId: ID
+    dataInicio: String!
+    dataFim: String!
 }
 
 type Slot {
     id: ID!
-    dateTime: String!
-    capacity: Int!
-    booked: Int!
-    remainingCapacity: Int!
+    scheduleId: ID!
+    dataHora: String!
+    duracaoMinutos: Int!
     status: SlotStatus!
-    schedule: Schedule!
-}
-
-type Schedule {
-    id: ID!
-    dayOfWeek: String!
-    startTime: String!
-    endTime: String!
-    slotDurationMin: Int!
-    capacity: Int!
-    active: Boolean!
-    unit: HealthUnit!
     provider: Provider
-}
-
-type HealthUnit {
-    id: ID!
-    cnes: String!
-    name: String!
-    address: String
-    phone: String
-}
-
-type Provider {
-    id: ID!
-    name: String!
-    crm: String
-    specialty: String
+    healthUnit: HealthUnit
 }
 
 type Appointment {
     id: ID!
-    status: AppointmentStatus!
-    expiresAt: String!
-    cancellationReason: String
-    createdAt: String!
     slot: Slot!
+    pacienteId: ID!
+    solicitacaoId: ID
+    status: AppointmentStatus!
+    expiresAt: String
+    confirmedAt: String
+    attendedAt: String
+    createdAt: String!
+}
+
+type Provider {
+    id: ID!
+    nome: String!
+    crm: String!
+    especialidade: String!
+    healthUnit: HealthUnit!
+    ativo: Boolean!
+}
+
+type HealthUnit {
+    id: ID!
+    nome: String!
+    cnes: String!
+    municipio: String!
+    uf: String!
+    ativo: Boolean!
 }
 
 enum SlotStatus {
-    AVAILABLE
-    BLOCKED
-    FULL
+    DISPONIVEL
+    RESERVADO
+    OCUPADO
+    INDISPONIVEL
 }
 
 enum AppointmentStatus {
     AGUARDANDO_CONFIRMACAO
     CONFIRMADO
-    CANCELADO
     ATENDIDO
     FALTOU
+    EXPIRADO
+    CANCELADO
 }

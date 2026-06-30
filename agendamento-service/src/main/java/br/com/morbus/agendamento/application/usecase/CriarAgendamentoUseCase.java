@@ -1,15 +1,12 @@
 package br.com.morbus.agendamento.application.usecase;
 
 import br.com.morbus.agendamento.application.command.CriarAgendamentoCommand;
+import br.com.morbus.agendamento.domain.exception.DuplicateAgendamentoException;
 import br.com.morbus.agendamento.domain.model.Agendamento;
 import br.com.morbus.agendamento.domain.port.in.ICriarAgendamentoUseCase;
 import br.com.morbus.agendamento.domain.port.out.IAgendamentoRepository;
 
-import java.time.LocalDateTime;
-
 public class CriarAgendamentoUseCase implements ICriarAgendamentoUseCase {
-
-    private static final long EXPIRACAO_HORAS = 72;
 
     private final IAgendamentoRepository agendamentoRepository;
 
@@ -19,13 +16,16 @@ public class CriarAgendamentoUseCase implements ICriarAgendamentoUseCase {
 
     @Override
     public Agendamento execute(CriarAgendamentoCommand command) {
-        LocalDateTime expiresAt = LocalDateTime.now().plusHours(EXPIRACAO_HORAS);
+        agendamentoRepository.findByPacienteIdAndDataHora(command.pacienteId(), command.dataHora())
+                .ifPresent(agendamento -> {
+                    throw new DuplicateAgendamentoException("Paciente ja possui agendamento para o horário informado.");
+                });
 
         Agendamento agendamento = new Agendamento(
-                command.queueEntryId(),
-                command.slotId(),
                 command.pacienteId(),
-                expiresAt
+                command.procedimentoId(),
+                command.unidadeId(),
+                command.dataHora()
         );
 
         return agendamentoRepository.save(agendamento);
