@@ -1,8 +1,10 @@
 package br.com.morbus.regulacao.domain;
 
-import br.com.morbus.regulacao.domain.enums.ERiscoSolicitado;
+import br.com.morbus.regulacao.domain.enums.EDestino;
+import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
 import br.com.morbus.regulacao.domain.exception.DuplicateSolicitacaoException;
 import br.com.morbus.regulacao.domain.model.Solicitacao;
+import br.com.morbus.regulacao.domain.usecase.solicitacao.CriarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.in.dto.CriarSolicitacaoCommand;
 import br.com.morbus.regulacao.ports.out.ISolicitacaoRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,54 +36,56 @@ class CriarSolicitacaoUseCaseTest {
         useCase = new CriarSolicitacaoUseCase(repository);
     }
 
-    // ── Fixtures ──────────────────────────────────────────────────────────────
-
     private CriarSolicitacaoCommand buildCommand() {
         return new CriarSolicitacaoCommand(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 UUID.randomUUID(),
-                ERiscoSolicitado.AMARELO,
-                "Paciente com dores persistentes",
+                "I10",
+                "Paciente com hipertensao grave",
+                "Dr. Silva",
+                "CRM/SP 12345",
+                EDestino.FILA_REGULADA,
                 UUID.randomUUID()
         );
     }
 
     private Solicitacao buildSolicitacaoSalva(CriarSolicitacaoCommand cmd) {
         return new Solicitacao(
-                cmd.pacienteId(),
+                cmd.patientId(),
                 cmd.procedureId(),
                 cmd.unidadeSolicitanteId(),
-                cmd.riscoSolicitado(),
-                cmd.observacoes(),
+                cmd.cid(),
+                cmd.justificativaClinica(),
+                cmd.profissionalSolicitante(),
+                cmd.crmProfissional(),
+                cmd.destino(),
                 cmd.solicitadoPor()
         );
     }
 
-    // ── Fluxo feliz ───────────────────────────────────────────────────────────
-
     @Nested
-    @DisplayName("quando não existe solicitação ativa")
+    @DisplayName("quando nao existe solicitacao ativa")
     class QuandoNaoExisteDuplicata {
 
         @Test
-        @DisplayName("deve retornar a solicitação com status PENDENTE")
-        void deveRetornarComStatusPendente() {
+        @DisplayName("deve retornar a solicitacao com status AGUARDANDO")
+        void deveRetornarComStatusAguardando() {
             CriarSolicitacaoCommand cmd = buildCommand();
             Solicitacao salva = buildSolicitacaoSalva(cmd);
-            when(repository.existsAtiva(cmd.pacienteId(), cmd.procedureId())).thenReturn(false);
+            when(repository.existsAtiva(cmd.patientId(), cmd.procedureId())).thenReturn(false);
             when(repository.save(any())).thenReturn(salva);
 
             Solicitacao result = useCase.execute(cmd);
 
-            assertThat(result.getStatus().name()).isEqualTo("PENDENTE");
+            assertThat(result.getStatus()).isEqualTo(EStatusSolicitacao.AGUARDANDO);
         }
 
         @Test
-        @DisplayName("deve persistir a solicitação no repositório")
+        @DisplayName("deve persistir a solicitacao no repositorio")
         void devePersistir() {
             CriarSolicitacaoCommand cmd = buildCommand();
-            when(repository.existsAtiva(cmd.pacienteId(), cmd.procedureId())).thenReturn(false);
+            when(repository.existsAtiva(cmd.patientId(), cmd.procedureId())).thenReturn(false);
             when(repository.save(any())).thenReturn(buildSolicitacaoSalva(cmd));
 
             useCase.execute(cmd);
@@ -90,11 +94,11 @@ class CriarSolicitacaoUseCaseTest {
         }
 
         @Test
-        @DisplayName("deve retornar a entidade devolvida pelo repositório")
+        @DisplayName("deve retornar a entidade devolvida pelo repositorio")
         void deveRetornarEntidadeDoRepositorio() {
             CriarSolicitacaoCommand cmd = buildCommand();
             Solicitacao salva = buildSolicitacaoSalva(cmd);
-            when(repository.existsAtiva(cmd.pacienteId(), cmd.procedureId())).thenReturn(false);
+            when(repository.existsAtiva(cmd.patientId(), cmd.procedureId())).thenReturn(false);
             when(repository.save(any())).thenReturn(salva);
 
             Solicitacao result = useCase.execute(cmd);
@@ -106,38 +110,36 @@ class CriarSolicitacaoUseCaseTest {
         @DisplayName("deve verificar duplicata antes de salvar")
         void deveVerificarDuplicataAntesDeSalvar() {
             CriarSolicitacaoCommand cmd = buildCommand();
-            when(repository.existsAtiva(cmd.pacienteId(), cmd.procedureId())).thenReturn(false);
+            when(repository.existsAtiva(cmd.patientId(), cmd.procedureId())).thenReturn(false);
             when(repository.save(any())).thenReturn(buildSolicitacaoSalva(cmd));
 
             useCase.execute(cmd);
 
             var order = inOrder(repository);
-            order.verify(repository).existsAtiva(cmd.pacienteId(), cmd.procedureId());
+            order.verify(repository).existsAtiva(cmd.patientId(), cmd.procedureId());
             order.verify(repository).save(any());
         }
     }
 
-    // ── Duplicata ─────────────────────────────────────────────────────────────
-
     @Nested
-    @DisplayName("quando já existe solicitação PENDENTE ou APROVADA")
+    @DisplayName("quando ja existe solicitacao AGUARDANDO ou APROVADA")
     class QuandoExisteDuplicata {
 
         @Test
-        @DisplayName("deve lançar DuplicateSolicitacaoException")
+        @DisplayName("deve lancar DuplicateSolicitacaoException")
         void deveLancarDuplicateSolicitacaoException() {
             CriarSolicitacaoCommand cmd = buildCommand();
-            when(repository.existsAtiva(cmd.pacienteId(), cmd.procedureId())).thenReturn(true);
+            when(repository.existsAtiva(cmd.patientId(), cmd.procedureId())).thenReturn(true);
 
             assertThatThrownBy(() -> useCase.execute(cmd))
                     .isInstanceOf(DuplicateSolicitacaoException.class);
         }
 
         @Test
-        @DisplayName("não deve persistir quando há duplicata")
+        @DisplayName("nao deve persistir quando ha duplicata")
         void naoDevePersistir() {
             CriarSolicitacaoCommand cmd = buildCommand();
-            when(repository.existsAtiva(cmd.pacienteId(), cmd.procedureId())).thenReturn(true);
+            when(repository.existsAtiva(cmd.patientId(), cmd.procedureId())).thenReturn(true);
 
             assertThatThrownBy(() -> useCase.execute(cmd))
                     .isInstanceOf(DuplicateSolicitacaoException.class);

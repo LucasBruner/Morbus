@@ -1195,24 +1195,24 @@ query {
   disponibilidade(
     procedureId: "c0d1e2f3-a4b5-6789-cdef-012345678901"
     unitId: "aa11bb22-cc33-dd44-ee55-ff6677889900"
-    dateFrom: "2026-07-01"
-    dateTo: "2026-07-07"
+    dataInicio: "2026-07-01"
+    dataFim: "2026-07-07"
   ) {
     id
-    dateTime
+    dataHora
     capacity
     booked
     remainingCapacity
     schedule {
       unit {
-        name
+        nome
         address
         cnes
       }
       provider {
-        name
+        nome
         crm
-        specialty
+        especialidade
       }
     }
   }
@@ -1226,20 +1226,20 @@ query {
     "disponibilidade": [
       {
         "id": "slot-uuid",
-        "dateTime": "2026-07-01T08:30:00Z",
+        "dataHora": "2026-07-01T08:30:00Z",
         "capacity": 2,
         "booked": 1,
         "remainingCapacity": 1,
         "schedule": {
           "unit": {
-            "name": "UPA Norte",
+            "nome": "UPA Norte",
             "address": "Rua das Flores, 100",
             "cnes": "2077485"
           },
           "provider": {
-            "name": "Dr. Carlos Melo",
+            "nome": "Dr. Carlos Melo",
             "crm": "CRM/SP 98765",
-            "specialty": "Cardiologia"
+            "especialidade": "Cardiologia"
           }
         }
       }
@@ -1252,12 +1252,12 @@ query {
 
 #### Query: agendamentos
 
-Retorna agendamentos com filtros flexíveis. PACIENTE vê apenas os próprios (patientId extraído do JWT).
+Retorna agendamentos com filtros flexíveis. PACIENTE vê apenas os próprios (pacienteId extraído do JWT).
 
 ```graphql
 query {
   agendamentos(
-    patientId: "f1e2d3c4-b5a6-7890-fedc-ba0987654321"
+    pacienteId: "f1e2d3c4-b5a6-7890-fedc-ba0987654321"
     status: CONFIRMADO
     dateFrom: "2026-07-01"
     dateTo: "2026-07-31"
@@ -1266,10 +1266,10 @@ query {
     status
     expiresAt
     slot {
-      dateTime
+      dataHora
       schedule {
-        unit { name address }
-        provider { name specialty }
+        unit { nome address }
+        provider { nome especialidade }
       }
     }
     cancellationReason
@@ -1288,10 +1288,10 @@ query {
     status
     expiresAt
     slot {
-      dateTime
+      dataHora
       schedule {
-        unit { name address phone }
-        provider { name crm specialty }
+        unit { nome address phone }
+        provider { nome crm especialidade }
       }
     }
   }
@@ -1314,7 +1314,7 @@ query {
     slotDurationMin
     capacity
     active
-    provider { name specialty }
+    provider { nome especialidade }
   }
 }
 ```
@@ -1328,12 +1328,12 @@ type Query {
   disponibilidade(
     procedureId: ID!
     unitId: ID
-    dateFrom: String!
-    dateTo: String!
+    dataInicio: String!
+    dataFim: String!
   ): [Slot!]!
 
   agendamentos(
-    patientId: ID
+    pacienteId: ID
     unitId: ID
     status: AppointmentStatus
     dateFrom: String
@@ -1347,7 +1347,7 @@ type Query {
 
 type Slot {
   id: ID!
-  dateTime: String!
+  dataHora: String!
   capacity: Int!
   booked: Int!
   remainingCapacity: Int!
@@ -1370,16 +1370,16 @@ type Schedule {
 type HealthUnit {
   id: ID!
   cnes: String!
-  name: String!
+  nome: String!
   address: String
   phone: String
 }
 
 type Provider {
   id: ID!
-  name: String!
+  nome: String!
   crm: String
-  specialty: String
+  especialidade: String
 }
 
 type Appointment {
@@ -1392,9 +1392,9 @@ type Appointment {
 }
 
 enum SlotStatus {
-  AVAILABLE
-  BLOCKED
-  FULL
+  DISPONIVEL
+  INDISPONIVEL
+  OCUPADO
 }
 
 enum AppointmentStatus {
@@ -1482,11 +1482,11 @@ enum AppointmentStatus {
 
 ### SlotStatus *(agendamento-service)*
 
-| Valor       | Descrição                         |
-|-------------|-----------------------------------|
-| `AVAILABLE` | Slot disponível para alocação     |
-| `BLOCKED`   | Slot bloqueado (feriado etc.)     |
-| `FULL`      | Capacidade esgotada               |
+| Valor          | Descrição                         |
+|----------------|-----------------------------------|
+| `DISPONIVEL`   | Slot disponível para alocação     |
+| `INDISPONIVEL` | Slot bloqueado (feriado etc.)     |
+| `OCUPADO`      | Capacidade esgotada               |
 
 ### NotificationType
 

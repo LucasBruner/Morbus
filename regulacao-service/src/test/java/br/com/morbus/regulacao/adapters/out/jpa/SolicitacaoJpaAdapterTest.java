@@ -1,6 +1,10 @@
 package br.com.morbus.regulacao.adapters.out.jpa;
 
+import br.com.morbus.regulacao.adapters.out.jpa.solicitacao.ISolicitacaoJpaRepository;
+import br.com.morbus.regulacao.adapters.out.jpa.solicitacao.SolicitacaoEntity;
+import br.com.morbus.regulacao.adapters.out.jpa.solicitacao.SolicitacaoJpaAdapter;
 import br.com.morbus.regulacao.domain.dto.ListarSolicitacoesQuery;
+import br.com.morbus.regulacao.domain.enums.EDestino;
 import br.com.morbus.regulacao.domain.enums.ERiscoSolicitado;
 import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
 import br.com.morbus.regulacao.domain.exception.SolicitacaoNaoEncontradaException;
@@ -44,35 +48,31 @@ class SolicitacaoJpaAdapterTest {
         adapter = new SolicitacaoJpaAdapter(jpaRepository);
     }
 
-    // ── Fixtures ──────────────────────────────────────────────────────────────
-
     private SolicitacaoEntity buildEntity() {
         UUID id = UUID.randomUUID();
         SolicitacaoEntity e = new SolicitacaoEntity();
         e.setId(id);
-        e.setPacienteId(UUID.randomUUID());
+        e.setPatientId(UUID.randomUUID());
         e.setProcedureId(UUID.randomUUID());
         e.setUnidadeSolicitanteId(UUID.randomUUID());
-        e.setStatus(EStatusSolicitacao.PENDENTE);
-        e.setRiscoSolicitado(ERiscoSolicitado.AMARELO);
+        e.setStatus(EStatusSolicitacao.AGUARDANDO);
+        e.setRiskColor(ERiscoSolicitado.AZUL);
+        e.setCid("I10");
+        e.setJustificativaClinica("Hipertensao grave");
+        e.setProfissionalSolicitante("Dr. Silva");
+        e.setDestino(EDestino.FILA_REGULADA);
         e.setSolicitadoPor(UUID.randomUUID());
         e.setCreatedAt(LocalDateTime.now().minusHours(1));
         e.setUpdatedAt(LocalDateTime.now().minusHours(1));
         return e;
     }
 
-    private Solicitacao buildDomain() {
-        return buildEntity().toDomain();
-    }
-
-    // ── findById ─────────────────────────────────────────────────────────────
-
     @Nested
     @DisplayName("findById")
     class FindById {
 
         @Test
-        @DisplayName("deve retornar domínio quando entidade existe")
+        @DisplayName("deve retornar dominio quando entidade existe")
         void deveRetornarDominio() {
             SolicitacaoEntity entity = buildEntity();
             when(jpaRepository.findById(entity.getId())).thenReturn(Optional.of(entity));
@@ -80,11 +80,11 @@ class SolicitacaoJpaAdapterTest {
             Solicitacao result = adapter.findById(entity.getId());
 
             assertThat(result.getId()).isEqualTo(entity.getId());
-            assertThat(result.getStatus()).isEqualTo(entity.getStatus());
+            assertThat(result.getStatus()).isEqualTo(EStatusSolicitacao.AGUARDANDO);
         }
 
         @Test
-        @DisplayName("deve lançar SolicitacaoNaoEncontradaException quando não existe")
+        @DisplayName("deve lancar SolicitacaoNaoEncontradaException quando nao existe")
         void deveLancarExcecaoQuandoNaoExiste() {
             UUID id = UUID.randomUUID();
             when(jpaRepository.findById(id)).thenReturn(Optional.empty());
@@ -94,50 +94,46 @@ class SolicitacaoJpaAdapterTest {
         }
     }
 
-    // ── existsAtiva ───────────────────────────────────────────────────────────
-
     @Nested
     @DisplayName("existsAtiva")
     class ExistsAtiva {
 
         @Test
-        @DisplayName("deve verificar com statuses PENDENTE e APROVADA")
+        @DisplayName("deve verificar com statuses AGUARDANDO e APROVADA")
         void deveVerificarStatusesCorretos() {
-            UUID pacienteId = UUID.randomUUID();
+            UUID patientId = UUID.randomUUID();
             UUID procedureId = UUID.randomUUID();
-            when(jpaRepository.existsByPacienteIdAndProcedureIdAndStatusIn(
+            when(jpaRepository.existsByPatientIdAndProcedureIdAndStatusIn(
                     any(), any(), any())).thenReturn(false);
 
-            adapter.existsAtiva(pacienteId, procedureId);
+            adapter.existsAtiva(patientId, procedureId);
 
             ArgumentCaptor<List<EStatusSolicitacao>> captor = ArgumentCaptor.forClass(List.class);
-            verify(jpaRepository).existsByPacienteIdAndProcedureIdAndStatusIn(
+            verify(jpaRepository).existsByPatientIdAndProcedureIdAndStatusIn(
                     any(), any(), captor.capture());
 
             assertThat(captor.getValue()).containsExactlyInAnyOrder(
-                    EStatusSolicitacao.PENDENTE, EStatusSolicitacao.APROVADA);
+                    EStatusSolicitacao.AGUARDANDO, EStatusSolicitacao.APROVADA);
         }
 
         @Test
-        @DisplayName("deve retornar true quando repositório retorna true")
+        @DisplayName("deve retornar true quando repositorio retorna true")
         void deveRetornarTrue() {
-            UUID pacienteId = UUID.randomUUID();
+            UUID patientId = UUID.randomUUID();
             UUID procedureId = UUID.randomUUID();
-            when(jpaRepository.existsByPacienteIdAndProcedureIdAndStatusIn(any(), any(), any()))
+            when(jpaRepository.existsByPatientIdAndProcedureIdAndStatusIn(any(), any(), any()))
                     .thenReturn(true);
 
-            assertThat(adapter.existsAtiva(pacienteId, procedureId)).isTrue();
+            assertThat(adapter.existsAtiva(patientId, procedureId)).isTrue();
         }
     }
-
-    // ── save ─────────────────────────────────────────────────────────────────
 
     @Nested
     @DisplayName("save")
     class Save {
 
         @Test
-        @DisplayName("deve persistir e retornar a entidade convertida para domínio")
+        @DisplayName("deve persistir e retornar a entidade convertida para dominio")
         void devePersistirERetornar() {
             SolicitacaoEntity entity = buildEntity();
             Solicitacao domain = entity.toDomain();
@@ -150,14 +146,12 @@ class SolicitacaoJpaAdapterTest {
         }
     }
 
-    // ── listar ────────────────────────────────────────────────────────────────
-
     @Nested
     @DisplayName("listar")
     class Listar {
 
         @Test
-        @DisplayName("deve chamar findAll com paginação e ordenação correta")
+        @DisplayName("deve chamar findAll com paginacao e ordenacao correta")
         void deveUsarPaginacaoCorreta() {
             ListarSolicitacoesQuery query = new ListarSolicitacoesQuery(null, null, null, 2, 10);
             when(jpaRepository.findAll(any(Specification.class), any(Pageable.class)))
@@ -175,7 +169,7 @@ class SolicitacaoJpaAdapterTest {
         }
 
         @Test
-        @DisplayName("deve mapear entidades para domínio no resultado")
+        @DisplayName("deve mapear entidades para dominio no resultado")
         void deveMapeiarResultado() {
             SolicitacaoEntity entity = buildEntity();
             ListarSolicitacoesQuery query = new ListarSolicitacoesQuery(null, null, null, 0, 20);

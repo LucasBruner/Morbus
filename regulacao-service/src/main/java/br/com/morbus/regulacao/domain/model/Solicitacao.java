@@ -1,5 +1,6 @@
 package br.com.morbus.regulacao.domain.model;
 
+import br.com.morbus.regulacao.domain.enums.EDestino;
 import br.com.morbus.regulacao.domain.enums.ERiscoSolicitado;
 import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
 import lombok.Getter;
@@ -11,56 +12,75 @@ import java.util.UUID;
 public class Solicitacao {
 
     private UUID id;
-    private UUID pacienteId;
+    private UUID patientId;
     private UUID procedureId;
     private UUID unidadeSolicitanteId;
     private UUID unidadeExecutanteId;
     private EStatusSolicitacao status;
-    private ERiscoSolicitado riscoSolicitado;
-    private String observacoes;
+    private ERiscoSolicitado riskColor;
+    private String cid;
+    private String justificativaClinica;
+    private String profissionalSolicitante;
+    private String crmProfissional;
+    private EDestino destino;
     private String justificativaNegacao;
     private UUID solicitadoPor;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    public Solicitacao(UUID pacienteId,
+    public Solicitacao(UUID patientId,
                        UUID procedureId,
                        UUID unidadeSolicitanteId,
-                       ERiscoSolicitado riscoSolicitado,
-                       String observacoes,
+                       String cid,
+                       String justificativaClinica,
+                       String profissionalSolicitante,
+                       String crmProfissional,
+                       EDestino destino,
                        UUID solicitadoPor) {
         this.id = UUID.randomUUID();
-        this.pacienteId = pacienteId;
+        this.patientId = patientId;
         this.procedureId = procedureId;
         this.unidadeSolicitanteId = unidadeSolicitanteId;
-        this.status = EStatusSolicitacao.PENDENTE;
-        this.riscoSolicitado = riscoSolicitado;
-        this.observacoes = observacoes;
+        this.status = EStatusSolicitacao.AGUARDANDO;
+        this.riskColor = ERiscoSolicitado.AZUL;
+        this.cid = cid;
+        this.justificativaClinica = justificativaClinica;
+        this.profissionalSolicitante = profissionalSolicitante;
+        this.crmProfissional = crmProfissional;
+        this.destino = destino;
         this.solicitadoPor = solicitadoPor;
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
 
     public Solicitacao(UUID id,
-                       UUID pacienteId,
+                       UUID patientId,
                        UUID procedureId,
                        UUID unidadeSolicitanteId,
                        UUID unidadeExecutanteId,
                        EStatusSolicitacao status,
-                       ERiscoSolicitado riscoSolicitado,
-                       String observacoes,
+                       ERiscoSolicitado riskColor,
+                       String cid,
+                       String justificativaClinica,
+                       String profissionalSolicitante,
+                       String crmProfissional,
+                       EDestino destino,
                        String justificativaNegacao,
                        UUID solicitadoPor,
                        LocalDateTime createdAt,
                        LocalDateTime updatedAt) {
         this.id = id;
-        this.pacienteId = pacienteId;
+        this.patientId = patientId;
         this.procedureId = procedureId;
         this.unidadeSolicitanteId = unidadeSolicitanteId;
         this.unidadeExecutanteId = unidadeExecutanteId;
         this.status = status;
-        this.riscoSolicitado = riscoSolicitado;
-        this.observacoes = observacoes;
+        this.riskColor = riskColor;
+        this.cid = cid;
+        this.justificativaClinica = justificativaClinica;
+        this.profissionalSolicitante = profissionalSolicitante;
+        this.crmProfissional = crmProfissional;
+        this.destino = destino;
         this.justificativaNegacao = justificativaNegacao;
         this.solicitadoPor = solicitadoPor;
         this.createdAt = createdAt;

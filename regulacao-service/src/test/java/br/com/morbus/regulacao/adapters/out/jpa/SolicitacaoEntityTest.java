@@ -1,5 +1,7 @@
 package br.com.morbus.regulacao.adapters.out.jpa;
 
+import br.com.morbus.regulacao.adapters.out.jpa.solicitacao.SolicitacaoEntity;
+import br.com.morbus.regulacao.domain.enums.EDestino;
 import br.com.morbus.regulacao.domain.enums.ERiscoSolicitado;
 import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
 import br.com.morbus.regulacao.domain.model.Solicitacao;
@@ -24,34 +26,40 @@ class SolicitacaoEntityTest {
                 UUID.randomUUID(),
                 EStatusSolicitacao.APROVADA,
                 ERiscoSolicitado.AMARELO,
-                "obs",
-                "parecer do regulador",
+                "I10",
+                "Hipertensao grave",
+                "Dr. Silva",
+                "CRM/SP 12345",
+                EDestino.FILA_REGULADA,
+                null,
                 UUID.randomUUID(),
                 LocalDateTime.now().minusHours(2),
                 LocalDateTime.now().minusHours(1)
         );
     }
 
-    // ── fromDomain ───────────────────────────────────────────────────────────
-
     @Nested
     @DisplayName("fromDomain")
     class FromDomain {
 
         @Test
-        @DisplayName("deve mapear todos os campos do domínio para a entidade")
+        @DisplayName("deve mapear todos os campos do dominio para a entidade")
         void deveMapeiarTodosOsCampos() {
             Solicitacao s = buildDomain();
             SolicitacaoEntity entity = SolicitacaoEntity.fromDomain(s);
 
             assertThat(entity.getId()).isEqualTo(s.getId());
-            assertThat(entity.getPacienteId()).isEqualTo(s.getPacienteId());
+            assertThat(entity.getPatientId()).isEqualTo(s.getPatientId());
             assertThat(entity.getProcedureId()).isEqualTo(s.getProcedureId());
             assertThat(entity.getUnidadeSolicitanteId()).isEqualTo(s.getUnidadeSolicitanteId());
             assertThat(entity.getUnidadeExecutanteId()).isEqualTo(s.getUnidadeExecutanteId());
             assertThat(entity.getStatus()).isEqualTo(s.getStatus());
-            assertThat(entity.getRiscoSolicitado()).isEqualTo(s.getRiscoSolicitado());
-            assertThat(entity.getObservacoes()).isEqualTo(s.getObservacoes());
+            assertThat(entity.getRiskColor()).isEqualTo(s.getRiskColor());
+            assertThat(entity.getCid()).isEqualTo(s.getCid());
+            assertThat(entity.getJustificativaClinica()).isEqualTo(s.getJustificativaClinica());
+            assertThat(entity.getProfissionalSolicitante()).isEqualTo(s.getProfissionalSolicitante());
+            assertThat(entity.getCrmProfissional()).isEqualTo(s.getCrmProfissional());
+            assertThat(entity.getDestino()).isEqualTo(s.getDestino());
             assertThat(entity.getJustificativaNegacao()).isEqualTo(s.getJustificativaNegacao());
             assertThat(entity.getSolicitadoPor()).isEqualTo(s.getSolicitadoPor());
             assertThat(entity.getCreatedAt()).isEqualTo(s.getCreatedAt());
@@ -59,14 +67,12 @@ class SolicitacaoEntityTest {
         }
     }
 
-    // ── toDomain ─────────────────────────────────────────────────────────────
-
     @Nested
     @DisplayName("toDomain")
     class ToDomain {
 
         @Test
-        @DisplayName("deve mapear todos os campos da entidade para o domínio")
+        @DisplayName("deve mapear todos os campos da entidade para o dominio")
         void deveMapeiarTodosOsCampos() {
             Solicitacao original = buildDomain();
             SolicitacaoEntity entity = SolicitacaoEntity.fromDomain(original);
@@ -74,13 +80,14 @@ class SolicitacaoEntityTest {
             Solicitacao reconvertido = entity.toDomain();
 
             assertThat(reconvertido.getId()).isEqualTo(original.getId());
-            assertThat(reconvertido.getPacienteId()).isEqualTo(original.getPacienteId());
+            assertThat(reconvertido.getPatientId()).isEqualTo(original.getPatientId());
             assertThat(reconvertido.getProcedureId()).isEqualTo(original.getProcedureId());
             assertThat(reconvertido.getUnidadeSolicitanteId()).isEqualTo(original.getUnidadeSolicitanteId());
             assertThat(reconvertido.getUnidadeExecutanteId()).isEqualTo(original.getUnidadeExecutanteId());
             assertThat(reconvertido.getStatus()).isEqualTo(original.getStatus());
-            assertThat(reconvertido.getRiscoSolicitado()).isEqualTo(original.getRiscoSolicitado());
-            assertThat(reconvertido.getObservacoes()).isEqualTo(original.getObservacoes());
+            assertThat(reconvertido.getRiskColor()).isEqualTo(original.getRiskColor());
+            assertThat(reconvertido.getCid()).isEqualTo(original.getCid());
+            assertThat(reconvertido.getDestino()).isEqualTo(original.getDestino());
             assertThat(reconvertido.getJustificativaNegacao()).isEqualTo(original.getJustificativaNegacao());
             assertThat(reconvertido.getSolicitadoPor()).isEqualTo(original.getSolicitadoPor());
             assertThat(reconvertido.getCreatedAt()).isEqualTo(original.getCreatedAt());
@@ -88,14 +95,15 @@ class SolicitacaoEntityTest {
         }
 
         @Test
-        @DisplayName("roundtrip fromDomain → toDomain deve preservar todos os dados")
+        @DisplayName("roundtrip fromDomain -> toDomain deve preservar todos os dados")
         void roundtripDevePreservarDados() {
             Solicitacao original = buildDomain();
             Solicitacao roundtrip = SolicitacaoEntity.fromDomain(original).toDomain();
 
             assertThat(roundtrip.getId()).isEqualTo(original.getId());
             assertThat(roundtrip.getStatus()).isEqualTo(original.getStatus());
-            assertThat(roundtrip.getJustificativaNegacao()).isEqualTo(original.getJustificativaNegacao());
+            assertThat(roundtrip.getCid()).isEqualTo(original.getCid());
+            assertThat(roundtrip.getDestino()).isEqualTo(original.getDestino());
         }
     }
 }

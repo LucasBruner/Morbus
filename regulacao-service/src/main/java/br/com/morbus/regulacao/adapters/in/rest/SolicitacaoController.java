@@ -47,7 +47,7 @@ public class SolicitacaoController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SOLICITANTE', 'MEDICO')")
+    @PreAuthorize("hasRole('SOLICITANTE')")
     public ResponseEntity<SolicitacaoCreatedResponseDTO> criar(
             @Valid @RequestBody SolicitacaoRequestDTO request,
             @AuthenticationPrincipal UserPrincipal principal) {
@@ -60,7 +60,7 @@ public class SolicitacaoController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('MEDICO', 'SOLICITANTE')")
+    @PreAuthorize("hasAnyRole('SOLICITANTE', 'REGULADOR')")
     public ResponseEntity<Page<SolicitacaoSummaryDTO>> listar(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(required = false) UUID unidadeId,
@@ -88,9 +88,10 @@ public class SolicitacaoController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('PACIENTE', 'MEDICO', 'SOLICITANTE')")
-    public ResponseEntity<SolicitacaoStatusResponseDTO> consultarStatusSolicitacao (@PathVariable UUID id,
-                                                                                    @AuthenticationPrincipal UserPrincipal principal) {
+    @PreAuthorize("hasAnyRole('SOLICITANTE', 'REGULADOR')")
+    public ResponseEntity<SolicitacaoStatusResponseDTO> consultarStatusSolicitacao(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserPrincipal principal) {
         SolicitacaoStatusResponseDTO solicitacao = SolicitacaoStatusResponseDTO
                 .fromDomain(statusSolicitacao.execute(id, new UsuarioContexto(principal.role(), principal.userId())));
         return ResponseEntity.ok(solicitacao);

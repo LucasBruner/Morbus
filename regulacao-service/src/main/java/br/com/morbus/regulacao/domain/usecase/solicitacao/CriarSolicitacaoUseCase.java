@@ -1,4 +1,4 @@
-package br.com.morbus.regulacao.domain;
+package br.com.morbus.regulacao.domain.usecase.solicitacao;
 
 import br.com.morbus.regulacao.domain.exception.DuplicateSolicitacaoException;
 import br.com.morbus.regulacao.domain.model.Solicitacao;
@@ -16,18 +16,21 @@ public class CriarSolicitacaoUseCase implements ICriarSolicitacaoUseCase {
 
     @Override
     public Solicitacao execute(CriarSolicitacaoCommand command) {
-        if (solicitacaoRepository.existsAtiva(command.pacienteId(), command.procedureId())) {
+        if (solicitacaoRepository.existsAtiva(command.patientId(), command.procedureId())) {
             throw new DuplicateSolicitacaoException(
-                    "Já existe solicitação PENDENTE ou APROVADA para pacienteId=%s e procedureId=%s"
-                            .formatted(command.pacienteId(), command.procedureId()));
+                    "Ja existe solicitacao AGUARDANDO ou APROVADA para patientId=%s e procedureId=%s"
+                            .formatted(command.patientId(), command.procedureId()));
         }
 
         Solicitacao solicitacao = new Solicitacao(
-                command.pacienteId(),
+                command.patientId(),
                 command.procedureId(),
                 command.unidadeSolicitanteId(),
-                command.riscoSolicitado(),
-                command.observacoes(),
+                command.cid(),
+                command.justificativaClinica(),
+                command.profissionalSolicitante(),
+                command.crmProfissional(),
+                command.destino(),
                 command.solicitadoPor()
         );
 

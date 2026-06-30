@@ -1,5 +1,6 @@
 package br.com.morbus.regulacao.adapters.in.rest.dto;
 
+import br.com.morbus.regulacao.domain.enums.EDestino;
 import br.com.morbus.regulacao.domain.enums.ERiscoSolicitado;
 import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
 import br.com.morbus.regulacao.domain.model.Solicitacao;
@@ -8,25 +9,23 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 public record SolicitacaoCreatedResponseDTO(UUID id,
-                                            UUID pacienteId,
+                                            UUID patientId,
                                             UUID procedureId,
-                                            UUID unidadeSolicitanteId,
+                                            String cid,
+                                            EDestino destino,
+                                            ERiscoSolicitado riskColor,
                                             EStatusSolicitacao status,
-                                            ERiscoSolicitado riscoSolicitado,
-                                            String observacoes,
-                                            UUID solicitadoPor,
-                                            LocalDateTime createdAt) {
+                                            LocalDateTime criadaEm) {
 
     public static SolicitacaoCreatedResponseDTO fromDomain(Solicitacao s) {
         return new SolicitacaoCreatedResponseDTO(
                 s.getId(),
-                s.getPacienteId(),
+                s.getPatientId(),
                 s.getProcedureId(),
-                s.getUnidadeSolicitanteId(),
+                s.getCid(),
+                s.getDestino(),
+                s.getRiskColor(),
                 s.getStatus(),
-                s.getRiscoSolicitado(),
-                s.getObservacoes(),
-                s.getSolicitadoPor(),
                 s.getCreatedAt()
         );
     }

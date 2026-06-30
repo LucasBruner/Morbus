@@ -1,5 +1,6 @@
 package br.com.morbus.regulacao.adapters.in.rest.dto;
 
+import br.com.morbus.regulacao.domain.enums.EDestino;
 import br.com.morbus.regulacao.domain.enums.ERiscoSolicitado;
 import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
 import br.com.morbus.regulacao.domain.model.Solicitacao;
@@ -18,36 +19,44 @@ class SolicitacaoStatusResponseDTOTest {
     @DisplayName("fromDomain deve mapear todos os campos corretamente")
     void fromDomainMapeiaCorretamente() {
         UUID id = UUID.randomUUID();
-        UUID pacienteId = UUID.randomUUID();
+        UUID patientId = UUID.randomUUID();
         UUID procedureId = UUID.randomUUID();
         LocalDateTime createdAt = LocalDateTime.now().minusMinutes(10);
         LocalDateTime updatedAt = LocalDateTime.now().minusMinutes(1);
 
-        Solicitacao s = new Solicitacao(id, pacienteId, procedureId, UUID.randomUUID(), null,
-                EStatusSolicitacao.APROVADA, ERiscoSolicitado.VERMELHO, "obs",
-                "Aprovado pelo regulador", UUID.randomUUID(), createdAt, updatedAt);
+        Solicitacao s = new Solicitacao(id, patientId, procedureId, UUID.randomUUID(), null,
+                EStatusSolicitacao.APROVADA, ERiscoSolicitado.AMARELO,
+                "I10", "Hipertensao grave", "Dr. Silva", null,
+                EDestino.FILA_REGULADA, null, UUID.randomUUID(), createdAt, updatedAt);
 
         SolicitacaoStatusResponseDTO dto = SolicitacaoStatusResponseDTO.fromDomain(s);
 
         assertThat(dto.id()).isEqualTo(id);
-        assertThat(dto.pacienteId()).isEqualTo(pacienteId);
+        assertThat(dto.patientId()).isEqualTo(patientId);
         assertThat(dto.procedureId()).isEqualTo(procedureId);
-        assertThat(dto.statusSolicitacao()).isEqualTo(EStatusSolicitacao.APROVADA);
-        assertThat(dto.riscoSolicitado()).isEqualTo(ERiscoSolicitado.VERMELHO);
-        assertThat(dto.createdAt()).isEqualTo(createdAt);
+        assertThat(dto.cid()).isEqualTo("I10");
+        assertThat(dto.justificativaClinica()).isEqualTo("Hipertensao grave");
+        assertThat(dto.profissionalSolicitante()).isEqualTo("Dr. Silva");
+        assertThat(dto.destino()).isEqualTo(EDestino.FILA_REGULADA);
+        assertThat(dto.riskColor()).isEqualTo(ERiscoSolicitado.AMARELO);
+        assertThat(dto.status()).isEqualTo(EStatusSolicitacao.APROVADA);
+        assertThat(dto.criadaEm()).isEqualTo(createdAt);
         assertThat(dto.updatedAt()).isEqualTo(updatedAt);
-        assertThat(dto.parecer()).isEqualTo("Aprovado pelo regulador");
+        assertThat(dto.justificativaNegacao()).isNull();
     }
 
     @Test
-    @DisplayName("fromDomain deve retornar parecer nulo quando justificativa não existe")
-    void fromDomainRetornaParecerNulo() {
-        Solicitacao s = new Solicitacao(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-                UUID.randomUUID(), null, EStatusSolicitacao.PENDENTE, null, null,
-                null, UUID.randomUUID(), LocalDateTime.now(), LocalDateTime.now());
+    @DisplayName("fromDomain deve retornar justificativaNegacao nula quando ausente")
+    void fromDomainRetornaJustificativaNegatioNula() {
+        Solicitacao s = new Solicitacao(
+                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                UUID.randomUUID(), null, EStatusSolicitacao.AGUARDANDO,
+                ERiscoSolicitado.AZUL, "I10", "texto", "Dr. Silva",
+                null, EDestino.FILA_REGULADA, null, UUID.randomUUID(),
+                LocalDateTime.now(), LocalDateTime.now());
 
         SolicitacaoStatusResponseDTO dto = SolicitacaoStatusResponseDTO.fromDomain(s);
 
-        assertThat(dto.parecer()).isNull();
+        assertThat(dto.justificativaNegacao()).isNull();
     }
 }
