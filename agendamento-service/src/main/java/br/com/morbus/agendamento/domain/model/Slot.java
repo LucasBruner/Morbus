@@ -12,24 +12,27 @@ public class Slot {
     private final UUID id;
     private final UUID scheduleId;
     private final LocalDateTime dataHora;
-    private final Integer duracaoMinutos;
+    private final int capacidade;
+    private final int reservados;
     private final EStatusSlots status;
 
     public Slot(UUID scheduleId,
                 LocalDateTime dataHora,
-                Integer duracaoMinutos) {
-        this(UUID.randomUUID(), scheduleId, dataHora, duracaoMinutos, EStatusSlots.DISPONIVEL);
+                int capacidade) {
+        this(UUID.randomUUID(), scheduleId, dataHora, capacidade, 0, EStatusSlots.DISPONIVEL);
     }
 
     public Slot(UUID id,
                 UUID scheduleId,
                 LocalDateTime dataHora,
-                Integer duracaoMinutos,
+                int capacidade,
+                int reservados,
                 EStatusSlots status) {
         this.id = id;
         this.scheduleId = scheduleId;
         this.dataHora = dataHora;
-        this.duracaoMinutos = duracaoMinutos;
+        this.capacidade = capacidade;
+        this.reservados = reservados;
         this.status = status;
     }
 }

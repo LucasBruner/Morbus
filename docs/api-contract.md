@@ -1139,15 +1139,30 @@ Cria uma grade semanal de atendimento para uma unidade executante e procedimento
   "unitId": "aa11bb22-cc33-dd44-ee55-ff6677889900",
   "providerId": "bb22cc33-dd44-ee55-ff66-007788990011",
   "procedureId": "c0d1e2f3-a4b5-6789-cdef-012345678901",
-  "dayOfWeek": "MONDAY",
-  "startTime": "08:00",
-  "endTime": "12:00",
-  "slotDurationMin": 30,
-  "capacity": 2
+  "diaDaSemana": "SEGUNDA",
+  "horarioInicio": "08:00",
+  "horarioFim": "12:00",
+  "slotDuracaoMinutos": 30,
+  "capacidade": 2
 }
 ```
 
-**Response `201 Created`:** schema completo da grade criada.
+**Response `201 Created`:**
+```json
+{
+  "id": "uuid",
+  "unitId": "aa11bb22-cc33-dd44-ee55-ff6677889900",
+  "providerId": "bb22cc33-dd44-ee55-ff66-007788990011",
+  "procedureId": "c0d1e2f3-a4b5-6789-cdef-012345678901",
+  "diaDaSemana": "SEGUNDA",
+  "horarioInicio": "08:00",
+  "horarioFim": "12:00",
+  "slotDuracaoMinutos": 30,
+  "capacidade": 2,
+  "ativo": true,
+  "slotsGerados": 8
+}
+```
 
 ---
 

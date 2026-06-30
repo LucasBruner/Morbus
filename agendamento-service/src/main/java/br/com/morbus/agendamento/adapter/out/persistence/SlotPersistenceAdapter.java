@@ -30,7 +30,8 @@ public class SlotPersistenceAdapter implements ISlotRepository {
                 slot.getId(),
                 slot.getScheduleId(),
                 slot.getDataHora(),
-                slot.getDuracaoMinutos(),
+                slot.getCapacidade(),
+                slot.getReservados(),
                 slot.getStatus()
         );
     }
@@ -40,7 +41,8 @@ public class SlotPersistenceAdapter implements ISlotRepository {
                 entity.getId(),
                 entity.getScheduleId(),
                 entity.getDataHora(),
-                entity.getDuracaoMinutos(),
+                entity.getCapacidade(),
+                entity.getReservados(),
                 entity.getStatus()
         );
     }
