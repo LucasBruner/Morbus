@@ -6,6 +6,8 @@ import java.util.UUID;
 public record PatientCalledEvent(
         String eventType,
         UUID queueEntryId,
+        UUID pacienteId,
+        UUID slotId,
         String patientName,
         String patientContact,
         String procedureName,
