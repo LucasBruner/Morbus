@@ -312,28 +312,28 @@ O domínio não conhece Spring, JPA, RabbitMQ nem os adapters.
 agendamento-service/
 └── src/main/java/br.com.morbus.agendamento/
     ├── domain/
-    │   ├── model/        # HealthUnit, Provider, Schedule, Slot, Appointment
-    │   ├── enums/        # ESlotStatus, EAppointmentStatus
-    │   └── exception/    # SlotNotFoundException, SlotUnavailableException,
-    │                     # AppointmentNotFoundException, ExpiredConfirmationException
+    │   ├── model/        # Schedule, Slot, Agendamento
+    │   ├── enums/        # EDiaSemana, EStatusSlots, EStatusAgendamento
+    │   └── exception/    # DuplicateScheduleException, InvalidSchedulePeriodException,
+    │                     # DuplicateAgendamentoException
     ├── application/
-    │   ├── command/      # AlocarSlotCommand, CancelarAgendamentoCommand,
-    │   │   └── handler/  # ReagendarCommand, RegistrarFaltaCommand
-    │   │                 # (handlers executam writes no banco transacional)
-    │   └── query/        # DisponibilidadeQuery, AgendamentosQuery, GradeQuery
-    │       └── handler/  # (handlers executam reads — podem usar projeções otimizadas)
-    ├── infrastructure/
-    │   ├── persistence/  # entidades JPA, Spring Data repositories
-    │   ├── messaging/    # PatientCalledConsumer (@RabbitListener)
-    │   │   └── publisher/# AgendamentoEventPublisher
-    │   ├── scheduler/    # ExpiracaoAgendamentoJob (@Scheduled)
-    │   ├── security/     # JwtAuthFilter, SecurityConfig
-    │   └── config/       # RabbitMQConfig, GraphQLConfig
-    └── interfaces/
-        ├── rest/         # AppointmentController, SlotController, ScheduleController
-        │   └── dto/      # Request/Response DTOs
-        └── graphql/      # AgendamentoQueryResolver, DisponibilidadeQueryResolver
-            └── type/     # AppointmentType, SlotType, ScheduleType (GraphQL schema types)
+    │   ├── command/      # CriarScheduleCommand, CriarScheduleResult,
+    │   │                 # CriarAgendamentoCommand
+    │   └── usecase/      # CriarScheduleUseCase, CriarAgendamentoUseCase
+    ├── adapter/
+    │   ├── in/
+    │   │   ├── rest/     # ScheduleController, AgendamentoController
+    │   │   │   └── dto/  # ScheduleRequestDTO, ScheduleCreatedResponseDTO
+    │   │   └── rabbitmq/ # PatientCalledConsumer, PatientCalledEvent
+    │   ├── out/
+    │   │   ├── persistence/ # ScheduleEntity, SlotEntity, AgendamentoEntity,
+    │   │   │                # IScheduleJpaRepository, ISlotJpaRepository,
+    │   │   │                # SchedulePersistenceAdapter, SlotPersistenceAdapter
+    │   │   ├── rabbitmq/    # RabbitMQConfig
+    │   │   └── security/    # JwtAuthenticationFilter, JwtService, SecurityConfig
+    │   └── security/     # UserPrincipal
+    └── infrastructure/
+        └── config/       # UseCaseConfig
 ```
 
 **Separação CQRS:**

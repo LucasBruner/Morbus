@@ -33,8 +33,11 @@ public class SlotEntity {
     @Column(name = "data_hora", nullable = false)
     private LocalDateTime dataHora;
 
-    @Column(name = "duracao_minutos", nullable = false)
-    private Integer duracaoMinutos;
+    @Column(name = "capacidade", nullable = false)
+    private Integer capacidade;
+
+    @Column(name = "reservados", nullable = false)
+    private Integer reservados;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)

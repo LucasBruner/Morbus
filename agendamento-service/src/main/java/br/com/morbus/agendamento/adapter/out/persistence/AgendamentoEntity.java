@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "agendamentos", schema = "agendamento")
+@Table(name = "appointments", schema = "agendamento")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -22,21 +22,24 @@ public class AgendamentoEntity {
     @Column(name = "id", nullable = false)
     private UUID id;
 
+    @Column(name = "queue_entry_id", nullable = false)
+    private UUID queueEntryId;
+
+    @Column(name = "slot_id", nullable = false)
+    private UUID slotId;
+
     @Column(name = "paciente_id", nullable = false)
     private UUID pacienteId;
-
-    @Column(name = "procedimento_id", nullable = false)
-    private UUID procedimentoId;
-
-    @Column(name = "unidade_id", nullable = false)
-    private UUID unidadeId;
-
-    @Column(name = "data_hora", nullable = false)
-    private LocalDateTime dataHora;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private EStatusAgendamento status;
+
+    @Column(name = "expires_at", nullable = false)
+    private LocalDateTime expiresAt;
+
+    @Column(name = "cancellation_reason")
+    private String cancellationReason;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
