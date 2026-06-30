@@ -1,5 +1,6 @@
 package br.com.morbus.regulacao.adapters.in.rest;
 
+import br.com.morbus.regulacao.domain.exception.CampoObrigatorioException;
 import br.com.morbus.regulacao.domain.exception.IdPacienteIncorretoException;
 import br.com.morbus.regulacao.domain.exception.SolicitacaoNaoEncontradaException;
 import br.com.morbus.regulacao.domain.exception.SolicitacaoNaoPendenteException;
@@ -79,6 +80,15 @@ public class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatus(403);
         problem.setTitle("Id incorreto");
         problem.setType(URI.create("https://httpstatuses.com/403"));
+        problem.setDetail(e.getMessage());
+        return problem;
+    }
+
+    @ExceptionHandler(CampoObrigatorioException.class)
+    public ProblemDetail handleCampoObrigatorio(CampoObrigatorioException e) {
+        ProblemDetail problem = ProblemDetail.forStatus(400);
+        problem.setType(URI.create("https://httpstatuses.com/400"));
+        problem.setTitle("Dados inválidos");
         problem.setDetail(e.getMessage());
         return problem;
     }

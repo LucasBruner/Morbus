@@ -90,4 +90,38 @@ public class Solicitacao {
     public void cancelar() {
         this.status = EStatusSolicitacao.CANCELADA;
     }
+
+    public void aprovar(ERiscoSolicitado riskColor, UUID unidadeExecutanteId) {
+        this.status = EStatusSolicitacao.APROVADA;
+        this.riskColor = riskColor;
+        this.unidadeExecutanteId = unidadeExecutanteId;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void aprovarParaFilaEspera(ERiscoSolicitado riskColor, UUID unidadeExecutanteId) {
+        aprovar(riskColor, unidadeExecutanteId);
+        this.destino = EDestino.FILA_ESPERA;
+    }
+
+    public void negar(String justificativaNegacao) {
+        this.status = EStatusSolicitacao.NEGADA;
+        this.justificativaNegacao = justificativaNegacao;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void devolver(String justificativaNegacao) {
+        this.status = EStatusSolicitacao.DEVOLVIDA;
+        this.justificativaNegacao = justificativaNegacao;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void marcarPendente() {
+        this.status = EStatusSolicitacao.PENDENTE;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void reclassificarRisco(ERiscoSolicitado novoRiskColor) {
+        this.riskColor = novoRiskColor;
+        this.updatedAt = LocalDateTime.now();
+    }
 }

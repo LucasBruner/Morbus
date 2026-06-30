@@ -124,4 +124,100 @@ class SolicitacaoTest {
             assertThat(s.getStatus()).isEqualTo(EStatusSolicitacao.CANCELADA);
         }
     }
+
+    @Nested
+    @DisplayName("ao aprovar")
+    class AoAprovar {
+
+        @Test
+        @DisplayName("deve transicionar para APROVADA e definir riskColor e unidadeExecutanteId")
+        void deveAprovar() {
+            Solicitacao s = buildExistente(EStatusSolicitacao.AGUARDANDO);
+            UUID unidadeExecutanteId = UUID.randomUUID();
+
+            s.aprovar(ERiscoSolicitado.VERMELHO, unidadeExecutanteId);
+
+            assertThat(s.getStatus()).isEqualTo(EStatusSolicitacao.APROVADA);
+            assertThat(s.getRiskColor()).isEqualTo(ERiscoSolicitado.VERMELHO);
+            assertThat(s.getUnidadeExecutanteId()).isEqualTo(unidadeExecutanteId);
+        }
+    }
+
+    @Nested
+    @DisplayName("ao aprovar para fila de espera")
+    class AoAprovarParaFilaEspera {
+
+        @Test
+        @DisplayName("deve transicionar para APROVADA e sobrescrever destino para FILA_ESPERA")
+        void deveAprovarParaFilaEspera() {
+            Solicitacao s = buildExistente(EStatusSolicitacao.AGUARDANDO);
+
+            s.aprovarParaFilaEspera(ERiscoSolicitado.AMARELO, UUID.randomUUID());
+
+            assertThat(s.getStatus()).isEqualTo(EStatusSolicitacao.APROVADA);
+            assertThat(s.getDestino()).isEqualTo(EDestino.FILA_ESPERA);
+        }
+    }
+
+    @Nested
+    @DisplayName("ao negar")
+    class AoNegar {
+
+        @Test
+        @DisplayName("deve transicionar para NEGADA e definir a justificativa")
+        void deveNegar() {
+            Solicitacao s = buildExistente(EStatusSolicitacao.AGUARDANDO);
+
+            s.negar("sem indicacao clinica");
+
+            assertThat(s.getStatus()).isEqualTo(EStatusSolicitacao.NEGADA);
+            assertThat(s.getJustificativaNegacao()).isEqualTo("sem indicacao clinica");
+        }
+    }
+
+    @Nested
+    @DisplayName("ao devolver")
+    class AoDevolver {
+
+        @Test
+        @DisplayName("deve transicionar para DEVOLVIDA e definir a justificativa")
+        void deveDevolver() {
+            Solicitacao s = buildExistente(EStatusSolicitacao.AGUARDANDO);
+
+            s.devolver("documentacao incompleta");
+
+            assertThat(s.getStatus()).isEqualTo(EStatusSolicitacao.DEVOLVIDA);
+            assertThat(s.getJustificativaNegacao()).isEqualTo("documentacao incompleta");
+        }
+    }
+
+    @Nested
+    @DisplayName("ao marcar como pendente")
+    class AoMarcarPendente {
+
+        @Test
+        @DisplayName("deve transicionar para PENDENTE")
+        void deveMarcarPendente() {
+            Solicitacao s = buildExistente(EStatusSolicitacao.AGUARDANDO);
+
+            s.marcarPendente();
+
+            assertThat(s.getStatus()).isEqualTo(EStatusSolicitacao.PENDENTE);
+        }
+    }
+
+    @Nested
+    @DisplayName("ao reclassificar risco")
+    class AoReclassificarRisco {
+
+        @Test
+        @DisplayName("deve atualizar o riskColor")
+        void deveAtualizarRiskColor() {
+            Solicitacao s = buildExistente(EStatusSolicitacao.APROVADA);
+
+            s.reclassificarRisco(ERiscoSolicitado.VERMELHO);
+
+            assertThat(s.getRiskColor()).isEqualTo(ERiscoSolicitado.VERMELHO);
+        }
+    }
 }

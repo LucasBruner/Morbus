@@ -19,17 +19,19 @@ public class RabbitMQConfig {
     public static final String AGENDAMENTO_EXCHANGE = "sus.agendamento.exchange";
     public static final String REGULACAO_DLX = "sus.regulacao.dlx";
 
-    public static final String RK_SOLICITACAO_APROVADA  = "solicitation.approved";
-    public static final String RK_SOLICITACAO_NEGADA    = "solicitation.denied";
-    public static final String RK_SOLICITACAO_DEVOLVIDA = "solicitation.devolved";
+    public static final String RK_SOLICITACAO_APROVADA      = "solicitation.approved";
+    public static final String RK_SOLICITACAO_NEGADA        = "solicitation.denied";
+    public static final String RK_SOLICITACAO_DEVOLVIDA     = "solicitation.devolved";
+    public static final String RK_SOLICITACAO_RECLASSIFICADA = "solicitation.reclassified";
 
     public static final String RK_APPOINTMENT_CREATED  = "appointment.created";
     public static final String RK_APPOINTMENT_ATTENDED = "appointment.attended";
     public static final String RK_APPOINTMENT_NO_SHOW  = "appointment.no_show";
 
-    public static final String QUEUE_SOLICITACAO_APROVADA  = "regulacao.solicitacao.aprovada";
-    public static final String QUEUE_SOLICITACAO_NEGADA    = "regulacao.solicitacao.negada";
-    public static final String QUEUE_SOLICITACAO_DEVOLVIDA = "regulacao.solicitacao.devolvida";
+    public static final String QUEUE_SOLICITACAO_APROVADA      = "regulacao.solicitacao.aprovada";
+    public static final String QUEUE_SOLICITACAO_NEGADA        = "regulacao.solicitacao.negada";
+    public static final String QUEUE_SOLICITACAO_DEVOLVIDA     = "regulacao.solicitacao.devolvida";
+    public static final String QUEUE_SOLICITACAO_RECLASSIFICADA = "regulacao.solicitacao.reclassificada";
 
     public static final String QUEUE_APPOINTMENT_CREATED  = "regulacao.appointment.created";
     public static final String QUEUE_APPOINTMENT_ATTENDED = "regulacao.appointment.attended";
@@ -67,6 +69,11 @@ public class RabbitMQConfig {
     @Bean
     public Queue solicitacaoDevolvadaQueue() {
         return QueueBuilder.durable(QUEUE_SOLICITACAO_DEVOLVIDA).build();
+    }
+
+    @Bean
+    public Queue solicitacaoReclassificadaQueue() {
+        return QueueBuilder.durable(QUEUE_SOLICITACAO_RECLASSIFICADA).build();
     }
 
     @Bean
@@ -130,6 +137,14 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(solicitacaoDevolvadaQueue)
                 .to(regulacaoExchange)
                 .with(RK_SOLICITACAO_DEVOLVIDA);
+    }
+
+    @Bean
+    public Binding bindingSolicitacaoReclassificada(Queue solicitacaoReclassificadaQueue,
+                                                     DirectExchange regulacaoExchange) {
+        return BindingBuilder.bind(solicitacaoReclassificadaQueue)
+                .to(regulacaoExchange)
+                .with(RK_SOLICITACAO_RECLASSIFICADA);
     }
 
     @Bean
