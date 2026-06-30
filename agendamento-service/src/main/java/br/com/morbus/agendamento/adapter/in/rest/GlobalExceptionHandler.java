@@ -1,6 +1,8 @@
 package br.com.morbus.agendamento.adapter.in.rest;
 
 import br.com.morbus.agendamento.domain.exception.DuplicateAgendamentoException;
+import br.com.morbus.agendamento.domain.exception.DuplicateScheduleException;
+import br.com.morbus.agendamento.domain.exception.InvalidSchedulePeriodException;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -18,6 +20,24 @@ public class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatus(409);
         problem.setType(URI.create("https://httpstatuses.com/409"));
         problem.setTitle("Conflito");
+        problem.setDetail(ex.getMessage());
+        return problem;
+    }
+
+    @ExceptionHandler(DuplicateScheduleException.class)
+    public ProblemDetail handleDuplicateSchedule(DuplicateScheduleException ex) {
+        ProblemDetail problem = ProblemDetail.forStatus(409);
+        problem.setType(URI.create("https://httpstatuses.com/409"));
+        problem.setTitle("Conflito");
+        problem.setDetail(ex.getMessage());
+        return problem;
+    }
+
+    @ExceptionHandler(InvalidSchedulePeriodException.class)
+    public ProblemDetail handleInvalidSchedulePeriod(InvalidSchedulePeriodException ex) {
+        ProblemDetail problem = ProblemDetail.forStatus(422);
+        problem.setType(URI.create("https://httpstatuses.com/422"));
+        problem.setTitle("Grade invalida");
         problem.setDetail(ex.getMessage());
         return problem;
     }
