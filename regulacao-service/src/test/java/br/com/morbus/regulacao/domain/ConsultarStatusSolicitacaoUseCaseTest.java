@@ -1,11 +1,12 @@
 package br.com.morbus.regulacao.domain;
 
 import br.com.morbus.regulacao.domain.dto.UsuarioContexto;
+import br.com.morbus.regulacao.domain.enums.EDestino;
 import br.com.morbus.regulacao.domain.enums.ERiscoSolicitado;
 import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
-import br.com.morbus.regulacao.domain.exception.IdPacienteIncorretoException;
 import br.com.morbus.regulacao.domain.exception.SolicitacaoNaoEncontradaException;
 import br.com.morbus.regulacao.domain.model.Solicitacao;
+import br.com.morbus.regulacao.domain.usecase.solicitacao.ConsultarStatusSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.out.ISolicitacaoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -36,18 +37,20 @@ class ConsultarStatusSolicitacaoUseCaseTest {
         useCase = new ConsultarStatusSolicitacaoUseCase(repository);
     }
 
-    // ── Fixtures ──────────────────────────────────────────────────────────────
-
-    private Solicitacao buildSolicitacao(UUID pacienteId) {
+    private Solicitacao buildSolicitacao() {
         return new Solicitacao(
                 UUID.randomUUID(),
-                pacienteId,
+                UUID.randomUUID(),
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 null,
-                EStatusSolicitacao.PENDENTE,
-                ERiscoSolicitado.AMARELO,
-                "observação",
+                EStatusSolicitacao.AGUARDANDO,
+                ERiscoSolicitado.AZUL,
+                "I10",
+                "Hipertensao grave",
+                "Dr. Silva",
+                null,
+                EDestino.FILA_REGULADA,
                 null,
                 UUID.randomUUID(),
                 LocalDateTime.now().minusHours(1),
@@ -55,35 +58,14 @@ class ConsultarStatusSolicitacaoUseCaseTest {
         );
     }
 
-    // ── MEDICO ────────────────────────────────────────────────────────────────
-
     @Nested
-    @DisplayName("quando role é ROLE_MEDICO")
-    class QuandoMedico {
-
-        @Test
-        @DisplayName("deve retornar a solicitação sem restrição de pacienteId")
-        void deveRetornarSemRestricao() {
-            Solicitacao solicitacao = buildSolicitacao(UUID.randomUUID());
-            UsuarioContexto contexto = new UsuarioContexto("ROLE_MEDICO", UUID.randomUUID());
-            when(repository.findById(solicitacao.getId())).thenReturn(solicitacao);
-
-            Solicitacao result = useCase.execute(solicitacao.getId(), contexto);
-
-            assertThat(result).isSameAs(solicitacao);
-        }
-    }
-
-    // ── SOLICITANTE ───────────────────────────────────────────────────────────
-
-    @Nested
-    @DisplayName("quando role é ROLE_SOLICITANTE")
+    @DisplayName("quando role e ROLE_SOLICITANTE")
     class QuandoSolicitante {
 
         @Test
-        @DisplayName("deve retornar a solicitação sem restrição de pacienteId")
-        void deveRetornarSemRestricao() {
-            Solicitacao solicitacao = buildSolicitacao(UUID.randomUUID());
+        @DisplayName("deve retornar a solicitacao")
+        void deveRetornar() {
+            Solicitacao solicitacao = buildSolicitacao();
             UsuarioContexto contexto = new UsuarioContexto("ROLE_SOLICITANTE", UUID.randomUUID());
             when(repository.findById(solicitacao.getId())).thenReturn(solicitacao);
 
@@ -93,49 +75,33 @@ class ConsultarStatusSolicitacaoUseCaseTest {
         }
     }
 
-    // ── PACIENTE ──────────────────────────────────────────────────────────────
-
     @Nested
-    @DisplayName("quando role é ROLE_PACIENTE")
-    class QuandoPaciente {
+    @DisplayName("quando role e ROLE_REGULADOR")
+    class QuandoRegulador {
 
         @Test
-        @DisplayName("deve retornar a solicitação quando pacienteId bate com o do JWT")
-        void deveRetornarQuandoPacienteIdCorreto() {
-            UUID pacienteId = UUID.randomUUID();
-            Solicitacao solicitacao = buildSolicitacao(pacienteId);
-            UsuarioContexto contexto = new UsuarioContexto("ROLE_PACIENTE", pacienteId);
+        @DisplayName("deve retornar a solicitacao")
+        void deveRetornar() {
+            Solicitacao solicitacao = buildSolicitacao();
+            UsuarioContexto contexto = new UsuarioContexto("ROLE_REGULADOR", UUID.randomUUID());
             when(repository.findById(solicitacao.getId())).thenReturn(solicitacao);
 
             Solicitacao result = useCase.execute(solicitacao.getId(), contexto);
 
             assertThat(result).isSameAs(solicitacao);
         }
-
-        @Test
-        @DisplayName("deve lançar IdPacienteIncorretoException quando pacienteId não bate com o do JWT")
-        void deveLancarIdPacienteIncorretoException() {
-            Solicitacao solicitacao = buildSolicitacao(UUID.randomUUID());
-            UsuarioContexto contexto = new UsuarioContexto("ROLE_PACIENTE", UUID.randomUUID());
-            when(repository.findById(solicitacao.getId())).thenReturn(solicitacao);
-
-            assertThatThrownBy(() -> useCase.execute(solicitacao.getId(), contexto))
-                    .isInstanceOf(IdPacienteIncorretoException.class);
-        }
     }
 
-    // ── Não encontrado ────────────────────────────────────────────────────────
-
     @Nested
-    @DisplayName("quando a solicitação não existe")
+    @DisplayName("quando a solicitacao nao existe")
     class QuandoNaoExiste {
 
         @Test
         @DisplayName("deve propagar SolicitacaoNaoEncontradaException")
         void devePropagarSolicitacaoNaoEncontradaException() {
             UUID id = UUID.randomUUID();
-            UsuarioContexto contexto = new UsuarioContexto("ROLE_MEDICO", UUID.randomUUID());
-            when(repository.findById(id)).thenThrow(new SolicitacaoNaoEncontradaException("não encontrada"));
+            UsuarioContexto contexto = new UsuarioContexto("ROLE_SOLICITANTE", UUID.randomUUID());
+            when(repository.findById(id)).thenThrow(new SolicitacaoNaoEncontradaException("nao encontrada"));
 
             assertThatThrownBy(() -> useCase.execute(id, contexto))
                     .isInstanceOf(SolicitacaoNaoEncontradaException.class);

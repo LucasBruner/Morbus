@@ -4,10 +4,10 @@ import br.com.morbus.regulacao.adapters.out.security.JwtAuthenticationFilter;
 import br.com.morbus.regulacao.adapters.out.security.JwtService;
 import br.com.morbus.regulacao.adapters.out.security.SecurityConfig;
 import br.com.morbus.regulacao.adapters.security.UserPrincipal;
+import br.com.morbus.regulacao.domain.enums.EDestino;
 import br.com.morbus.regulacao.domain.enums.ERiscoSolicitado;
 import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
 import br.com.morbus.regulacao.domain.exception.DuplicateSolicitacaoException;
-import br.com.morbus.regulacao.domain.exception.IdPacienteIncorretoException;
 import br.com.morbus.regulacao.domain.exception.SolicitacaoNaoEncontradaException;
 import br.com.morbus.regulacao.domain.exception.SolicitacaoNaoPendenteException;
 import br.com.morbus.regulacao.domain.model.Solicitacao;
@@ -66,8 +66,6 @@ class SolicitacaoControllerTest {
         }).when(jwtAuthFilter).doFilter(any(), any(), any());
     }
 
-    // ── Helpers de autenticação ───────────────────────────────────────────────
-
     private UsernamePasswordAuthenticationToken principalToken(String role) {
         UserPrincipal p = new UserPrincipal(UUID.randomUUID().toString(),
                 UUID.randomUUID(), UUID.randomUUID(), role);
@@ -84,8 +82,9 @@ class SolicitacaoControllerTest {
     private Solicitacao buildSolicitacao() {
         return new Solicitacao(
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-                UUID.randomUUID(), null, EStatusSolicitacao.PENDENTE,
-                ERiscoSolicitado.AMARELO, "obs", null, UUID.randomUUID(),
+                UUID.randomUUID(), null, EStatusSolicitacao.AGUARDANDO,
+                ERiscoSolicitado.AZUL, "I10", "Hipertensao grave", "Dr. Silva",
+                null, EDestino.FILA_REGULADA, null, UUID.randomUUID(),
                 LocalDateTime.now(), LocalDateTime.now()
         );
     }
@@ -93,11 +92,14 @@ class SolicitacaoControllerTest {
     private String validBody() {
         return """
                 {
-                  "pacienteId": "%s",
+                  "patientId": "%s",
                   "procedureId": "%s",
-                  "unidadeSolicitanteId": "%s",
-                  "riscoSolicitado": "AMARELO",
-                  "observacoes": "Paciente com dores persistentes"
+                  "cid": "I10",
+                  "justificativaClinica": "Paciente com hipertensao grave sem controle",
+                  "profissionalSolicitante": "Dr. Silva",
+                  "crmProfissional": "CRM/SP 12345",
+                  "unitSolicitanteId": "%s",
+                  "destino": "FILA_REGULADA"
                 }
                 """.formatted(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
     }
@@ -111,20 +113,7 @@ class SolicitacaoControllerTest {
     class Criar {
 
         @Test
-        @DisplayName("deve retornar 201 quando MEDICO cria solicitação válida")
-        void deveRetornar201Medico() throws Exception {
-            when(criarUseCase.execute(any())).thenReturn(buildSolicitacao());
-
-            mockMvc.perform(post(BASE_URL)
-                            .with(authentication(principalToken("ROLE_MEDICO")))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(validBody()))
-                    .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.status").value("PENDENTE"));
-        }
-
-        @Test
-        @DisplayName("deve retornar 201 quando SOLICITANTE cria solicitação válida")
+        @DisplayName("deve retornar 201 quando SOLICITANTE cria solicitacao valida")
         void deveRetornar201Solicitante() throws Exception {
             when(criarUseCase.execute(any())).thenReturn(buildSolicitacao());
 
@@ -132,7 +121,18 @@ class SolicitacaoControllerTest {
                             .with(authentication(principalToken("ROLE_SOLICITANTE")))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(validBody()))
-                    .andExpect(status().isCreated());
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.status").value("AGUARDANDO"));
+        }
+
+        @Test
+        @DisplayName("deve retornar 403 quando MEDICO tenta criar")
+        void deveRetornar403ParaMedico() throws Exception {
+            mockMvc.perform(post(BASE_URL)
+                            .with(authentication(principalToken("ROLE_MEDICO")))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(validBody()))
+                    .andExpect(status().isForbidden());
         }
 
         @Test
@@ -146,17 +146,21 @@ class SolicitacaoControllerTest {
         }
 
         @Test
-        @DisplayName("deve retornar 400 quando pacienteId está ausente")
-        void deveRetornar400SemPacienteId() throws Exception {
+        @DisplayName("deve retornar 400 quando patientId esta ausente")
+        void deveRetornar400SemPatientId() throws Exception {
             String body = """
                     {
                       "procedureId": "%s",
-                      "unidadeSolicitanteId": "%s"
+                      "cid": "I10",
+                      "justificativaClinica": "texto",
+                      "profissionalSolicitante": "Dr. Silva",
+                      "unitSolicitanteId": "%s",
+                      "destino": "FILA_REGULADA"
                     }
                     """.formatted(UUID.randomUUID(), UUID.randomUUID());
 
             mockMvc.perform(post(BASE_URL)
-                            .with(authentication(principalToken("ROLE_MEDICO")))
+                            .with(authentication(principalToken("ROLE_SOLICITANTE")))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
                     .andExpect(status().isBadRequest())
@@ -164,47 +168,55 @@ class SolicitacaoControllerTest {
         }
 
         @Test
-        @DisplayName("deve retornar 400 quando procedureId está ausente")
-        void deveRetornar400SemProcedureId() throws Exception {
+        @DisplayName("deve retornar 400 quando cid esta ausente")
+        void deveRetornar400SemCid() throws Exception {
             String body = """
                     {
-                      "pacienteId": "%s",
-                      "unidadeSolicitanteId": "%s"
+                      "patientId": "%s",
+                      "procedureId": "%s",
+                      "justificativaClinica": "texto",
+                      "profissionalSolicitante": "Dr. Silva",
+                      "unitSolicitanteId": "%s",
+                      "destino": "FILA_REGULADA"
                     }
-                    """.formatted(UUID.randomUUID(), UUID.randomUUID());
+                    """.formatted(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
 
             mockMvc.perform(post(BASE_URL)
-                            .with(authentication(principalToken("ROLE_MEDICO")))
+                            .with(authentication(principalToken("ROLE_SOLICITANTE")))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
                     .andExpect(status().isBadRequest());
         }
 
         @Test
-        @DisplayName("deve retornar 400 quando unidadeSolicitanteId está ausente")
-        void deveRetornar400SemUnidadeId() throws Exception {
+        @DisplayName("deve retornar 400 quando destino esta ausente")
+        void deveRetornar400SemDestino() throws Exception {
             String body = """
                     {
-                      "pacienteId": "%s",
-                      "procedureId": "%s"
+                      "patientId": "%s",
+                      "procedureId": "%s",
+                      "cid": "I10",
+                      "justificativaClinica": "texto",
+                      "profissionalSolicitante": "Dr. Silva",
+                      "unitSolicitanteId": "%s"
                     }
-                    """.formatted(UUID.randomUUID(), UUID.randomUUID());
+                    """.formatted(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
 
             mockMvc.perform(post(BASE_URL)
-                            .with(authentication(principalToken("ROLE_MEDICO")))
+                            .with(authentication(principalToken("ROLE_SOLICITANTE")))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
                     .andExpect(status().isBadRequest());
         }
 
         @Test
-        @DisplayName("deve retornar 409 quando já existe solicitação ativa para o par paciente+procedure")
+        @DisplayName("deve retornar 409 quando ja existe solicitacao ativa")
         void deveRetornar409Duplicata() throws Exception {
             when(criarUseCase.execute(any()))
-                    .thenThrow(new DuplicateSolicitacaoException("Já existe solicitação ativa"));
+                    .thenThrow(new DuplicateSolicitacaoException("Ja existe solicitacao ativa"));
 
             mockMvc.perform(post(BASE_URL)
-                            .with(authentication(principalToken("ROLE_MEDICO")))
+                            .with(authentication(principalToken("ROLE_SOLICITANTE")))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(validBody()))
                     .andExpect(status().isConflict())
@@ -219,16 +231,6 @@ class SolicitacaoControllerTest {
     class Listar {
 
         @Test
-        @DisplayName("deve retornar 200 quando MEDICO lista")
-        void deveRetornar200Medico() throws Exception {
-            when(listarUseCase.execute(any())).thenReturn(Page.empty());
-
-            mockMvc.perform(get(BASE_URL)
-                            .with(authentication(principalToken("ROLE_MEDICO"))))
-                    .andExpect(status().isOk());
-        }
-
-        @Test
         @DisplayName("deve retornar 200 quando SOLICITANTE lista")
         void deveRetornar200Solicitante() throws Exception {
             when(listarUseCase.execute(any())).thenReturn(Page.empty());
@@ -236,6 +238,24 @@ class SolicitacaoControllerTest {
             mockMvc.perform(get(BASE_URL)
                             .with(authentication(principalToken("ROLE_SOLICITANTE"))))
                     .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("deve retornar 200 quando REGULADOR lista")
+        void deveRetornar200Regulador() throws Exception {
+            when(listarUseCase.execute(any())).thenReturn(Page.empty());
+
+            mockMvc.perform(get(BASE_URL)
+                            .with(authentication(principalToken("ROLE_REGULADOR"))))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("deve retornar 403 quando MEDICO tenta listar")
+        void deveRetornar403Medico() throws Exception {
+            mockMvc.perform(get(BASE_URL)
+                            .with(authentication(principalToken("ROLE_MEDICO"))))
+                    .andExpect(status().isForbidden());
         }
 
         @Test
@@ -266,7 +286,7 @@ class SolicitacaoControllerTest {
     class Cancelar {
 
         @Test
-        @DisplayName("deve retornar 204 quando MEDICO cancela solicitação pendente")
+        @DisplayName("deve retornar 204 quando MEDICO cancela solicitacao")
         void deveRetornar204Medico() throws Exception {
             mockMvc.perform(delete(BASE_URL + "/" + UUID.randomUUID())
                             .with(authentication(principalToken("ROLE_MEDICO"))))
@@ -274,7 +294,7 @@ class SolicitacaoControllerTest {
         }
 
         @Test
-        @DisplayName("deve retornar 204 quando SOLICITANTE cancela solicitação pendente")
+        @DisplayName("deve retornar 204 quando SOLICITANTE cancela solicitacao")
         void deveRetornar204Solicitante() throws Exception {
             mockMvc.perform(delete(BASE_URL + "/" + UUID.randomUUID())
                             .with(authentication(principalToken("ROLE_SOLICITANTE"))))
@@ -290,10 +310,10 @@ class SolicitacaoControllerTest {
         }
 
         @Test
-        @DisplayName("deve retornar 404 quando solicitação não existe")
+        @DisplayName("deve retornar 404 quando solicitacao nao existe")
         void deveRetornar404() throws Exception {
             UUID id = UUID.randomUUID();
-            doThrow(new SolicitacaoNaoEncontradaException("não encontrada"))
+            doThrow(new SolicitacaoNaoEncontradaException("nao encontrada"))
                     .when(cancelarUseCase).execute(id);
 
             mockMvc.perform(delete(BASE_URL + "/" + id)
@@ -303,10 +323,10 @@ class SolicitacaoControllerTest {
         }
 
         @Test
-        @DisplayName("deve retornar 422 quando solicitação não está PENDENTE")
+        @DisplayName("deve retornar 422 quando solicitacao nao esta AGUARDANDO")
         void deveRetornar422() throws Exception {
             UUID id = UUID.randomUUID();
-            doThrow(new SolicitacaoNaoPendenteException("não está pendente"))
+            doThrow(new SolicitacaoNaoPendenteException("nao esta aguardando"))
                     .when(cancelarUseCase).execute(id);
 
             mockMvc.perform(delete(BASE_URL + "/" + id)
@@ -323,58 +343,50 @@ class SolicitacaoControllerTest {
     class ConsultarStatus {
 
         @Test
-        @DisplayName("deve retornar 200 quando MEDICO consulta")
-        void deveRetornar200Medico() throws Exception {
-            UUID id = UUID.randomUUID();
-            when(consultarUseCase.execute(any(), any())).thenReturn(buildSolicitacao());
-
-            mockMvc.perform(get(BASE_URL + "/" + id)
-                            .with(authentication(principalToken("ROLE_MEDICO"))))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id").exists())
-                    .andExpect(jsonPath("$.statusSolicitacao").value("PENDENTE"));
-        }
-
-        @Test
         @DisplayName("deve retornar 200 quando SOLICITANTE consulta")
         void deveRetornar200Solicitante() throws Exception {
             when(consultarUseCase.execute(any(), any())).thenReturn(buildSolicitacao());
 
             mockMvc.perform(get(BASE_URL + "/" + UUID.randomUUID())
                             .with(authentication(principalToken("ROLE_SOLICITANTE"))))
-                    .andExpect(status().isOk());
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value("AGUARDANDO"));
         }
 
         @Test
-        @DisplayName("deve retornar 200 quando PACIENTE consulta sua própria solicitação")
-        void deveRetornar200Paciente() throws Exception {
+        @DisplayName("deve retornar 200 quando REGULADOR consulta")
+        void deveRetornar200Regulador() throws Exception {
             when(consultarUseCase.execute(any(), any())).thenReturn(buildSolicitacao());
 
             mockMvc.perform(get(BASE_URL + "/" + UUID.randomUUID())
-                            .with(authentication(principalToken("ROLE_PACIENTE"))))
+                            .with(authentication(principalToken("ROLE_REGULADOR"))))
                     .andExpect(status().isOk());
         }
 
         @Test
-        @DisplayName("deve retornar 403 quando PACIENTE acessa solicitação de outro paciente")
-        void deveRetornar403PacienteIncorreto() throws Exception {
-            when(consultarUseCase.execute(any(), any()))
-                    .thenThrow(new IdPacienteIncorretoException("Acesso negado"));
-
+        @DisplayName("deve retornar 403 quando MEDICO tenta consultar")
+        void deveRetornar403Medico() throws Exception {
             mockMvc.perform(get(BASE_URL + "/" + UUID.randomUUID())
-                            .with(authentication(principalToken("ROLE_PACIENTE"))))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.status").value(403));
+                            .with(authentication(principalToken("ROLE_MEDICO"))))
+                    .andExpect(status().isForbidden());
         }
 
         @Test
-        @DisplayName("deve retornar 404 quando solicitação não existe")
+        @DisplayName("deve retornar 403 quando PACIENTE tenta consultar")
+        void deveRetornar403Paciente() throws Exception {
+            mockMvc.perform(get(BASE_URL + "/" + UUID.randomUUID())
+                            .with(authentication(principalToken("ROLE_PACIENTE"))))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("deve retornar 404 quando solicitacao nao existe")
         void deveRetornar404() throws Exception {
             when(consultarUseCase.execute(any(), any()))
-                    .thenThrow(new SolicitacaoNaoEncontradaException("não encontrada"));
+                    .thenThrow(new SolicitacaoNaoEncontradaException("nao encontrada"));
 
             mockMvc.perform(get(BASE_URL + "/" + UUID.randomUUID())
-                            .with(authentication(principalToken("ROLE_MEDICO"))))
+                            .with(authentication(principalToken("ROLE_SOLICITANTE"))))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.status").value(404));
         }

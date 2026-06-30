@@ -1,5 +1,6 @@
-package br.com.morbus.regulacao.adapters.out.jpa;
+package br.com.morbus.regulacao.adapters.out.jpa.solicitacao;
 
+import br.com.morbus.regulacao.domain.enums.EDestino;
 import br.com.morbus.regulacao.domain.enums.ERiscoSolicitado;
 import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
 import br.com.morbus.regulacao.domain.model.Solicitacao;
@@ -25,7 +26,7 @@ public class SolicitacaoEntity {
     private UUID id;
 
     @Column(name = "paciente_id", nullable = false)
-    private UUID pacienteId;
+    private UUID patientId;
 
     @Column(name = "procedure_id", nullable = false)
     private UUID procedureId;
@@ -42,10 +43,23 @@ public class SolicitacaoEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "risco_solicitado")
-    private ERiscoSolicitado riscoSolicitado;
+    private ERiscoSolicitado riskColor;
 
-    @Column(columnDefinition = "TEXT")
-    private String observacoes;
+    @Column(name = "cid", length = 20)
+    private String cid;
+
+    @Column(name = "justificativa_clinica", columnDefinition = "TEXT")
+    private String justificativaClinica;
+
+    @Column(name = "profissional_solicitante", length = 200)
+    private String profissionalSolicitante;
+
+    @Column(name = "crm_profissional", length = 50)
+    private String crmProfissional;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "destino", length = 20)
+    private EDestino destino;
 
     @Column(name = "justificativa_negacao", columnDefinition = "TEXT")
     private String justificativaNegacao;
@@ -62,13 +76,17 @@ public class SolicitacaoEntity {
     public Solicitacao toDomain() {
         return new Solicitacao(
                 this.id,
-                this.pacienteId,
+                this.patientId,
                 this.procedureId,
                 this.unidadeSolicitanteId,
                 this.unidadeExecutanteId,
                 this.status,
-                this.riscoSolicitado,
-                this.observacoes,
+                this.riskColor,
+                this.cid,
+                this.justificativaClinica,
+                this.profissionalSolicitante,
+                this.crmProfissional,
+                this.destino,
                 this.justificativaNegacao,
                 this.solicitadoPor,
                 this.createdAt,
@@ -79,13 +97,17 @@ public class SolicitacaoEntity {
     public static SolicitacaoEntity fromDomain(Solicitacao s) {
         SolicitacaoEntity entity = new SolicitacaoEntity();
         entity.id = s.getId();
-        entity.pacienteId = s.getPacienteId();
+        entity.patientId = s.getPatientId();
         entity.procedureId = s.getProcedureId();
         entity.unidadeSolicitanteId = s.getUnidadeSolicitanteId();
         entity.unidadeExecutanteId = s.getUnidadeExecutanteId();
         entity.status = s.getStatus();
-        entity.riscoSolicitado = s.getRiscoSolicitado();
-        entity.observacoes = s.getObservacoes();
+        entity.riskColor = s.getRiskColor();
+        entity.cid = s.getCid();
+        entity.justificativaClinica = s.getJustificativaClinica();
+        entity.profissionalSolicitante = s.getProfissionalSolicitante();
+        entity.crmProfissional = s.getCrmProfissional();
+        entity.destino = s.getDestino();
         entity.justificativaNegacao = s.getJustificativaNegacao();
         entity.solicitadoPor = s.getSolicitadoPor();
         entity.createdAt = s.getCreatedAt();

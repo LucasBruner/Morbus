@@ -116,7 +116,7 @@ erDiagram
     HEALTH_UNITS {
         UUID        id              PK
         VARCHAR(7)   cnes           UK  "código CNES da unidade executante"
-        VARCHAR(255) name               "NOT NULL"
+        VARCHAR(255) nome               "NOT NULL"
         VARCHAR(255) address            "nullable"
         VARCHAR(20)  phone              "nullable"
     }
@@ -124,9 +124,9 @@ erDiagram
     PROVIDERS {
         UUID        id              PK
         UUID        unit_id         FK  "REFERENCES health_units(id)"
-        VARCHAR(255) name               "NOT NULL"
+        VARCHAR(255) nome               "NOT NULL"
         VARCHAR(20)  crm                "nullable"
-        VARCHAR(100) specialty          "nullable"
+        VARCHAR(100) especialidade      "nullable"
     }
 
     SCHEDULES {
@@ -155,7 +155,7 @@ erDiagram
         UUID        id              PK
         UUID        queue_entry_id      "ref. queue_entries no queue-service (sem FK cross-service)"
         UUID        slot_id         FK  "REFERENCES slots(id)"
-        UUID        patient_id          "ref. patients no queue-service (sem FK cross-service)"
+        UUID        paciente_id         "ref. patients no queue-service (sem FK cross-service)"
         VARCHAR(30)  status             "AGUARDANDO_CONFIRMACAO|CONFIRMADO|CANCELADO|ATENDIDO|FALTOU"
         TIMESTAMP    expires_at         "deadline 72h para confirmação"
         TEXT         cancellation_reason "nullable"
@@ -383,7 +383,7 @@ Unidades executantes que realizam os procedimentos agendados.
 |-----------|--------------|--------------|----------------------------------|
 | `id`      | UUID         | PK, NOT NULL | Identificador único              |
 | `cnes`    | VARCHAR(7)   | UK, NOT NULL | Código CNES da unidade executante|
-| `name`    | VARCHAR(255) | NOT NULL     | Nome da unidade                  |
+| `nome`    | VARCHAR(255) | NOT NULL     | Nome da unidade                  |
 | `address` | VARCHAR(255) | nullable     | Endereço completo                |
 | `phone`   | VARCHAR(20)  | nullable     | Telefone de contato              |
 
@@ -393,13 +393,13 @@ Unidades executantes que realizam os procedimentos agendados.
 
 Profissionais de saúde vinculados a uma unidade executante.
 
-| Coluna      | Tipo         | Restrições                    | Descrição                  |
-|-------------|--------------|-------------------------------|----------------------------|
-| `id`        | UUID         | PK, NOT NULL                  | Identificador único        |
-| `unit_id`   | UUID         | FK → health_units(id), NOT NULL | Unidade do profissional  |
-| `name`      | VARCHAR(255) | NOT NULL                      | Nome completo              |
-| `crm`       | VARCHAR(20)  | nullable                      | CRM do profissional        |
-| `specialty` | VARCHAR(100) | nullable                      | Especialidade              |
+| Coluna          | Tipo         | Restrições                    | Descrição                  |
+|-----------------|--------------|-------------------------------|----------------------------|
+| `id`            | UUID         | PK, NOT NULL                  | Identificador único        |
+| `unit_id`       | UUID         | FK → health_units(id), NOT NULL | Unidade do profissional  |
+| `nome`          | VARCHAR(255) | NOT NULL                      | Nome completo              |
+| `crm`           | VARCHAR(20)  | nullable                      | CRM do profissional        |
+| `especialidade` | VARCHAR(100) | nullable                      | Especialidade              |
 
 ---
 
@@ -428,12 +428,12 @@ Horários individuais gerados a partir de uma grade semanal.
 
 | Coluna        | Tipo        | Restrições                    | Descrição                      |
 |---------------|-------------|-------------------------------|--------------------------------|
-| `id`          | UUID        | PK, NOT NULL                  | Identificador único            |
-| `schedule_id` | UUID        | FK → schedules(id), NOT NULL  | Grade que gerou este slot      |
-| `date_time`   | TIMESTAMP   | NOT NULL                      | Data e hora exata do slot      |
-| `capacity`    | INTEGER     | NOT NULL                      | Herdado da grade               |
-| `booked`      | INTEGER     | NOT NULL, DEFAULT 0           | Quantidade já alocada          |
-| `status`      | VARCHAR(20) | NOT NULL, DEFAULT `AVAILABLE` | `AVAILABLE`, `BLOCKED`, `FULL` |
+| `id`          | UUID        | PK, NOT NULL                      | Identificador único                                          |
+| `schedule_id` | UUID        | FK → schedules(id), NOT NULL      | Grade que gerou este slot                                    |
+| `data_hora`   | TIMESTAMP   | NOT NULL                          | Data e hora exata do slot                                    |
+| `capacity`    | INTEGER     | NOT NULL                          | Herdado da grade                                             |
+| `booked`      | INTEGER     | NOT NULL, DEFAULT 0               | Quantidade já alocada                                        |
+| `status`      | VARCHAR(20) | NOT NULL, DEFAULT `DISPONIVEL`    | `DISPONIVEL`, `RESERVADO`, `OCUPADO`, `INDISPONIVEL`         |
 
 ---
 
@@ -446,7 +446,7 @@ Agendamento de um paciente em um slot específico.
 | `id`                  | UUID        | PK, NOT NULL                | Identificador único                              |
 | `queue_entry_id`      | UUID        | NOT NULL                    | Ref. à entry no queue-service (sem FK)           |
 | `slot_id`             | UUID        | FK → slots(id), NOT NULL    | Slot alocado                                     |
-| `patient_id`          | UUID        | NOT NULL                    | Ref. ao patient no queue-service (sem FK)        |
+| `paciente_id`         | UUID        | NOT NULL                    | Ref. ao patient no queue-service (sem FK)        |
 | `status`              | VARCHAR(30) | NOT NULL                    | Ver ciclo de vida abaixo                         |
 | `expires_at`          | TIMESTAMP   | NOT NULL                    | Deadline de 72h para o paciente confirmar presença|
 | `cancellation_reason` | TEXT        | nullable                    | Motivo do cancelamento                           |
@@ -596,17 +596,17 @@ CREATE TABLE pareceres (
 CREATE TABLE health_units (
     id      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     cnes    VARCHAR(7)   NOT NULL UNIQUE,
-    name    VARCHAR(255) NOT NULL,
+    nome    VARCHAR(255) NOT NULL,
     address VARCHAR(255),
     phone   VARCHAR(20)
 );
 
 CREATE TABLE providers (
-    id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    unit_id   UUID         NOT NULL REFERENCES health_units(id),
-    name      VARCHAR(255) NOT NULL,
-    crm       VARCHAR(20),
-    specialty VARCHAR(100)
+    id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    unit_id        UUID         NOT NULL REFERENCES health_units(id),
+    nome           VARCHAR(255) NOT NULL,
+    crm            VARCHAR(20),
+    especialidade  VARCHAR(100)
 );
 
 CREATE TABLE schedules (
@@ -625,19 +625,19 @@ CREATE TABLE schedules (
 CREATE TABLE slots (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     schedule_id UUID        NOT NULL REFERENCES schedules(id),
-    date_time   TIMESTAMP   NOT NULL,
+    data_hora   TIMESTAMP   NOT NULL,
     capacity    INTEGER     NOT NULL,
     booked      INTEGER     NOT NULL DEFAULT 0,
-    status      VARCHAR(20) NOT NULL DEFAULT 'AVAILABLE'
-                    CHECK (status IN ('AVAILABLE','BLOCKED','FULL')),
-    UNIQUE (schedule_id, date_time)
+    status      VARCHAR(20) NOT NULL DEFAULT 'DISPONIVEL'
+                    CHECK (status IN ('DISPONIVEL','RESERVADO','OCUPADO','INDISPONIVEL')),
+    UNIQUE (schedule_id, data_hora)
 );
 
 CREATE TABLE appointments (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     queue_entry_id      UUID        NOT NULL,
     slot_id             UUID        NOT NULL REFERENCES slots(id),
-    patient_id          UUID        NOT NULL,
+    paciente_id         UUID        NOT NULL,
     status              VARCHAR(30) NOT NULL DEFAULT 'AGUARDANDO_CONFIRMACAO'
                             CHECK (status IN ('AGUARDANDO_CONFIRMACAO','CONFIRMADO',
                                               'CANCELADO','ATENDIDO','FALTOU')),
@@ -648,8 +648,8 @@ CREATE TABLE appointments (
 );
 
 CREATE INDEX idx_slots_availability
-    ON slots (schedule_id, date_time, status)
-    WHERE status = 'AVAILABLE' AND booked < capacity;
+    ON slots (schedule_id, data_hora, status)
+    WHERE status = 'DISPONIVEL' AND booked < capacity;
 
 CREATE INDEX idx_appointments_expiration
     ON appointments (expires_at, status)

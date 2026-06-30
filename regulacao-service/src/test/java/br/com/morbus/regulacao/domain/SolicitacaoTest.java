@@ -1,5 +1,6 @@
 package br.com.morbus.regulacao.domain;
 
+import br.com.morbus.regulacao.domain.enums.EDestino;
 import br.com.morbus.regulacao.domain.enums.ERiscoSolicitado;
 import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
 import br.com.morbus.regulacao.domain.model.Solicitacao;
@@ -20,8 +21,11 @@ class SolicitacaoTest {
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 UUID.randomUUID(),
-                ERiscoSolicitado.AMARELO,
-                "observação",
+                "I10",
+                "Paciente com hipertensao grave",
+                "Dr. Silva",
+                "CRM/SP 12345",
+                EDestino.FILA_REGULADA,
                 UUID.randomUUID()
         );
     }
@@ -35,7 +39,11 @@ class SolicitacaoTest {
                 null,
                 status,
                 ERiscoSolicitado.VERDE,
-                "obs",
+                "I10",
+                "justificativa",
+                "Dr. Silva",
+                null,
+                EDestino.FILA_REGULADA,
                 null,
                 UUID.randomUUID(),
                 LocalDateTime.now().minusHours(2),
@@ -43,20 +51,24 @@ class SolicitacaoTest {
         );
     }
 
-    // ── Construtor de criação ────────────────────────────────────────────────
-
     @Nested
     @DisplayName("ao ser criada")
     class AoCriar {
 
         @Test
-        @DisplayName("deve ter status PENDENTE")
-        void deveTeStatusPendente() {
-            assertThat(buildNova().getStatus()).isEqualTo(EStatusSolicitacao.PENDENTE);
+        @DisplayName("deve ter status AGUARDANDO")
+        void deveTeStatusAguardando() {
+            assertThat(buildNova().getStatus()).isEqualTo(EStatusSolicitacao.AGUARDANDO);
         }
 
         @Test
-        @DisplayName("deve gerar um id não nulo")
+        @DisplayName("deve ter riskColor AZUL por padrao")
+        void deveTeRiskColorAzul() {
+            assertThat(buildNova().getRiskColor()).isEqualTo(ERiscoSolicitado.AZUL);
+        }
+
+        @Test
+        @DisplayName("deve gerar um id nao nulo")
         void deveGerarId() {
             assertThat(buildNova().getId()).isNotNull();
         }
@@ -80,24 +92,25 @@ class SolicitacaoTest {
         @Test
         @DisplayName("deve preservar os campos informados")
         void devePreservarCampos() {
-            UUID pacienteId = UUID.randomUUID();
+            UUID patientId = UUID.randomUUID();
             UUID procedureId = UUID.randomUUID();
             UUID unidadeId = UUID.randomUUID();
             UUID solicitadoPor = UUID.randomUUID();
 
-            Solicitacao s = new Solicitacao(pacienteId, procedureId, unidadeId,
-                    ERiscoSolicitado.VERMELHO, "obs", solicitadoPor);
+            Solicitacao s = new Solicitacao(patientId, procedureId, unidadeId,
+                    "J45", "Asma persistente", "Dra. Costa", null,
+                    EDestino.FILA_ESPERA, solicitadoPor);
 
-            assertThat(s.getPacienteId()).isEqualTo(pacienteId);
+            assertThat(s.getPatientId()).isEqualTo(patientId);
             assertThat(s.getProcedureId()).isEqualTo(procedureId);
             assertThat(s.getUnidadeSolicitanteId()).isEqualTo(unidadeId);
-            assertThat(s.getRiscoSolicitado()).isEqualTo(ERiscoSolicitado.VERMELHO);
-            assertThat(s.getObservacoes()).isEqualTo("obs");
+            assertThat(s.getCid()).isEqualTo("J45");
+            assertThat(s.getJustificativaClinica()).isEqualTo("Asma persistente");
+            assertThat(s.getProfissionalSolicitante()).isEqualTo("Dra. Costa");
+            assertThat(s.getDestino()).isEqualTo(EDestino.FILA_ESPERA);
             assertThat(s.getSolicitadoPor()).isEqualTo(solicitadoPor);
         }
     }
-
-    // ── cancelar() ──────────────────────────────────────────────────────────
 
     @Nested
     @DisplayName("ao cancelar")
@@ -106,7 +119,7 @@ class SolicitacaoTest {
         @Test
         @DisplayName("deve transicionar status para CANCELADA")
         void deveTransicionarParaCancelada() {
-            Solicitacao s = buildExistente(EStatusSolicitacao.PENDENTE);
+            Solicitacao s = buildExistente(EStatusSolicitacao.AGUARDANDO);
             s.cancelar();
             assertThat(s.getStatus()).isEqualTo(EStatusSolicitacao.CANCELADA);
         }

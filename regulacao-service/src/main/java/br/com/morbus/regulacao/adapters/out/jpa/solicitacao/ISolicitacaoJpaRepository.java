@@ -1,4 +1,4 @@
-package br.com.morbus.regulacao.adapters.out.jpa;
+package br.com.morbus.regulacao.adapters.out.jpa.solicitacao;
 
 import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -9,7 +9,7 @@ import java.util.UUID;
 
 public interface ISolicitacaoJpaRepository extends JpaRepository<SolicitacaoEntity, UUID>, JpaSpecificationExecutor<SolicitacaoEntity> {
 
-    boolean existsByPacienteIdAndProcedureIdAndStatusIn(UUID pacienteId,
-                                                        UUID procedureId,
-                                                        List<EStatusSolicitacao> statuses);
+    boolean existsByPatientIdAndProcedureIdAndStatusIn(UUID patientId,
+                                                       UUID procedureId,
+                                                       List<EStatusSolicitacao> statuses);
 }
