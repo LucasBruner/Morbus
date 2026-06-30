@@ -1,7 +1,7 @@
 package br.com.morbus.agendamento.adapter.out.persistence;
 
-import br.com.morbus.agendamento.domain.enums.EAppointmentStatus;
-import br.com.morbus.agendamento.domain.model.Appointment;
+import br.com.morbus.agendamento.domain.enums.EStatusAgendamento;
+import br.com.morbus.agendamento.domain.model.Agendamento;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -17,7 +17,7 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class AppointmentEntity {
+public class AgendamentoEntity {
 
     @Id
     @Column(name = "id", nullable = false)
@@ -30,17 +30,17 @@ public class AppointmentEntity {
     private UUID slotId;
 
     @Column(name = "patient_id", nullable = false)
-    private UUID patientId;
+    private UUID pacienteId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private EAppointmentStatus status;
+    private EStatusAgendamento status;
 
     @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
 
     @Column(name = "cancellation_reason")
-    private String cancellationReason;
+    private String motivoCancelamento;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
@@ -48,29 +48,29 @@ public class AppointmentEntity {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    public static AppointmentEntity fromDomain(Appointment appointment) {
-        return new AppointmentEntity(
-                appointment.getId(),
-                appointment.getQueueEntryId(),
-                appointment.getSlotId(),
-                appointment.getPatientId(),
-                appointment.getStatus(),
-                appointment.getExpiresAt(),
-                appointment.getCancellationReason(),
-                appointment.getCreatedAt(),
-                appointment.getUpdatedAt()
+    public static AgendamentoEntity fromDomain(Agendamento agendamento) {
+        return new AgendamentoEntity(
+                agendamento.getId(),
+                agendamento.getQueueEntryId(),
+                agendamento.getSlotId(),
+                agendamento.getPacienteId(),
+                agendamento.getStatus(),
+                agendamento.getExpiresAt(),
+                agendamento.getMotivoCancelamento(),
+                agendamento.getCreatedAt(),
+                agendamento.getUpdatedAt()
         );
     }
 
-    public Appointment toDomain() {
-        return new Appointment(
+    public Agendamento toDomain() {
+        return new Agendamento(
                 id,
                 queueEntryId,
                 slotId,
-                patientId,
+                pacienteId,
                 status,
                 expiresAt,
-                cancellationReason,
+                motivoCancelamento,
                 createdAt,
                 updatedAt
         );

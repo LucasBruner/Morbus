@@ -1,6 +1,6 @@
 package br.com.morbus.agendamento.domain.enums;
 
-public enum ESlotStatus {
+public enum EStatusSlots {
     AVAILABLE,
     BLOCKED,
     FULL

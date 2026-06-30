@@ -1,34 +1,34 @@
 package br.com.morbus.agendamento.domain.model;
 
-import br.com.morbus.agendamento.domain.enums.EAppointmentStatus;
+import br.com.morbus.agendamento.domain.enums.EStatusAgendamento;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Getter
-public class Appointment {
+public class Agendamento {
 
     private final UUID id;
     private final UUID queueEntryId;
     private final UUID slotId;
-    private final UUID patientId;
-    private final EAppointmentStatus status;
+    private final UUID pacienteId;
+    private final EStatusAgendamento status;
     private final LocalDateTime expiresAt;
-    private final String cancellationReason;
+    private final String motivoCancelamento;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
 
-    public Appointment(UUID queueEntryId,
+    public Agendamento(UUID queueEntryId,
                        UUID slotId,
-                       UUID patientId,
+                       UUID pacienteId,
                        LocalDateTime expiresAt) {
         this(
                 UUID.randomUUID(),
                 queueEntryId,
                 slotId,
-                patientId,
-                EAppointmentStatus.AGUARDANDO_CONFIRMACAO,
+                pacienteId,
+                EStatusAgendamento.AGUARDANDO_CONFIRMACAO,
                 expiresAt,
                 null,
                 LocalDateTime.now(),
@@ -36,22 +36,22 @@ public class Appointment {
         );
     }
 
-    public Appointment(UUID id,
+    public Agendamento(UUID id,
                        UUID queueEntryId,
                        UUID slotId,
-                       UUID patientId,
-                       EAppointmentStatus status,
+                       UUID pacienteId,
+                       EStatusAgendamento status,
                        LocalDateTime expiresAt,
-                       String cancellationReason,
+                       String motivoCancelamento,
                        LocalDateTime createdAt,
                        LocalDateTime updatedAt) {
         this.id = id;
         this.queueEntryId = queueEntryId;
         this.slotId = slotId;
-        this.patientId = patientId;
+        this.pacienteId = pacienteId;
         this.status = status;
         this.expiresAt = expiresAt;
-        this.cancellationReason = cancellationReason;
+        this.motivoCancelamento = motivoCancelamento;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }

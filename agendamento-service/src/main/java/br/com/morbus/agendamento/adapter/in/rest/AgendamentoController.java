@@ -8,7 +8,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/appointments")
-public class AppointmentController {
+public class AgendamentoController {
 
     @PatchMapping("/{id}/confirmar")
     @PreAuthorize("hasRole('PACIENTE')")
