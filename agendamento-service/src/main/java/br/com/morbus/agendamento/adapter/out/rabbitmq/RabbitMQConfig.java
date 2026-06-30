@@ -18,9 +18,9 @@ public class RabbitMQConfig {
     public static final String QUEUE_PATIENT_REINSTATED = "agendamento.patient.reinstated";
     public static final String RK_PATIENT_REINSTATED = "agendamento.patient.reinstated";
 
-    public static final String QUEUE_SOLICITACAO_APROVADA  = "regulacao.solicitacao.aprovada";
-    public static final String QUEUE_SOLICITACAO_NEGADA    = "regulacao.solicitacao.negada";
-    public static final String QUEUE_SOLICITACAO_DEVOLVIDA = "regulacao.solicitacao.devolvida";
+    public static final String QUEUE_SOLICITACAO_APROVADA  = "agendamento.solicitacao.aprovada";
+    public static final String QUEUE_SOLICITACAO_NEGADA    = "agendamento.solicitacao.negada";
+    public static final String QUEUE_SOLICITACAO_DEVOLVIDA = "agendamento.solicitacao.devolvida";
 
     public static final String QUEUE_APPOINTMENT_CREATED  = "agendamento.appointment.created";
     public static final String QUEUE_APPOINTMENT_ATTENDED = "agendamento.appointment.attended";
@@ -80,7 +80,7 @@ public class RabbitMQConfig {
     }
 
     @Bean
-    public Queue solicitacaoDevolvadaQueue() {
+    public Queue solicitacaoDevolvidaQueue() {
         return QueueBuilder.durable(QUEUE_SOLICITACAO_DEVOLVIDA).build();
     }
 
@@ -132,26 +132,31 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public Queue appointmentExpiredDlq() {
+        return QueueBuilder.durable(DLQ_APPOINTMENT_EXPIRED).build();
+    }
+
+    @Bean
     public Binding bindingSolicitacaoAprovada(Queue solicitacaoAprovadaQueue,
-                                              DirectExchange regulacaoExchange) {
+                                              DirectExchange agendamentoExchange) {
         return BindingBuilder.bind(solicitacaoAprovadaQueue)
-                .to(regulacaoExchange)
+                .to(agendamentoExchange)
                 .with(RK_SOLICITACAO_APROVADA);
     }
 
     @Bean
     public Binding bindingSolicitacaoNegada(Queue solicitacaoNegadaQueue,
-                                            DirectExchange regulacaoExchange) {
+                                            DirectExchange agendamentoExchange) {
         return BindingBuilder.bind(solicitacaoNegadaQueue)
-                .to(regulacaoExchange)
+                .to(agendamentoExchange)
                 .with(RK_SOLICITACAO_NEGADA);
     }
 
     @Bean
-    public Binding bindingSolicitacaoDevolvida(Queue solicitacaoDevolvadaQueue,
-                                               DirectExchange regulacaoExchange) {
-        return BindingBuilder.bind(solicitacaoDevolvadaQueue)
-                .to(regulacaoExchange)
+    public Binding bindingSolicitacaoDevolvida(Queue solicitacaoDevolvidaQueue,
+                                               DirectExchange agendamentoExchange) {
+        return BindingBuilder.bind(solicitacaoDevolvidaQueue)
+                .to(agendamentoExchange)
                 .with(RK_SOLICITACAO_DEVOLVIDA);
     }
 
@@ -180,42 +185,42 @@ public class RabbitMQConfig {
     }
 
     @Bean
-    public Binding bindingAppointmentExpired(Queue appointmentNoShowQueue,
+    public Binding bindingAppointmentExpired(Queue appointmentExpiredQueue,
                                             DirectExchange agendamentoExchange) {
-        return BindingBuilder.bind(appointmentNoShowQueue)
+        return BindingBuilder.bind(appointmentExpiredQueue)
                 .to(agendamentoExchange)
                 .with(RK_APPOINTMENT_EXPIRED);
     }
 
     @Bean
     public Binding bindingAppointmentCreatedDlq(Queue appointmentCreatedDlq,
-                                                DirectExchange regulacaoDlx) {
+                                                DirectExchange agendamentoDlx) {
         return BindingBuilder.bind(appointmentCreatedDlq)
-                .to(regulacaoDlx)
+                .to(agendamentoDlx)
                 .with(DLQ_APPOINTMENT_CREATED);
     }
 
     @Bean
     public Binding bindingAppointmentAttendedDlq(Queue appointmentAttendedDlq,
-                                                 DirectExchange regulacaoDlx) {
+                                                 DirectExchange agendamentoDlx) {
         return BindingBuilder.bind(appointmentAttendedDlq)
-                .to(regulacaoDlx)
+                .to(agendamentoDlx)
                 .with(DLQ_APPOINTMENT_ATTENDED);
     }
 
     @Bean
     public Binding bindingAppointmentNoShowDlq(Queue appointmentNoShowDlq,
-                                               DirectExchange regulacaoDlx) {
+                                               DirectExchange agendamentoDlx) {
         return BindingBuilder.bind(appointmentNoShowDlq)
-                .to(regulacaoDlx)
+                .to(agendamentoDlx)
                 .with(DLQ_APPOINTMENT_NO_SHOW);
     }
 
     @Bean
-    public Binding bindingAppointmentExpiredDlq(Queue appointmentNoShowDlq,
-                                               DirectExchange regulacaoDlx) {
-        return BindingBuilder.bind(appointmentNoShowDlq)
-                .to(regulacaoDlx)
+    public Binding bindingAppointmentExpiredDlq(Queue appointmentExpiredDlq,
+                                               DirectExchange agendamentoDlx) {
+        return BindingBuilder.bind(appointmentExpiredDlq)
+                .to(agendamentoDlx)
                 .with(DLQ_APPOINTMENT_EXPIRED);
     }
 
