@@ -61,7 +61,7 @@ public class SolicitacaoJpaAdapter implements ISolicitacaoRepository {
         }
 
         Pageable pageable = PageRequest.of(query.page(), query.size(),
-                Sort.by(Sort.Direction.DESC, "createdAt"));
+                Sort.by(query.sortDirection(), "createdAt"));
         return jpaRepository.findAll(spec, pageable).map(SolicitacaoEntity::toDomain);
     }
 }

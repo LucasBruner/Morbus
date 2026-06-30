@@ -169,6 +169,21 @@ class SolicitacaoJpaAdapterTest {
         }
 
         @Test
+        @DisplayName("deve ordenar por createdAt ASC quando informado na query")
+        void deveOrdenarAscQuandoInformado() {
+            ListarSolicitacoesQuery query = new ListarSolicitacoesQuery(null, null, null, 0, 20, Sort.Direction.ASC);
+            when(jpaRepository.findAll(any(Specification.class), any(Pageable.class)))
+                    .thenReturn(Page.empty());
+
+            adapter.listar(query);
+
+            ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+            verify(jpaRepository).findAll(any(Specification.class), pageableCaptor.capture());
+
+            assertThat(pageableCaptor.getValue().getSort()).isEqualTo(Sort.by(Sort.Direction.ASC, "createdAt"));
+        }
+
+        @Test
         @DisplayName("deve mapear entidades para dominio no resultado")
         void deveMapeiarResultado() {
             SolicitacaoEntity entity = buildEntity();
