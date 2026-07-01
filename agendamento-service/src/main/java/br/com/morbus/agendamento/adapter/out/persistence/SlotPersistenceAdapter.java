@@ -5,6 +5,8 @@ import br.com.morbus.agendamento.domain.port.out.ISlotRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public class SlotPersistenceAdapter implements ISlotRepository {
@@ -23,6 +25,16 @@ public class SlotPersistenceAdapter implements ISlotRepository {
                 .stream()
                 .map(this::toDomain)
                 .toList();
+    }
+
+    @Override
+    public Slot save(Slot slot) {
+        return toDomain(slotJpaRepository.save(toEntity(slot)));
+    }
+
+    @Override
+    public Slot findById(UUID id) {
+        return toDomain(slotJpaRepository.findById(id).get());
     }
 
     private SlotEntity toEntity(Slot slot) {

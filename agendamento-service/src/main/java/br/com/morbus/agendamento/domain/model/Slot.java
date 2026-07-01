@@ -9,12 +9,12 @@ import java.util.UUID;
 @Getter
 public class Slot {
 
-    private final UUID id;
-    private final UUID scheduleId;
-    private final LocalDateTime dataHora;
-    private final int capacidade;
-    private final int reservados;
-    private final EStatusSlots status;
+    private UUID id;
+    private UUID scheduleId;
+    private LocalDateTime dataHora;
+    private int capacidade;
+    private int reservados;
+    private EStatusSlots status;
 
     public Slot(UUID scheduleId,
                 LocalDateTime dataHora,
@@ -34,5 +34,13 @@ public class Slot {
         this.capacidade = capacidade;
         this.reservados = reservados;
         this.status = status;
+    }
+
+    public void block() {
+        this.status = EStatusSlots.INDISPONIVEL;
+    }
+
+    public void unblock() {
+        this.status = EStatusSlots.DISPONIVEL;
     }
 }
