@@ -43,4 +43,11 @@ public class Slot {
     public void unblock() {
         this.status = EStatusSlots.DISPONIVEL;
     }
+
+    public void reserveOne() {
+        this.reservados += 1;
+        this.status = this.reservados >= this.capacidade
+                ? EStatusSlots.OCUPADO
+                : EStatusSlots.RESERVADO;
+    }
 }

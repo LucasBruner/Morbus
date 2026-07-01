@@ -1,9 +1,12 @@
 package br.com.morbus.agendamento.infrastructure.config;
 
+import br.com.morbus.agendamento.adapter.out.rabbitmq.IAgendamentoEventPublisher;
+import br.com.morbus.agendamento.application.usecase.AlocarPacienteEmSlotUseCase;
 import br.com.morbus.agendamento.application.usecase.BlockSlotUseCase;
 import br.com.morbus.agendamento.application.usecase.CriarAgendamentoUseCase;
 import br.com.morbus.agendamento.application.usecase.CriarScheduleUseCase;
 import br.com.morbus.agendamento.application.usecase.UnblockSlotUseCase;
+import br.com.morbus.agendamento.domain.port.in.IAlocarPacienteEmSlotUseCase;
 import br.com.morbus.agendamento.domain.port.in.IBlockSlotUseCase;
 import br.com.morbus.agendamento.domain.port.in.ICriarAgendamentoUseCase;
 import br.com.morbus.agendamento.domain.port.in.ICriarScheduleUseCase;
@@ -20,6 +23,13 @@ public class UseCaseConfig {
     @Bean
     public ICriarAgendamentoUseCase criarAgendamentoUseCase(IAgendamentoRepository agendamentoRepository) {
         return new CriarAgendamentoUseCase(agendamentoRepository);
+    }
+
+    @Bean
+    public IAlocarPacienteEmSlotUseCase alocarPacienteEmSlotUseCase(IAgendamentoRepository agendamentoRepository,
+                                                                    ISlotRepository slotRepository,
+                                                                    IAgendamentoEventPublisher eventPublisher) {
+        return new AlocarPacienteEmSlotUseCase(agendamentoRepository, slotRepository, eventPublisher);
     }
 
     @Bean

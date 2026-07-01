@@ -13,4 +13,6 @@ public interface ISlotRepository {
     Slot save(Slot slot);
 
     Slot findById(UUID id);
+
+    Optional<Slot> findAvailableSlotForProcedureAndUnit(UUID procedureId, UUID preferredUnitId);
 }

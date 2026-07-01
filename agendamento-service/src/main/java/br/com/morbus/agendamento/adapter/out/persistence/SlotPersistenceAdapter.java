@@ -37,6 +37,12 @@ public class SlotPersistenceAdapter implements ISlotRepository {
         return toDomain(slotJpaRepository.findById(id).get());
     }
 
+    @Override
+    public Optional<Slot> findAvailableSlotForProcedureAndUnit(UUID procedureId, UUID preferredUnitId) {
+        return slotJpaRepository.findAvailableSlotForProcedureAndUnit(procedureId, preferredUnitId)
+                .map(this::toDomain);
+    }
+
     private SlotEntity toEntity(Slot slot) {
         return new SlotEntity(
                 slot.getId(),
