@@ -130,24 +130,24 @@ erDiagram
     }
 
     SCHEDULES {
-        UUID        id              PK
-        UUID        unit_id         FK  "REFERENCES health_units(id)"
-        UUID        provider_id     FK  "REFERENCES providers(id), nullable"
-        UUID        procedure_id        "ref. procedure no queue-service (sem FK cross-service)"
-        VARCHAR(15)  day_of_week        "MONDAY|TUESDAY|...|FRIDAY"
-        TIME         start_time         "NOT NULL"
-        TIME         end_time           "NOT NULL"
-        INTEGER      slot_duration_min  "duração de cada slot em minutos"
-        INTEGER      capacity           "pacientes por slot"
-        BOOLEAN      active             "default true"
+        UUID        id                   PK
+        UUID        unit_id              FK  "REFERENCES health_units(id)"
+        UUID        provider_id          FK  "REFERENCES providers(id), nullable"
+        UUID        procedure_id             "ref. procedure no queue-service (sem FK cross-service)"
+        VARCHAR(15)  dia_da_semana           "SEGUNDA|TERCA|QUARTA|QUINTA|SEXTA|SABADO|DOMINGO"
+        TIME         horario_inicio          "NOT NULL"
+        TIME         horario_fim             "NOT NULL"
+        INTEGER      slot_duracao_minutos    "duração de cada slot em minutos"
+        INTEGER      capacidade              "pacientes por slot"
+        BOOLEAN      ativo                   "default true"
     }
 
     SLOTS {
         UUID        id              PK
         UUID        schedule_id     FK  "REFERENCES schedules(id)"
         TIMESTAMP    data_hora          "NOT NULL — data e hora do slot"
-        INTEGER      capacity           "herdado da grade"
-        INTEGER      booked             "quantidade já alocada, default 0"
+        INTEGER      capacidade         "herdado da grade"
+        INTEGER      reservados         "quantidade já alocada, default 0"
         VARCHAR(20)  status             "DISPONIVEL | RESERVADO | OCUPADO | INDISPONIVEL"
     }
 

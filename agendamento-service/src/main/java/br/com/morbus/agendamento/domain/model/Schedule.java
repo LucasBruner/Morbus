@@ -1,40 +1,56 @@
 package br.com.morbus.agendamento.domain.model;
 
-import br.com.morbus.agendamento.domain.enums.ETurnos;
+import br.com.morbus.agendamento.domain.enums.EDiaSemana;
 import lombok.Getter;
 
-import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.UUID;
 
 @Getter
 public class Schedule {
 
     private final UUID id;
-    private final UUID providerId;
     private final UUID unitId;
-    private final LocalDateTime dataInicio;
-    private final LocalDateTime dataFim;
-    private final ETurnos turno;
+    private final UUID providerId;
+    private final UUID procedureId;
+    private final EDiaSemana diaDaSemana;
+    private final LocalTime horarioInicio;
+    private final LocalTime horarioFim;
+    private final int slotDuracaoMinutos;
+    private final int capacidade;
+    private final boolean ativo;
 
-    public Schedule(UUID providerId,
-                    UUID unitId,
-                    LocalDateTime dataInicio,
-                    LocalDateTime dataFim,
-                    ETurnos turno) {
-        this(UUID.randomUUID(), providerId, unitId, dataInicio, dataFim, turno);
+    public Schedule(UUID unitId,
+                    UUID providerId,
+                    UUID procedureId,
+                    EDiaSemana diaDaSemana,
+                    LocalTime horarioInicio,
+                    LocalTime horarioFim,
+                    int slotDuracaoMinutos,
+                    int capacidade) {
+        this(UUID.randomUUID(), unitId, providerId, procedureId,
+                diaDaSemana, horarioInicio, horarioFim, slotDuracaoMinutos, capacidade, true);
     }
 
     public Schedule(UUID id,
-                    UUID providerId,
                     UUID unitId,
-                    LocalDateTime dataInicio,
-                    LocalDateTime dataFim,
-                    ETurnos turno) {
+                    UUID providerId,
+                    UUID procedureId,
+                    EDiaSemana diaDaSemana,
+                    LocalTime horarioInicio,
+                    LocalTime horarioFim,
+                    int slotDuracaoMinutos,
+                    int capacidade,
+                    boolean ativo) {
         this.id = id;
-        this.providerId = providerId;
         this.unitId = unitId;
-        this.dataInicio = dataInicio;
-        this.dataFim = dataFim;
-        this.turno = turno;
+        this.providerId = providerId;
+        this.procedureId = procedureId;
+        this.diaDaSemana = diaDaSemana;
+        this.horarioInicio = horarioInicio;
+        this.horarioFim = horarioFim;
+        this.slotDuracaoMinutos = slotDuracaoMinutos;
+        this.capacidade = capacidade;
+        this.ativo = ativo;
     }
 }

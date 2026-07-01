@@ -16,16 +16,15 @@ public class CriarAgendamentoUseCase implements ICriarAgendamentoUseCase {
 
     @Override
     public Agendamento execute(CriarAgendamentoCommand command) {
-        agendamentoRepository.findByPacienteIdAndDataHora(command.pacienteId(), command.dataHora())
-                .ifPresent(agendamento -> {
-                    throw new DuplicateAgendamentoException("Paciente ja possui agendamento para o horário informado.");
-                });
+        if (agendamentoRepository.existsByPacienteIdAndSlotId(command.pacienteId(), command.slotId())) {
+            throw new DuplicateAgendamentoException("Paciente já possui agendamento para o slot informado.");
+        }
 
         Agendamento agendamento = new Agendamento(
+                command.queueEntryId(),
+                command.slotId(),
                 command.pacienteId(),
-                command.procedimentoId(),
-                command.unidadeId(),
-                command.dataHora()
+                command.expiresAt()
         );
 
         return agendamentoRepository.save(agendamento);

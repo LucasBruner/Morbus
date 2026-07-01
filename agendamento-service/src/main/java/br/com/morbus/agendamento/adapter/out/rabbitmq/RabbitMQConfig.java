@@ -1,6 +1,10 @@
 package br.com.morbus.agendamento.adapter.out.rabbitmq;
 
-import org.springframework.amqp.core.*;
+import org.springframework.amqp.core.Binding;
+import org.springframework.amqp.core.BindingBuilder;
+import org.springframework.amqp.core.DirectExchange;
+import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
@@ -11,35 +15,35 @@ import tools.jackson.databind.json.JsonMapper;
 @Configuration
 public class RabbitMQConfig {
 
+    // Exchange publicado pelo agendamento-service
     public static final String AGENDAMENTO_EXCHANGE = "sus.agendamento.exchange";
-    public static final String AGENDAMENTO_DLX = "sus.agendamento.dlx";
+    public static final String AGENDAMENTO_DLX      = "sus.agendamento.dlx";
 
+    // Exchange publicado pelo queue-service (agendamento-service consome)
     public static final String SUS_QUEUE_EXCHANGE = "sus.queue.exchange";
-    public static final String QUEUE_PATIENT_REINSTATED = "agendamento.patient.reinstated";
-    public static final String RK_PATIENT_REINSTATED = "agendamento.patient.reinstated";
 
-    public static final String QUEUE_SOLICITACAO_APROVADA  = "agendamento.solicitacao.aprovada";
-    public static final String QUEUE_SOLICITACAO_NEGADA    = "agendamento.solicitacao.negada";
-    public static final String QUEUE_SOLICITACAO_DEVOLVIDA = "agendamento.solicitacao.devolvida";
+    // Filas publicadas pelo agendamento-service → sus.agendamento.exchange
+    public static final String QUEUE_APPOINTMENT_CONFIRMED   = "queue.appointment.confirmed";
+    public static final String QUEUE_APPOINTMENT_CANCELLED   = "queue.appointment.cancelled";
+    public static final String QUEUE_APPOINTMENT_RESCHEDULED = "queue.appointment.rescheduled";
+    public static final String QUEUE_APPOINTMENT_NO_SLOT     = "queue.appointment.no_slot";
+    public static final String QUEUE_APPOINTMENT_EXPIRED     = "queue.appointment.expired";
+    public static final String QUEUE_PATIENT_NO_SHOW         = "queue.patient.no_show";
 
-    public static final String QUEUE_APPOINTMENT_CREATED  = "agendamento.appointment.created";
-    public static final String QUEUE_APPOINTMENT_ATTENDED = "agendamento.appointment.attended";
-    public static final String QUEUE_APPOINTMENT_NO_SHOW  = "agendamento.appointment.no_show";
-    public static final String QUEUE_APPOINTMENT_EXPIRED  = "agendamento.appointment.expired";
+    // Routing keys publicadas pelo agendamento-service
+    public static final String RK_APPOINTMENT_CONFIRMED   = "appointment.confirmed";
+    public static final String RK_APPOINTMENT_CANCELLED   = "appointment.cancelled";
+    public static final String RK_APPOINTMENT_RESCHEDULED = "appointment.rescheduled";
+    public static final String RK_APPOINTMENT_NO_SLOT     = "appointment.no_slot";
+    public static final String RK_APPOINTMENT_EXPIRED     = "appointment.expired";
+    public static final String RK_PATIENT_NO_SHOW         = "patient.no_show";
 
-    public static final String DLQ_APPOINTMENT_CREATED  = "agendamento.appointment.created.dlq";
-    public static final String DLQ_APPOINTMENT_ATTENDED = "agendamento.appointment.attended.dlq";
-    public static final String DLQ_APPOINTMENT_NO_SHOW  = "agendamento.appointment.no_show.dlq";
-    public static final String DLQ_APPOINTMENT_EXPIRED  = "agendamento.appointment.expired.dlq";
+    // Fila consumida pelo agendamento-service ← sus.queue.exchange
+    public static final String QUEUE_PATIENT_CALLED = "queue.patient.called";
+    public static final String RK_PATIENT_CALLED    = "patient.called";
+    public static final String DLQ_PATIENT_CALLED   = "queue.patient.called.dlq";
 
-    public static final String RK_SOLICITACAO_APROVADA  = "solicitation.approved";
-    public static final String RK_SOLICITACAO_NEGADA    = "solicitation.denied";
-    public static final String RK_SOLICITACAO_DEVOLVIDA = "solicitation.devolved";
-
-    public static final String RK_APPOINTMENT_CREATED  = "appointment.created";
-    public static final String RK_APPOINTMENT_ATTENDED = "appointment.attended";
-    public static final String RK_APPOINTMENT_NO_SHOW  = "appointment.no_show";
-    public static final String RK_APPOINTMENT_EXPIRED  = "appointment.expired";
+    // ─── Exchanges ────────────────────────────────────────────────────────────
 
     @Bean
     public DirectExchange agendamentoExchange() {
@@ -52,177 +56,122 @@ public class RabbitMQConfig {
     }
 
     @Bean
-    public TopicExchange susQueueExchange() {
-        return new TopicExchange(SUS_QUEUE_EXCHANGE, true, false);
+    public DirectExchange susQueueExchange() {
+        return new DirectExchange(SUS_QUEUE_EXCHANGE, true, false);
+    }
+
+    // ─── Filas publicadas (sus.agendamento.exchange) ──────────────────────────
+
+    @Bean
+    public Queue appointmentConfirmedQueue() {
+        return QueueBuilder.durable(QUEUE_APPOINTMENT_CONFIRMED).build();
     }
 
     @Bean
-    public Queue patientReinstatedQueue() {
-        return QueueBuilder.durable(QUEUE_PATIENT_REINSTATED).build();
+    public Queue appointmentCancelledQueue() {
+        return QueueBuilder.durable(QUEUE_APPOINTMENT_CANCELLED).build();
     }
 
     @Bean
-    public Binding patientReinstatedBinding() {
-        return BindingBuilder
-                .bind(patientReinstatedQueue())
-                .to(susQueueExchange())
-                .with(RK_PATIENT_REINSTATED);
+    public Queue appointmentRescheduledQueue() {
+        return QueueBuilder.durable(QUEUE_APPOINTMENT_RESCHEDULED).build();
     }
 
     @Bean
-    public Queue solicitacaoAprovadaQueue() {
-        return QueueBuilder.durable(QUEUE_SOLICITACAO_APROVADA).build();
-    }
-
-    @Bean
-    public Queue solicitacaoNegadaQueue() {
-        return QueueBuilder.durable(QUEUE_SOLICITACAO_NEGADA).build();
-    }
-
-    @Bean
-    public Queue solicitacaoDevolvidaQueue() {
-        return QueueBuilder.durable(QUEUE_SOLICITACAO_DEVOLVIDA).build();
-    }
-
-    @Bean
-    public Queue appointmentCreatedQueue() {
-        return QueueBuilder.durable(QUEUE_APPOINTMENT_CREATED)
-                .withArgument("x-dead-letter-exchange", AGENDAMENTO_DLX)
-                .withArgument("x-dead-letter-routing-key", DLQ_APPOINTMENT_CREATED)
-                .build();
-    }
-
-    @Bean
-    public Queue appointmentAttendedQueue() {
-        return QueueBuilder.durable(QUEUE_APPOINTMENT_ATTENDED)
-                .withArgument("x-dead-letter-exchange", AGENDAMENTO_DLX)
-                .withArgument("x-dead-letter-routing-key", DLQ_APPOINTMENT_ATTENDED)
-                .build();
-    }
-
-    @Bean
-    public Queue appointmentNoShowQueue() {
-        return QueueBuilder.durable(QUEUE_APPOINTMENT_NO_SHOW)
-                .withArgument("x-dead-letter-exchange", AGENDAMENTO_DLX)
-                .withArgument("x-dead-letter-routing-key", DLQ_APPOINTMENT_NO_SHOW)
-                .build();
+    public Queue appointmentNoSlotQueue() {
+        return QueueBuilder.durable(QUEUE_APPOINTMENT_NO_SLOT).build();
     }
 
     @Bean
     public Queue appointmentExpiredQueue() {
-        return QueueBuilder.durable(QUEUE_APPOINTMENT_EXPIRED)
-                .withArgument("x-dead-letter-exchange", AGENDAMENTO_DLX)
-                .withArgument("x-dead-letter-routing-key", DLQ_APPOINTMENT_EXPIRED)
-                .build();
+        return QueueBuilder.durable(QUEUE_APPOINTMENT_EXPIRED).build();
     }
 
     @Bean
-    public Queue appointmentCreatedDlq() {
-        return QueueBuilder.durable(DLQ_APPOINTMENT_CREATED).build();
+    public Queue patientNoShowQueue() {
+        return QueueBuilder.durable(QUEUE_PATIENT_NO_SHOW).build();
     }
 
     @Bean
-    public Queue appointmentAttendedDlq() {
-        return QueueBuilder.durable(DLQ_APPOINTMENT_ATTENDED).build();
-    }
-
-    @Bean
-    public Queue appointmentNoShowDlq() {
-        return QueueBuilder.durable(DLQ_APPOINTMENT_NO_SHOW).build();
-    }
-
-    @Bean
-    public Queue appointmentExpiredDlq() {
-        return QueueBuilder.durable(DLQ_APPOINTMENT_EXPIRED).build();
-    }
-
-    @Bean
-    public Binding bindingSolicitacaoAprovada(Queue solicitacaoAprovadaQueue,
-                                              DirectExchange agendamentoExchange) {
-        return BindingBuilder.bind(solicitacaoAprovadaQueue)
-                .to(agendamentoExchange)
-                .with(RK_SOLICITACAO_APROVADA);
-    }
-
-    @Bean
-    public Binding bindingSolicitacaoNegada(Queue solicitacaoNegadaQueue,
-                                            DirectExchange agendamentoExchange) {
-        return BindingBuilder.bind(solicitacaoNegadaQueue)
-                .to(agendamentoExchange)
-                .with(RK_SOLICITACAO_NEGADA);
-    }
-
-    @Bean
-    public Binding bindingSolicitacaoDevolvida(Queue solicitacaoDevolvidaQueue,
+    public Binding bindingAppointmentConfirmed(Queue appointmentConfirmedQueue,
                                                DirectExchange agendamentoExchange) {
-        return BindingBuilder.bind(solicitacaoDevolvidaQueue)
+        return BindingBuilder.bind(appointmentConfirmedQueue)
                 .to(agendamentoExchange)
-                .with(RK_SOLICITACAO_DEVOLVIDA);
+                .with(RK_APPOINTMENT_CONFIRMED);
     }
 
     @Bean
-    public Binding bindingAppointmentCreated(Queue appointmentCreatedQueue,
-                                             DirectExchange agendamentoExchange) {
-        return BindingBuilder.bind(appointmentCreatedQueue)
+    public Binding bindingAppointmentCancelled(Queue appointmentCancelledQueue,
+                                               DirectExchange agendamentoExchange) {
+        return BindingBuilder.bind(appointmentCancelledQueue)
                 .to(agendamentoExchange)
-                .with(RK_APPOINTMENT_CREATED);
+                .with(RK_APPOINTMENT_CANCELLED);
     }
 
     @Bean
-    public Binding bindingAppointmentAttended(Queue appointmentAttendedQueue,
-                                              DirectExchange agendamentoExchange) {
-        return BindingBuilder.bind(appointmentAttendedQueue)
+    public Binding bindingAppointmentRescheduled(Queue appointmentRescheduledQueue,
+                                                 DirectExchange agendamentoExchange) {
+        return BindingBuilder.bind(appointmentRescheduledQueue)
                 .to(agendamentoExchange)
-                .with(RK_APPOINTMENT_ATTENDED);
+                .with(RK_APPOINTMENT_RESCHEDULED);
     }
 
     @Bean
-    public Binding bindingAppointmentNoShow(Queue appointmentNoShowQueue,
+    public Binding bindingAppointmentNoSlot(Queue appointmentNoSlotQueue,
                                             DirectExchange agendamentoExchange) {
-        return BindingBuilder.bind(appointmentNoShowQueue)
+        return BindingBuilder.bind(appointmentNoSlotQueue)
                 .to(agendamentoExchange)
-                .with(RK_APPOINTMENT_NO_SHOW);
+                .with(RK_APPOINTMENT_NO_SLOT);
     }
 
     @Bean
     public Binding bindingAppointmentExpired(Queue appointmentExpiredQueue,
-                                            DirectExchange agendamentoExchange) {
+                                             DirectExchange agendamentoExchange) {
         return BindingBuilder.bind(appointmentExpiredQueue)
                 .to(agendamentoExchange)
                 .with(RK_APPOINTMENT_EXPIRED);
     }
 
     @Bean
-    public Binding bindingAppointmentCreatedDlq(Queue appointmentCreatedDlq,
-                                                DirectExchange agendamentoDlx) {
-        return BindingBuilder.bind(appointmentCreatedDlq)
-                .to(agendamentoDlx)
-                .with(DLQ_APPOINTMENT_CREATED);
+    public Binding bindingPatientNoShow(Queue patientNoShowQueue,
+                                        DirectExchange agendamentoExchange) {
+        return BindingBuilder.bind(patientNoShowQueue)
+                .to(agendamentoExchange)
+                .with(RK_PATIENT_NO_SHOW);
+    }
+
+    // ─── Fila consumida (sus.queue.exchange) ─────────────────────────────────
+
+    @Bean
+    public Queue patientCalledQueue() {
+        return QueueBuilder.durable(QUEUE_PATIENT_CALLED)
+                .withArgument("x-dead-letter-exchange", AGENDAMENTO_DLX)
+                .withArgument("x-dead-letter-routing-key", DLQ_PATIENT_CALLED)
+                .build();
     }
 
     @Bean
-    public Binding bindingAppointmentAttendedDlq(Queue appointmentAttendedDlq,
-                                                 DirectExchange agendamentoDlx) {
-        return BindingBuilder.bind(appointmentAttendedDlq)
-                .to(agendamentoDlx)
-                .with(DLQ_APPOINTMENT_ATTENDED);
+    public Queue patientCalledDlq() {
+        return QueueBuilder.durable(DLQ_PATIENT_CALLED).build();
     }
 
     @Bean
-    public Binding bindingAppointmentNoShowDlq(Queue appointmentNoShowDlq,
-                                               DirectExchange agendamentoDlx) {
-        return BindingBuilder.bind(appointmentNoShowDlq)
-                .to(agendamentoDlx)
-                .with(DLQ_APPOINTMENT_NO_SHOW);
+    public Binding bindingPatientCalled(Queue patientCalledQueue,
+                                        DirectExchange susQueueExchange) {
+        return BindingBuilder.bind(patientCalledQueue)
+                .to(susQueueExchange)
+                .with(RK_PATIENT_CALLED);
     }
 
     @Bean
-    public Binding bindingAppointmentExpiredDlq(Queue appointmentExpiredDlq,
-                                               DirectExchange agendamentoDlx) {
-        return BindingBuilder.bind(appointmentExpiredDlq)
+    public Binding bindingPatientCalledDlq(Queue patientCalledDlq,
+                                           DirectExchange agendamentoDlx) {
+        return BindingBuilder.bind(patientCalledDlq)
                 .to(agendamentoDlx)
-                .with(DLQ_APPOINTMENT_EXPIRED);
+                .with(DLQ_PATIENT_CALLED);
     }
+
+    // ─── Infraestrutura de mensageria ─────────────────────────────────────────
 
     @Bean
     public JsonMapper objectMapper() {
