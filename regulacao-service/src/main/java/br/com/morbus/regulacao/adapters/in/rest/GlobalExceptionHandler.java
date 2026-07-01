@@ -1,6 +1,7 @@
 package br.com.morbus.regulacao.adapters.in.rest;
 
 import br.com.morbus.regulacao.domain.exception.CampoObrigatorioException;
+import br.com.morbus.regulacao.domain.exception.CotaExcedidaException;
 import br.com.morbus.regulacao.domain.exception.IdPacienteIncorretoException;
 import br.com.morbus.regulacao.domain.exception.SolicitacaoNaoEncontradaException;
 import br.com.morbus.regulacao.domain.exception.SolicitacaoNaoPendenteException;
@@ -89,6 +90,15 @@ public class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatus(400);
         problem.setType(URI.create("https://httpstatuses.com/400"));
         problem.setTitle("Dados inválidos");
+        problem.setDetail(e.getMessage());
+        return problem;
+    }
+
+    @ExceptionHandler(CotaExcedidaException.class)
+    public ProblemDetail handleCotaExcedida(CotaExcedidaException e) {
+        ProblemDetail problem = ProblemDetail.forStatus(422);
+        problem.setType(URI.create("https://morbus.sus.gov.br/problems/quota-exceeded"));
+        problem.setTitle("Cota excedida");
         problem.setDetail(e.getMessage());
         return problem;
     }

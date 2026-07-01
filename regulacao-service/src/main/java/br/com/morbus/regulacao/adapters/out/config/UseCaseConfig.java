@@ -13,6 +13,7 @@ import br.com.morbus.regulacao.ports.in.ICancelarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.in.IListarSolicitacoesUseCase;
 import br.com.morbus.regulacao.ports.in.IReclassificarRiscoUseCase;
 import br.com.morbus.regulacao.ports.out.IParecerRepository;
+import br.com.morbus.regulacao.ports.out.IQuotaRepository;
 import br.com.morbus.regulacao.ports.out.IRegulacaoEventPublisher;
 import br.com.morbus.regulacao.ports.out.ISolicitacaoRepository;
 import org.springframework.context.annotation.Bean;
@@ -22,8 +23,8 @@ import org.springframework.context.annotation.Configuration;
 public class UseCaseConfig {
 
     @Bean
-    public ICriarSolicitacaoUseCase criarSolicitacaoUseCase(ISolicitacaoRepository solicitacaoRepository) {
-        return new CriarSolicitacaoUseCase(solicitacaoRepository);
+    public ICriarSolicitacaoUseCase criarSolicitacaoUseCase(ISolicitacaoRepository solicitacaoRepository, IQuotaRepository quotaRepository) {
+        return new CriarSolicitacaoUseCase(solicitacaoRepository, quotaRepository);
     }
 
     @Bean
