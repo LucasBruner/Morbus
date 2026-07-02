@@ -1,5 +1,6 @@
 package br.com.morbus.regulacao.domain;
 
+import br.com.morbus.regulacao.domain.exception.UnidadeSolicitanteDuplicadaException;
 import br.com.morbus.regulacao.domain.model.UnidadeSolicitante;
 import br.com.morbus.regulacao.domain.usecase.unidade.CadastrarUnidadeSolicitanteUseCase;
 import br.com.morbus.regulacao.ports.in.dto.CadastrarUnidadeSolicitanteCommand;
@@ -13,7 +14,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -74,5 +77,19 @@ class CadastrarUnidadeSolicitanteUseCaseTest {
         ArgumentCaptor<UnidadeSolicitante> captor = ArgumentCaptor.forClass(UnidadeSolicitante.class);
         verify(unidadeSolicitanteRepository).salvar(captor.capture());
         assertThat(captor.getValue().getCnes()).isEqualTo("1234567");
+    }
+
+    @Test
+    @DisplayName("deve lancar excecao quando ja existe unidade com o mesmo cnes")
+    void deveLancarExcecaoQuandoCnesDuplicado() {
+        CadastrarUnidadeSolicitanteCommand cmd = new CadastrarUnidadeSolicitanteCommand(
+                "1234567", "UBS Central", "Rua das Flores, 100", "(11) 4444-5555");
+        when(unidadeSolicitanteRepository.existsByCnes("1234567")).thenReturn(true);
+
+        assertThatThrownBy(() -> useCase.execute(cmd))
+                .isInstanceOf(UnidadeSolicitanteDuplicadaException.class)
+                .hasMessageContaining("1234567");
+
+        verify(unidadeSolicitanteRepository, never()).salvar(any());
     }
 }

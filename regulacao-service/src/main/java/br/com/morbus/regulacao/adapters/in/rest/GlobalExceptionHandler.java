@@ -5,6 +5,7 @@ import br.com.morbus.regulacao.domain.exception.CotaExcedidaException;
 import br.com.morbus.regulacao.domain.exception.IdPacienteIncorretoException;
 import br.com.morbus.regulacao.domain.exception.SolicitacaoNaoEncontradaException;
 import br.com.morbus.regulacao.domain.exception.SolicitacaoNaoPendenteException;
+import br.com.morbus.regulacao.domain.exception.UnidadeSolicitanteDuplicadaException;
 import br.com.morbus.regulacao.domain.exception.UnidadeSolicitanteNaoEncontradaException;
 import org.springframework.http.ProblemDetail;
 import br.com.morbus.regulacao.domain.exception.DuplicateSolicitacaoException;
@@ -110,6 +111,15 @@ public class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatus(404);
         problem.setType(URI.create("https://httpstatuses.com/404"));
         problem.setTitle("Unidade solicitante não encontrada");
+        problem.setDetail(e.getMessage());
+        return problem;
+    }
+
+    @ExceptionHandler(UnidadeSolicitanteDuplicadaException.class)
+    public ProblemDetail handleUnidadeSolicitanteDuplicada(UnidadeSolicitanteDuplicadaException e) {
+        ProblemDetail problem = ProblemDetail.forStatus(409);
+        problem.setType(URI.create("https://httpstatuses.com/409"));
+        problem.setTitle("Conflito");
         problem.setDetail(e.getMessage());
         return problem;
     }

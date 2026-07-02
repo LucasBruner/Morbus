@@ -31,4 +31,9 @@ public class UnidadeSolicitanteJpaAdapter implements IUnidadeSolicitanteReposito
     public boolean existsById(UUID id) {
         return jpaRepository.existsById(id);
     }
+
+    @Override
+    public boolean existsByCnes(String cnes) {
+        return jpaRepository.existsByCnes(cnes);
+    }
 }

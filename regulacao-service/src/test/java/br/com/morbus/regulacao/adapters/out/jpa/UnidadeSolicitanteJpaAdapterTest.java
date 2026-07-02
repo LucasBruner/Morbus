@@ -99,4 +99,20 @@ class UnidadeSolicitanteJpaAdapterTest {
             verify(jpaRepository).existsById(id);
         }
     }
+
+    @Nested
+    @DisplayName("existsByCnes")
+    class ExistsByCnes {
+
+        @Test
+        @DisplayName("deve delegar para o repositorio jpa")
+        void deveDelegarParaRepositorio() {
+            when(jpaRepository.existsByCnes("1234567")).thenReturn(true);
+
+            boolean result = adapter.existsByCnes("1234567");
+
+            assertThat(result).isTrue();
+            verify(jpaRepository).existsByCnes("1234567");
+        }
+    }
 }

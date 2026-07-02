@@ -9,4 +9,5 @@ public interface IUnidadeSolicitanteRepository {
     UnidadeSolicitante salvar(UnidadeSolicitante unidade);
     Optional<UnidadeSolicitante> buscarPorId(UUID id);
     boolean existsById(UUID id);
+    boolean existsByCnes(String cnes);
 }
