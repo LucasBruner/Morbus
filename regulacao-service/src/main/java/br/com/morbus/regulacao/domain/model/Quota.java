@@ -33,4 +33,20 @@ public class Quota {
                 0,
                 periodStart);
     }
+
+    public static Quota criar(UUID unitId,
+                              UUID procedureId,
+                              int maxPerPeriod,
+                              LocalDate periodStart) {
+        return new Quota(UUID.randomUUID(),
+                unitId,
+                procedureId,
+                maxPerPeriod,
+                0,
+                periodStart);
+    }
+
+    public void alterarLimite(int novoMaxPerPeriod) {
+        this.maxPerPeriod = novoMaxPerPeriod;
+    }
 }

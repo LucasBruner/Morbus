@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.net.URI;
+import java.time.format.DateTimeParseException;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
@@ -100,6 +101,15 @@ public class GlobalExceptionHandler {
         problem.setType(URI.create("https://morbus.sus.gov.br/problems/quota-exceeded"));
         problem.setTitle("Cota excedida");
         problem.setDetail(e.getMessage());
+        return problem;
+    }
+
+    @ExceptionHandler(DateTimeParseException.class)
+    public ProblemDetail handleDateTimeParse(DateTimeParseException e) {
+        ProblemDetail problem = ProblemDetail.forStatus(400);
+        problem.setType(URI.create("https://httpstatuses.com/400"));
+        problem.setTitle("Dados inválidos");
+        problem.setDetail("Parametro 'mes' deve estar no formato yyyy-MM");
         return problem;
     }
 }

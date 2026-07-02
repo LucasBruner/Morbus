@@ -4,6 +4,7 @@ import br.com.morbus.regulacao.adapters.out.jpa.quota.IQuotaJpaRepository;
 import br.com.morbus.regulacao.adapters.out.jpa.quota.QuotaEntity;
 import br.com.morbus.regulacao.adapters.out.jpa.quota.QuotaJpaAdapter;
 import br.com.morbus.regulacao.domain.model.Quota;
+import br.com.morbus.regulacao.ports.in.dto.ConsultarCotasQuery;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -12,8 +13,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -138,6 +144,111 @@ class QuotaJpaAdapterTest {
             adapter.incrementarSeDisponivel(quotaId);
 
             verify(jpaRepository).incrementarSeDisponivel(quotaId);
+        }
+    }
+
+    @Nested
+    @DisplayName("buscarPorChave")
+    class BuscarPorChave {
+
+        @Test
+        @DisplayName("deve retornar a cota convertida para dominio quando existe")
+        void deveRetornarCotaQuandoExiste() {
+            UUID unitId = UUID.randomUUID();
+            UUID procedureId = UUID.randomUUID();
+            LocalDate periodStart = LocalDate.of(2026, 7, 1);
+            QuotaEntity entity = buildEntity(unitId, procedureId, periodStart, 10, 3);
+            when(jpaRepository.findByUnitIdAndProcedureIdAndPeriodStart(unitId, procedureId, periodStart))
+                    .thenReturn(Optional.of(entity));
+
+            Optional<Quota> result = adapter.buscarPorChave(unitId, procedureId, periodStart);
+
+            assertThat(result).isPresent();
+            assertThat(result.get().getId()).isEqualTo(entity.getId());
+            assertThat(result.get().getMaxPerPeriod()).isEqualTo(10);
+        }
+
+        @Test
+        @DisplayName("deve retornar Optional vazio quando nao existe, sem criar registro")
+        void deveRetornarVazioQuandoNaoExiste() {
+            UUID unitId = UUID.randomUUID();
+            UUID procedureId = UUID.randomUUID();
+            LocalDate periodStart = LocalDate.of(2026, 7, 1);
+            when(jpaRepository.findByUnitIdAndProcedureIdAndPeriodStart(unitId, procedureId, periodStart))
+                    .thenReturn(Optional.empty());
+
+            Optional<Quota> result = adapter.buscarPorChave(unitId, procedureId, periodStart);
+
+            assertThat(result).isEmpty();
+            verify(jpaRepository, never()).save(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("salvar")
+    class Salvar {
+
+        @Test
+        @DisplayName("deve persistir e retornar a cota convertida para dominio")
+        void devePersistirERetornar() {
+            Quota quota = new Quota(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                    15, 0, LocalDate.of(2026, 7, 1));
+            QuotaEntity entitySalva = QuotaEntity.fromDomain(quota);
+            when(jpaRepository.save(any(QuotaEntity.class))).thenReturn(entitySalva);
+
+            Quota result = adapter.salvar(quota);
+
+            assertThat(result.getId()).isEqualTo(quota.getId());
+            assertThat(result.getMaxPerPeriod()).isEqualTo(15);
+            verify(jpaRepository).save(any(QuotaEntity.class));
+        }
+    }
+
+    @Nested
+    @DisplayName("listar")
+    class Listar {
+
+        @Test
+        @DisplayName("deve usar a paginacao informada na query")
+        void deveUsarPaginacaoCorreta() {
+            ConsultarCotasQuery query = new ConsultarCotasQuery(null, null, null, 2, 10);
+            when(jpaRepository.findAll(any(Specification.class), any(Pageable.class)))
+                    .thenReturn(Page.empty());
+
+            adapter.listar(query);
+
+            ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+            verify(jpaRepository).findAll(any(Specification.class), pageableCaptor.capture());
+            assertThat(pageableCaptor.getValue().getPageNumber()).isEqualTo(2);
+            assertThat(pageableCaptor.getValue().getPageSize()).isEqualTo(10);
+        }
+
+        @Test
+        @DisplayName("deve mapear entidades para dominio no resultado")
+        void deveMapearResultado() {
+            QuotaEntity entity = buildEntity(UUID.randomUUID(), UUID.randomUUID(),
+                    LocalDate.of(2026, 7, 1), 10, 3);
+            ConsultarCotasQuery query = new ConsultarCotasQuery(null, null, null, 0, 20);
+            when(jpaRepository.findAll(any(Specification.class), any(Pageable.class)))
+                    .thenReturn(new PageImpl<>(List.of(entity)));
+
+            Page<Quota> result = adapter.listar(query);
+
+            assertThat(result.getContent()).hasSize(1);
+            assertThat(result.getContent().getFirst().getId()).isEqualTo(entity.getId());
+        }
+
+        @Test
+        @DisplayName("deve retornar pagina vazia quando nao ha cotas")
+        void deveRetornarPaginaVazia() {
+            ConsultarCotasQuery query = new ConsultarCotasQuery(
+                    UUID.randomUUID(), UUID.randomUUID(), LocalDate.of(2026, 7, 1), 0, 20);
+            when(jpaRepository.findAll(any(Specification.class), any(Pageable.class)))
+                    .thenReturn(Page.empty());
+
+            Page<Quota> result = adapter.listar(query);
+
+            assertThat(result.getContent()).isEmpty();
         }
     }
 }

@@ -1,5 +1,7 @@
 package br.com.morbus.regulacao.adapters.out.config;
 
+import br.com.morbus.regulacao.domain.usecase.quota.ConsultarCotasUseCase;
+import br.com.morbus.regulacao.domain.usecase.quota.GerenciarCotaUseCase;
 import br.com.morbus.regulacao.domain.usecase.solicitacao.AvaliarSolicitacaoUseCase;
 import br.com.morbus.regulacao.domain.usecase.solicitacao.ConsultarStatusSolicitacaoUseCase;
 import br.com.morbus.regulacao.domain.usecase.solicitacao.CriarSolicitacaoUseCase;
@@ -7,9 +9,11 @@ import br.com.morbus.regulacao.domain.usecase.solicitacao.CancelarSolicitacaoUse
 import br.com.morbus.regulacao.domain.usecase.solicitacao.ListarSolicitacoesUseCase;
 import br.com.morbus.regulacao.domain.usecase.solicitacao.ReclassificarRiscoUseCase;
 import br.com.morbus.regulacao.ports.in.IAvaliarSolicitacaoUseCase;
+import br.com.morbus.regulacao.ports.in.IConsultarCotasUseCase;
 import br.com.morbus.regulacao.ports.in.IConsultarStatusSolicitacao;
 import br.com.morbus.regulacao.ports.in.ICriarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.in.ICancelarSolicitacaoUseCase;
+import br.com.morbus.regulacao.ports.in.IGerenciarCotaUseCase;
 import br.com.morbus.regulacao.ports.in.IListarSolicitacoesUseCase;
 import br.com.morbus.regulacao.ports.in.IReclassificarRiscoUseCase;
 import br.com.morbus.regulacao.ports.out.IParecerRepository;
@@ -53,5 +57,15 @@ public class UseCaseConfig {
     public IReclassificarRiscoUseCase reclassificarRiscoUseCase(ISolicitacaoRepository solicitacaoRepository,
                                                                   IRegulacaoEventPublisher eventPublisher) {
         return new ReclassificarRiscoUseCase(solicitacaoRepository, eventPublisher);
+    }
+
+    @Bean
+    public IGerenciarCotaUseCase gerenciarCotaUseCase (IQuotaRepository quotaRepository) {
+        return new GerenciarCotaUseCase(quotaRepository);
+    }
+
+    @Bean
+    public IConsultarCotasUseCase consultarCotasUseCase (IQuotaRepository quotaRepository) {
+        return new ConsultarCotasUseCase(quotaRepository);
     }
 }
