@@ -35,7 +35,7 @@ public class RabbitMqRegulacaoEventPublisher implements IRegulacaoEventPublisher
                 solicitacao.getRiskColor());
 
         rabbitTemplate.convertAndSend(REGULACAO_EXCHANGE, RK_SOLICITACAO_APROVADA, payload);
-        log.info("Evento publicado: {}", RK_SOLICITACAO_APROVADA);
+        log.info("Evento publicado: {}, id: {}, timestamp: {}", RK_SOLICITACAO_APROVADA, solicitacao.getId(), LocalDateTime.now());
     }
 
     @Override

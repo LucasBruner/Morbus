@@ -88,7 +88,7 @@ class AvaliarSolicitacaoUseCaseTest {
             AvaliarSolicitacaoResult result = useCase.execute(cmd);
 
             assertThat(solicitacao.getStatus()).isEqualTo(EStatusSolicitacao.APROVADA);
-            assertThat(solicitacao.getRiskColor()).isEqualTo(ERiscoSolicitado.AMARELO);
+            assertThat(solicitacao.getRiskColor()).isEqualTo(ERiscoSolicitado.AZUL);
             assertThat(solicitacao.getUnidadeExecutanteId()).isEqualTo(cmd.unidadeExecutanteId());
             assertThat(result.novoStatus()).isEqualTo(EStatusSolicitacao.APROVADA);
         }

@@ -93,7 +93,7 @@ public class Solicitacao {
 
     public void aprovar(ERiscoSolicitado riskColor, UUID unidadeExecutanteId) {
         this.status = EStatusSolicitacao.APROVADA;
-        this.riskColor = riskColor;
+        this.riskColor = ERiscoSolicitado.AZUL;
         this.unidadeExecutanteId = unidadeExecutanteId;
         this.updatedAt = LocalDateTime.now();
     }

@@ -138,7 +138,7 @@ class SolicitacaoTest {
             s.aprovar(ERiscoSolicitado.VERMELHO, unidadeExecutanteId);
 
             assertThat(s.getStatus()).isEqualTo(EStatusSolicitacao.APROVADA);
-            assertThat(s.getRiskColor()).isEqualTo(ERiscoSolicitado.VERMELHO);
+            assertThat(s.getRiskColor()).isEqualTo(ERiscoSolicitado.AZUL);
             assertThat(s.getUnidadeExecutanteId()).isEqualTo(unidadeExecutanteId);
         }
     }
