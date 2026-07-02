@@ -7,5 +7,5 @@ public record SolicitacaoNegadaPayload(UUID solicitacaoId,
                                        UUID patientId,
                                        UUID procedureId,
                                        String justificativa,
-                                       LocalDateTime negadaEm) {
+                                       LocalDateTime negadoEm) {
 }

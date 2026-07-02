@@ -136,10 +136,10 @@ class SolicitacaoTest {
             Solicitacao s = buildExistente(EStatusSolicitacao.AGUARDANDO);
             UUID unidadeExecutanteId = UUID.randomUUID();
 
-            s.aprovar(unidadeExecutanteId);
+            s.aprovar(ERiscoSolicitado.AMARELO, unidadeExecutanteId);
 
             assertThat(s.getStatus()).isEqualTo(EStatusSolicitacao.APROVADA);
-            assertThat(s.getRiskColor()).isEqualTo(ERiscoSolicitado.AZUL);
+            assertThat(s.getRiskColor()).isEqualTo(ERiscoSolicitado.AMARELO);
             assertThat(s.getUnidadeExecutanteId()).isEqualTo(unidadeExecutanteId);
         }
     }

@@ -94,15 +94,15 @@ public class Solicitacao {
         this.status = EStatusSolicitacao.CANCELADA;
     }
 
-    public void aprovar(UUID unidadeExecutanteId) {
+    public void aprovar(ERiscoSolicitado riskColor, UUID unidadeExecutanteId) {
         this.status = EStatusSolicitacao.APROVADA;
-        this.riskColor = ERiscoSolicitado.AZUL;
+        this.riskColor = riskColor;
         this.unidadeExecutanteId = unidadeExecutanteId;
         this.updatedAt = LocalDateTime.now();
     }
 
     public void aprovarParaFilaEspera(UUID unidadeExecutanteId) {
-        aprovar(unidadeExecutanteId);
+        aprovar(ERiscoSolicitado.AZUL, unidadeExecutanteId);
         this.destino = EDestino.FILA_ESPERA;
     }
 

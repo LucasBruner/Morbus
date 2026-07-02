@@ -89,7 +89,7 @@ class RabbitMqRegulacaoEventPublisherTest {
             SolicitacaoNegadaPayload payload = captor.getValue();
             assertThat(payload.solicitacaoId()).isEqualTo(s.getId());
             assertThat(payload.justificativa()).isEqualTo(s.getJustificativaNegacao());
-            assertThat(payload.negadaEm()).isAfterOrEqualTo(antes).isBeforeOrEqualTo(depois);
+            assertThat(payload.negadoEm()).isAfterOrEqualTo(antes).isBeforeOrEqualTo(depois);
         }
     }
 
