@@ -7,11 +7,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.Optional;
 import java.util.UUID;
 
+@Repository
 public class QuotaJpaAdapter implements IQuotaRepository {
     private IQuotaJpaRepository quotaJpaRepository;
 
@@ -23,10 +25,7 @@ public class QuotaJpaAdapter implements IQuotaRepository {
     public Quota findOrCreate(UUID unitId, UUID procedureId, LocalDate periodStart) {
         return quotaJpaRepository.findByUnitIdAndProcedureIdAndPeriodStart(unitId, procedureId, periodStart)
                 .map(QuotaEntity::toDomain)
-                .orElseGet(() -> {
-                    QuotaEntity entity = QuotaEntity.fromDomain(Quota.bloqueada(unitId, procedureId, periodStart));
-                    return quotaJpaRepository.save(entity).toDomain();
-                });
+                .orElseGet(() -> Quota.bloqueada(unitId, procedureId, periodStart));
     }
 
     @Override

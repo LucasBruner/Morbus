@@ -75,8 +75,6 @@ class QuotaJpaAdapterTest {
             LocalDate periodStart = LocalDate.of(2026, 7, 1);
             when(jpaRepository.findByUnitIdAndProcedureIdAndPeriodStart(unitId, procedureId, periodStart))
                     .thenReturn(Optional.empty());
-            when(jpaRepository.save(any(QuotaEntity.class)))
-                    .thenAnswer(invocation -> invocation.getArgument(0));
 
             Quota result = adapter.findOrCreate(unitId, procedureId, periodStart);
 
@@ -88,24 +86,17 @@ class QuotaJpaAdapterTest {
         }
 
         @Test
-        @DisplayName("deve persistir a cota bloqueada quando nao existe registro")
-        void devePersistirCotaBloqueada() {
+        @DisplayName("nao deve persistir a cota bloqueada quando nao existe registro")
+        void naoDevePersistirCotaBloqueada() {
             UUID unitId = UUID.randomUUID();
             UUID procedureId = UUID.randomUUID();
             LocalDate periodStart = LocalDate.of(2026, 7, 1);
             when(jpaRepository.findByUnitIdAndProcedureIdAndPeriodStart(unitId, procedureId, periodStart))
                     .thenReturn(Optional.empty());
-            when(jpaRepository.save(any(QuotaEntity.class)))
-                    .thenAnswer(invocation -> invocation.getArgument(0));
 
             adapter.findOrCreate(unitId, procedureId, periodStart);
 
-            ArgumentCaptor<QuotaEntity> captor = ArgumentCaptor.forClass(QuotaEntity.class);
-            verify(jpaRepository).save(captor.capture());
-            assertThat(captor.getValue().getMaxPerPeriod()).isZero();
-            assertThat(captor.getValue().getUnitId()).isEqualTo(unitId);
-            assertThat(captor.getValue().getProcedureId()).isEqualTo(procedureId);
-            assertThat(captor.getValue().getPeriodStart()).isEqualTo(periodStart);
+            verify(jpaRepository, never()).save(any());
         }
     }
 
