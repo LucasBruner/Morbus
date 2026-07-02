@@ -133,4 +133,14 @@ public class Solicitacao {
         this.riskColor = novoRiskColor;
         this.updatedAt = LocalDateTime.now();
     }
+
+    public void atender() {
+        this.status = EStatusSolicitacao.ATENDIDA;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void registrarFalta() {
+        this.status = EStatusSolicitacao.FALTOU;
+        this.updatedAt = LocalDateTime.now();
+    }
 }
