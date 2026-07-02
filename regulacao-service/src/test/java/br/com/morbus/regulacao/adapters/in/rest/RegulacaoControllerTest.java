@@ -80,7 +80,7 @@ class RegulacaoControllerTest {
                 UUID.randomUUID(), UUID.randomUUID(), EStatusSolicitacao.APROVADA,
                 ERiscoSolicitado.AMARELO, "I10", "Hipertensao grave", "Dr. Silva",
                 null, EDestino.FILA_REGULADA, null, UUID.randomUUID(),
-                LocalDateTime.now(), LocalDateTime.now()
+                LocalDateTime.now(), LocalDateTime.now(), null
         );
     }
 

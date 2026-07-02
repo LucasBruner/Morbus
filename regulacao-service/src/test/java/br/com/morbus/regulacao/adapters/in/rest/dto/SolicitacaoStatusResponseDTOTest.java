@@ -27,7 +27,7 @@ class SolicitacaoStatusResponseDTOTest {
         Solicitacao s = new Solicitacao(id, patientId, procedureId, UUID.randomUUID(), null,
                 EStatusSolicitacao.APROVADA, ERiscoSolicitado.AMARELO,
                 "I10", "Hipertensao grave", "Dr. Silva", null,
-                EDestino.FILA_REGULADA, null, UUID.randomUUID(), createdAt, updatedAt);
+                EDestino.FILA_REGULADA, null, UUID.randomUUID(), createdAt, updatedAt, null);
 
         SolicitacaoStatusResponseDTO dto = SolicitacaoStatusResponseDTO.fromDomain(s);
 
@@ -53,7 +53,7 @@ class SolicitacaoStatusResponseDTOTest {
                 UUID.randomUUID(), null, EStatusSolicitacao.AGUARDANDO,
                 ERiscoSolicitado.AZUL, "I10", "texto", "Dr. Silva",
                 null, EDestino.FILA_REGULADA, null, UUID.randomUUID(),
-                LocalDateTime.now(), LocalDateTime.now());
+                LocalDateTime.now(), LocalDateTime.now(), null);
 
         SolicitacaoStatusResponseDTO dto = SolicitacaoStatusResponseDTO.fromDomain(s);
 

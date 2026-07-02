@@ -6,12 +6,14 @@ import br.com.morbus.regulacao.domain.usecase.solicitacao.CriarSolicitacaoUseCas
 import br.com.morbus.regulacao.domain.usecase.solicitacao.CancelarSolicitacaoUseCase;
 import br.com.morbus.regulacao.domain.usecase.solicitacao.ListarSolicitacoesUseCase;
 import br.com.morbus.regulacao.domain.usecase.solicitacao.ReclassificarRiscoUseCase;
+import br.com.morbus.regulacao.domain.usecase.solicitacao.TransicionarParaAgendadaUseCase;
 import br.com.morbus.regulacao.ports.in.IAvaliarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.in.IConsultarStatusSolicitacao;
 import br.com.morbus.regulacao.ports.in.ICriarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.in.ICancelarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.in.IListarSolicitacoesUseCase;
 import br.com.morbus.regulacao.ports.in.IReclassificarRiscoUseCase;
+import br.com.morbus.regulacao.ports.in.ITransicionarParaAgendadaUseCase;
 import br.com.morbus.regulacao.ports.out.IParecerRepository;
 import br.com.morbus.regulacao.ports.out.IRegulacaoEventPublisher;
 import br.com.morbus.regulacao.ports.out.ISolicitacaoRepository;
@@ -52,5 +54,10 @@ public class UseCaseConfig {
     public IReclassificarRiscoUseCase reclassificarRiscoUseCase(ISolicitacaoRepository solicitacaoRepository,
                                                                   IRegulacaoEventPublisher eventPublisher) {
         return new ReclassificarRiscoUseCase(solicitacaoRepository, eventPublisher);
+    }
+
+    @Bean
+    public ITransicionarParaAgendadaUseCase transicionarParaAgendadaUseCase(ISolicitacaoRepository solicitacaoRepository) {
+        return new TransicionarParaAgendadaUseCase(solicitacaoRepository);
     }
 }

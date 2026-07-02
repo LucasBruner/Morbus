@@ -1,0 +1,1 @@
+ALTER TABLE regulacao.solicitacoes ADD COLUMN IF NOT EXISTS appointment_id UUID;

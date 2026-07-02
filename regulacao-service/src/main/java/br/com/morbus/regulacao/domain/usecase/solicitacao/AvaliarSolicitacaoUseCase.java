@@ -56,8 +56,8 @@ public class AvaliarSolicitacaoUseCase implements IAvaliarSolicitacaoUseCase {
 
     private void aplicarDecisao(Solicitacao solicitacao, AvaliarSolicitacaoCommand command) {
         switch (command.decisao()) {
-            case AUTORIZAR -> solicitacao.aprovar(command.riskColorDefinido(), command.unidadeExecutanteId());
-            case FILA_ESPERA -> solicitacao.aprovarParaFilaEspera(command.riskColorDefinido(), command.unidadeExecutanteId());
+            case AUTORIZAR -> solicitacao.aprovar(command.unidadeExecutanteId());
+            case FILA_ESPERA -> solicitacao.aprovarParaFilaEspera(command.unidadeExecutanteId());
             case NEGAR -> solicitacao.negar(command.justificativa());
             case DEVOLVER -> solicitacao.devolver(command.justificativa());
             case PENDENTE -> solicitacao.marcarPendente();

@@ -16,6 +16,7 @@ public class Solicitacao {
     private UUID procedureId;
     private UUID unidadeSolicitanteId;
     private UUID unidadeExecutanteId;
+    private UUID appointmentId;
     private EStatusSolicitacao status;
     private ERiscoSolicitado riskColor;
     private String cid;
@@ -68,7 +69,8 @@ public class Solicitacao {
                        String justificativaNegacao,
                        UUID solicitadoPor,
                        LocalDateTime createdAt,
-                       LocalDateTime updatedAt) {
+                       LocalDateTime updatedAt,
+                       UUID appointmentId) {
         this.id = id;
         this.patientId = patientId;
         this.procedureId = procedureId;
@@ -85,21 +87,22 @@ public class Solicitacao {
         this.solicitadoPor = solicitadoPor;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.appointmentId = appointmentId;
     }
 
     public void cancelar() {
         this.status = EStatusSolicitacao.CANCELADA;
     }
 
-    public void aprovar(ERiscoSolicitado riskColor, UUID unidadeExecutanteId) {
+    public void aprovar(UUID unidadeExecutanteId) {
         this.status = EStatusSolicitacao.APROVADA;
         this.riskColor = ERiscoSolicitado.AZUL;
         this.unidadeExecutanteId = unidadeExecutanteId;
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void aprovarParaFilaEspera(ERiscoSolicitado riskColor, UUID unidadeExecutanteId) {
-        aprovar(riskColor, unidadeExecutanteId);
+    public void aprovarParaFilaEspera(UUID unidadeExecutanteId) {
+        aprovar(unidadeExecutanteId);
         this.destino = EDestino.FILA_ESPERA;
     }
 
@@ -117,6 +120,12 @@ public class Solicitacao {
 
     public void marcarPendente() {
         this.status = EStatusSolicitacao.PENDENTE;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void agendar(UUID appointmentId) {
+        this.status = EStatusSolicitacao.AGENDADA;
+        this.appointmentId = appointmentId;
         this.updatedAt = LocalDateTime.now();
     }
 
