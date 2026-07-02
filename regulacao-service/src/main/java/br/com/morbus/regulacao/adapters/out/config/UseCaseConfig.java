@@ -1,5 +1,7 @@
 package br.com.morbus.regulacao.adapters.out.config;
 
+import br.com.morbus.regulacao.domain.usecase.quota.ConsultarCotasUseCase;
+import br.com.morbus.regulacao.domain.usecase.quota.GerenciarCotaUseCase;
 import br.com.morbus.regulacao.domain.usecase.solicitacao.AvaliarSolicitacaoUseCase;
 import br.com.morbus.regulacao.domain.usecase.solicitacao.ConsultarStatusSolicitacaoUseCase;
 import br.com.morbus.regulacao.domain.usecase.solicitacao.CriarSolicitacaoUseCase;
@@ -7,16 +9,24 @@ import br.com.morbus.regulacao.domain.usecase.solicitacao.CancelarSolicitacaoUse
 import br.com.morbus.regulacao.domain.usecase.solicitacao.ListarSolicitacoesUseCase;
 import br.com.morbus.regulacao.domain.usecase.solicitacao.ReclassificarRiscoUseCase;
 import br.com.morbus.regulacao.domain.usecase.solicitacao.TransicionarParaAgendadaUseCase;
+import br.com.morbus.regulacao.domain.usecase.unidade.BuscarUnidadeSolicitanteUseCase;
+import br.com.morbus.regulacao.domain.usecase.unidade.CadastrarUnidadeSolicitanteUseCase;
 import br.com.morbus.regulacao.ports.in.IAvaliarSolicitacaoUseCase;
+import br.com.morbus.regulacao.ports.in.IBuscarUnidadeSolicitanteUseCase;
+import br.com.morbus.regulacao.ports.in.ICadastrarUnidadeSolicitanteUseCase;
+import br.com.morbus.regulacao.ports.in.IConsultarCotasUseCase;
 import br.com.morbus.regulacao.ports.in.IConsultarStatusSolicitacao;
 import br.com.morbus.regulacao.ports.in.ICriarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.in.ICancelarSolicitacaoUseCase;
+import br.com.morbus.regulacao.ports.in.IGerenciarCotaUseCase;
 import br.com.morbus.regulacao.ports.in.IListarSolicitacoesUseCase;
 import br.com.morbus.regulacao.ports.in.IReclassificarRiscoUseCase;
 import br.com.morbus.regulacao.ports.in.ITransicionarParaAgendadaUseCase;
 import br.com.morbus.regulacao.ports.out.IParecerRepository;
+import br.com.morbus.regulacao.ports.out.IQuotaRepository;
 import br.com.morbus.regulacao.ports.out.IRegulacaoEventPublisher;
 import br.com.morbus.regulacao.ports.out.ISolicitacaoRepository;
+import br.com.morbus.regulacao.ports.out.IUnidadeSolicitanteRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -24,8 +34,10 @@ import org.springframework.context.annotation.Configuration;
 public class UseCaseConfig {
 
     @Bean
-    public ICriarSolicitacaoUseCase criarSolicitacaoUseCase(ISolicitacaoRepository solicitacaoRepository) {
-        return new CriarSolicitacaoUseCase(solicitacaoRepository);
+    public ICriarSolicitacaoUseCase criarSolicitacaoUseCase(ISolicitacaoRepository solicitacaoRepository,
+                                                              IQuotaRepository quotaRepository,
+                                                              IUnidadeSolicitanteRepository unidadeSolicitanteRepository) {
+        return new CriarSolicitacaoUseCase(solicitacaoRepository, quotaRepository, unidadeSolicitanteRepository);
     }
 
     @Bean
@@ -59,5 +71,23 @@ public class UseCaseConfig {
     @Bean
     public ITransicionarParaAgendadaUseCase transicionarParaAgendadaUseCase(ISolicitacaoRepository solicitacaoRepository) {
         return new TransicionarParaAgendadaUseCase(solicitacaoRepository);
+    public IGerenciarCotaUseCase gerenciarCotaUseCase (IQuotaRepository quotaRepository,
+                                                        IUnidadeSolicitanteRepository unidadeSolicitanteRepository) {
+        return new GerenciarCotaUseCase(quotaRepository, unidadeSolicitanteRepository);
+    }
+
+    @Bean
+    public IConsultarCotasUseCase consultarCotasUseCase (IQuotaRepository quotaRepository) {
+        return new ConsultarCotasUseCase(quotaRepository);
+    }
+
+    @Bean
+    public ICadastrarUnidadeSolicitanteUseCase cadastrarUnidadeSolicitanteUseCase(IUnidadeSolicitanteRepository unidadeSolicitanteRepository) {
+        return new CadastrarUnidadeSolicitanteUseCase(unidadeSolicitanteRepository);
+    }
+
+    @Bean
+    public IBuscarUnidadeSolicitanteUseCase buscarUnidadeSolicitanteUseCase(IUnidadeSolicitanteRepository unidadeSolicitanteRepository) {
+        return new BuscarUnidadeSolicitanteUseCase(unidadeSolicitanteRepository);
     }
 }
