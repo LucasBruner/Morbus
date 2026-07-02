@@ -44,7 +44,8 @@ public class RabbitMqRegulacaoEventPublisher implements IRegulacaoEventPublisher
                 solicitacao.getId(),
                 solicitacao.getPatientId(),
                 solicitacao.getProcedureId(),
-                solicitacao.getJustificativaNegacao());
+                solicitacao.getJustificativaNegacao(),
+                LocalDateTime.now());
 
         rabbitTemplate.convertAndSend(REGULACAO_EXCHANGE, RK_SOLICITACAO_NEGADA, payload);
         log.info("Evento publicado: {}", RK_SOLICITACAO_NEGADA);
