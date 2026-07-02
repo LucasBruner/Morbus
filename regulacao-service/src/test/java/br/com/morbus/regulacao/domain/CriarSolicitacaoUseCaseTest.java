@@ -4,12 +4,14 @@ import br.com.morbus.regulacao.domain.enums.EDestino;
 import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
 import br.com.morbus.regulacao.domain.exception.CotaExcedidaException;
 import br.com.morbus.regulacao.domain.exception.DuplicateSolicitacaoException;
+import br.com.morbus.regulacao.domain.exception.UnidadeSolicitanteNaoEncontradaException;
 import br.com.morbus.regulacao.domain.model.Quota;
 import br.com.morbus.regulacao.domain.model.Solicitacao;
 import br.com.morbus.regulacao.domain.usecase.solicitacao.CriarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.in.dto.CriarSolicitacaoCommand;
 import br.com.morbus.regulacao.ports.out.IQuotaRepository;
 import br.com.morbus.regulacao.ports.out.ISolicitacaoRepository;
+import br.com.morbus.regulacao.ports.out.IUnidadeSolicitanteRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -37,11 +39,15 @@ class CriarSolicitacaoUseCaseTest {
     @Mock
     private IQuotaRepository quotaRepository;
 
+    @Mock
+    private IUnidadeSolicitanteRepository unidadeSolicitanteRepository;
+
     private CriarSolicitacaoUseCase useCase;
 
     @BeforeEach
     void setUp() {
-        useCase = new CriarSolicitacaoUseCase(repository, quotaRepository);
+        useCase = new CriarSolicitacaoUseCase(repository, quotaRepository, unidadeSolicitanteRepository);
+        when(unidadeSolicitanteRepository.existsById(any())).thenReturn(true);
     }
 
     private CriarSolicitacaoCommand buildCommand(EDestino destino) {
@@ -325,6 +331,34 @@ class CriarSolicitacaoUseCaseTest {
             ArgumentCaptor<LocalDate> periodoCaptor = ArgumentCaptor.forClass(LocalDate.class);
             verify(quotaRepository).findOrCreate(any(), any(), periodoCaptor.capture());
             assertThat(periodoCaptor.getValue()).isEqualTo(LocalDate.now().withDayOfMonth(1));
+        }
+    }
+
+    @Nested
+    @DisplayName("quando a unidade solicitante nao esta cadastrada")
+    class QuandoUnidadeNaoEncontrada {
+
+        @Test
+        @DisplayName("deve lancar UnidadeSolicitanteNaoEncontradaException")
+        void deveLancarUnidadeSolicitanteNaoEncontradaException() {
+            CriarSolicitacaoCommand cmd = buildCommand();
+            when(unidadeSolicitanteRepository.existsById(cmd.unidadeSolicitanteId())).thenReturn(false);
+
+            assertThatThrownBy(() -> useCase.execute(cmd))
+                    .isInstanceOf(UnidadeSolicitanteNaoEncontradaException.class);
+        }
+
+        @Test
+        @DisplayName("nao deve verificar duplicata nem persistir quando a unidade nao existe")
+        void naoDeveVerificarDuplicataNemPersistir() {
+            CriarSolicitacaoCommand cmd = buildCommand();
+            when(unidadeSolicitanteRepository.existsById(cmd.unidadeSolicitanteId())).thenReturn(false);
+
+            assertThatThrownBy(() -> useCase.execute(cmd))
+                    .isInstanceOf(UnidadeSolicitanteNaoEncontradaException.class);
+
+            verifyNoInteractions(repository);
+            verifyNoInteractions(quotaRepository);
         }
     }
 }

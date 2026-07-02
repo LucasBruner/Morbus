@@ -1,9 +1,11 @@
 package br.com.morbus.regulacao.domain;
 
+import br.com.morbus.regulacao.domain.exception.UnidadeSolicitanteNaoEncontradaException;
 import br.com.morbus.regulacao.domain.model.Quota;
 import br.com.morbus.regulacao.domain.usecase.quota.GerenciarCotaUseCase;
 import br.com.morbus.regulacao.ports.in.dto.GerenciarCotaCommand;
 import br.com.morbus.regulacao.ports.out.IQuotaRepository;
+import br.com.morbus.regulacao.ports.out.IUnidadeSolicitanteRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -18,6 +20,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -28,11 +31,15 @@ class GerenciarCotaUseCaseTest {
     @Mock
     private IQuotaRepository quotaRepository;
 
+    @Mock
+    private IUnidadeSolicitanteRepository unidadeSolicitanteRepository;
+
     private GerenciarCotaUseCase useCase;
 
     @BeforeEach
     void setUp() {
-        useCase = new GerenciarCotaUseCase(quotaRepository);
+        useCase = new GerenciarCotaUseCase(quotaRepository, unidadeSolicitanteRepository);
+        when(unidadeSolicitanteRepository.existsById(any())).thenReturn(true);
     }
 
     private GerenciarCotaCommand buildCommand(UUID unitId, UUID procedureId, int maxPerPeriod, LocalDate periodStart) {
@@ -160,6 +167,35 @@ class GerenciarCotaUseCaseTest {
             useCase.execute(cmd);
 
             verify(quotaRepository, times(1)).salvar(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("quando a unidade solicitante nao esta cadastrada")
+    class QuandoUnidadeNaoEncontrada {
+
+        @Test
+        @DisplayName("deve lancar UnidadeSolicitanteNaoEncontradaException")
+        void deveLancarUnidadeSolicitanteNaoEncontradaException() {
+            UUID unitId = UUID.randomUUID();
+            GerenciarCotaCommand cmd = buildCommand(unitId, UUID.randomUUID(), 10, LocalDate.of(2026, 7, 1));
+            when(unidadeSolicitanteRepository.existsById(unitId)).thenReturn(false);
+
+            assertThatThrownBy(() -> useCase.execute(cmd))
+                    .isInstanceOf(UnidadeSolicitanteNaoEncontradaException.class);
+        }
+
+        @Test
+        @DisplayName("nao deve consultar nem salvar cota quando a unidade nao existe")
+        void naoDeveConsultarNemSalvarCota() {
+            UUID unitId = UUID.randomUUID();
+            GerenciarCotaCommand cmd = buildCommand(unitId, UUID.randomUUID(), 10, LocalDate.of(2026, 7, 1));
+            when(unidadeSolicitanteRepository.existsById(unitId)).thenReturn(false);
+
+            assertThatThrownBy(() -> useCase.execute(cmd))
+                    .isInstanceOf(UnidadeSolicitanteNaoEncontradaException.class);
+
+            verifyNoInteractions(quotaRepository);
         }
     }
 }

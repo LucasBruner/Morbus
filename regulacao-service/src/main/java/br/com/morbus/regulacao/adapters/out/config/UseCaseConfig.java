@@ -8,7 +8,11 @@ import br.com.morbus.regulacao.domain.usecase.solicitacao.CriarSolicitacaoUseCas
 import br.com.morbus.regulacao.domain.usecase.solicitacao.CancelarSolicitacaoUseCase;
 import br.com.morbus.regulacao.domain.usecase.solicitacao.ListarSolicitacoesUseCase;
 import br.com.morbus.regulacao.domain.usecase.solicitacao.ReclassificarRiscoUseCase;
+import br.com.morbus.regulacao.domain.usecase.unidade.BuscarUnidadeSolicitanteUseCase;
+import br.com.morbus.regulacao.domain.usecase.unidade.CadastrarUnidadeSolicitanteUseCase;
 import br.com.morbus.regulacao.ports.in.IAvaliarSolicitacaoUseCase;
+import br.com.morbus.regulacao.ports.in.IBuscarUnidadeSolicitanteUseCase;
+import br.com.morbus.regulacao.ports.in.ICadastrarUnidadeSolicitanteUseCase;
 import br.com.morbus.regulacao.ports.in.IConsultarCotasUseCase;
 import br.com.morbus.regulacao.ports.in.IConsultarStatusSolicitacao;
 import br.com.morbus.regulacao.ports.in.ICriarSolicitacaoUseCase;
@@ -20,6 +24,7 @@ import br.com.morbus.regulacao.ports.out.IParecerRepository;
 import br.com.morbus.regulacao.ports.out.IQuotaRepository;
 import br.com.morbus.regulacao.ports.out.IRegulacaoEventPublisher;
 import br.com.morbus.regulacao.ports.out.ISolicitacaoRepository;
+import br.com.morbus.regulacao.ports.out.IUnidadeSolicitanteRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -27,8 +32,10 @@ import org.springframework.context.annotation.Configuration;
 public class UseCaseConfig {
 
     @Bean
-    public ICriarSolicitacaoUseCase criarSolicitacaoUseCase(ISolicitacaoRepository solicitacaoRepository, IQuotaRepository quotaRepository) {
-        return new CriarSolicitacaoUseCase(solicitacaoRepository, quotaRepository);
+    public ICriarSolicitacaoUseCase criarSolicitacaoUseCase(ISolicitacaoRepository solicitacaoRepository,
+                                                              IQuotaRepository quotaRepository,
+                                                              IUnidadeSolicitanteRepository unidadeSolicitanteRepository) {
+        return new CriarSolicitacaoUseCase(solicitacaoRepository, quotaRepository, unidadeSolicitanteRepository);
     }
 
     @Bean
@@ -60,12 +67,23 @@ public class UseCaseConfig {
     }
 
     @Bean
-    public IGerenciarCotaUseCase gerenciarCotaUseCase (IQuotaRepository quotaRepository) {
-        return new GerenciarCotaUseCase(quotaRepository);
+    public IGerenciarCotaUseCase gerenciarCotaUseCase (IQuotaRepository quotaRepository,
+                                                        IUnidadeSolicitanteRepository unidadeSolicitanteRepository) {
+        return new GerenciarCotaUseCase(quotaRepository, unidadeSolicitanteRepository);
     }
 
     @Bean
     public IConsultarCotasUseCase consultarCotasUseCase (IQuotaRepository quotaRepository) {
         return new ConsultarCotasUseCase(quotaRepository);
+    }
+
+    @Bean
+    public ICadastrarUnidadeSolicitanteUseCase cadastrarUnidadeSolicitanteUseCase(IUnidadeSolicitanteRepository unidadeSolicitanteRepository) {
+        return new CadastrarUnidadeSolicitanteUseCase(unidadeSolicitanteRepository);
+    }
+
+    @Bean
+    public IBuscarUnidadeSolicitanteUseCase buscarUnidadeSolicitanteUseCase(IUnidadeSolicitanteRepository unidadeSolicitanteRepository) {
+        return new BuscarUnidadeSolicitanteUseCase(unidadeSolicitanteRepository);
     }
 }
