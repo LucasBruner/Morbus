@@ -71,6 +71,9 @@ public class UseCaseConfig {
     @Bean
     public ITransicionarParaAgendadaUseCase transicionarParaAgendadaUseCase(ISolicitacaoRepository solicitacaoRepository) {
         return new TransicionarParaAgendadaUseCase(solicitacaoRepository);
+    }
+
+    @Bean
     public IGerenciarCotaUseCase gerenciarCotaUseCase (IQuotaRepository quotaRepository,
                                                         IUnidadeSolicitanteRepository unidadeSolicitanteRepository) {
         return new GerenciarCotaUseCase(quotaRepository, unidadeSolicitanteRepository);
