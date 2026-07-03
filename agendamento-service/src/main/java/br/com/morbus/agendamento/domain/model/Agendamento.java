@@ -13,11 +13,12 @@ public class Agendamento {
     private final UUID queueEntryId;
     private final UUID slotId;
     private final UUID pacienteId;
-    private final EStatusAgendamento status;
+    private EStatusAgendamento status;
     private final LocalDateTime expiresAt;
+    private LocalDateTime confirmedAt;
     private final String cancellationReason;
     private final LocalDateTime createdAt;
-    private final LocalDateTime updatedAt;
+    private LocalDateTime updatedAt;
 
     public Agendamento(UUID queueEntryId,
                        UUID slotId,
@@ -51,8 +52,37 @@ public class Agendamento {
         this.pacienteId = pacienteId;
         this.status = status;
         this.expiresAt = expiresAt;
+        this.confirmedAt = null;
         this.cancellationReason = cancellationReason;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+    }
+
+    public Agendamento(UUID id,
+                       UUID queueEntryId,
+                       UUID slotId,
+                       UUID pacienteId,
+                       EStatusAgendamento status,
+                       LocalDateTime expiresAt,
+                       LocalDateTime confirmedAt,
+                       String cancellationReason,
+                       LocalDateTime createdAt,
+                       LocalDateTime updatedAt) {
+        this.id = id;
+        this.queueEntryId = queueEntryId;
+        this.slotId = slotId;
+        this.pacienteId = pacienteId;
+        this.status = status;
+        this.expiresAt = expiresAt;
+        this.confirmedAt = confirmedAt;
+        this.cancellationReason = cancellationReason;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+    }
+
+    public void confirm() {
+        this.status = EStatusAgendamento.CONFIRMADO;
+        this.confirmedAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
 }

@@ -40,6 +40,33 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
+    @ExceptionHandler(ExpiredConfirmationException.class)
+    public ProblemDetail handleExpiredConfirmation(ExpiredConfirmationException ex) {
+        ProblemDetail problem = ProblemDetail.forStatus(422);
+        problem.setType(URI.create("https://example.com/problems/expired-confirmation"));
+        problem.setTitle("Confirmacao expirada");
+        problem.setDetail(ex.getMessage());
+        return problem;
+    }
+
+    @ExceptionHandler(InvalidAgendamentoStatusException.class)
+    public ProblemDetail handleInvalidStatus(InvalidAgendamentoStatusException ex) {
+        ProblemDetail problem = ProblemDetail.forStatus(422);
+        problem.setType(URI.create("https://httpstatuses.com/422"));
+        problem.setTitle("Status invalido");
+        problem.setDetail(ex.getMessage());
+        return problem;
+    }
+
+    @ExceptionHandler(AgendamentoNotFoundException.class)
+    public ProblemDetail handleAgendamentoNotFound(AgendamentoNotFoundException ex) {
+        ProblemDetail problem = ProblemDetail.forStatus(404);
+        problem.setType(URI.create("https://httpstatuses.com/404"));
+        problem.setTitle("Agendamento nao encontrado");
+        problem.setDetail(ex.getMessage());
+        return problem;
+    }
+
     @ExceptionHandler(SlotNotFoundException.class)
     public ProblemDetail handleSlotNotFound(SlotNotFoundException ex) {
         ProblemDetail problem = ProblemDetail.forStatus(404);

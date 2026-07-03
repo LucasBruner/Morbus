@@ -8,14 +8,12 @@ import br.com.morbus.agendamento.domain.model.Slot;
 import br.com.morbus.agendamento.domain.port.in.IAlocarPacienteEmSlotUseCase;
 import br.com.morbus.agendamento.domain.port.out.IAgendamentoRepository;
 import br.com.morbus.agendamento.domain.port.out.ISlotRepository;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Optional;
 
-@Service
 public class AlocarPacienteEmSlotUseCase implements IAlocarPacienteEmSlotUseCase {
 
     private final IAgendamentoRepository agendamentoRepository;
