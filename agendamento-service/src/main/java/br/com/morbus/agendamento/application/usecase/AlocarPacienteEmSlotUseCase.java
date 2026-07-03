@@ -31,6 +31,7 @@ public class AlocarPacienteEmSlotUseCase implements IAlocarPacienteEmSlotUseCase
     }
 
     @Override
+    @Transactional
     public Optional<Agendamento> execute(PatientCalledEvent event) {
         Optional<Slot> slotOpt = slotRepository.findAvailableSlotForProcedureAndUnit(
                 event.procedureId(),

@@ -48,6 +48,6 @@ public class Slot {
         this.reservados += 1;
         this.status = this.reservados >= this.capacidade
                 ? EStatusSlots.OCUPADO
-                : EStatusSlots.RESERVADO;
+                : EStatusSlots.DISPONIVEL;
     }
 }

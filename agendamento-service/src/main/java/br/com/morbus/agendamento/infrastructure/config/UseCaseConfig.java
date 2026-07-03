@@ -39,12 +39,14 @@ public class UseCaseConfig {
     }
 
     @Bean
-    public IBlockSlotUseCase blockSlotUseCase(ISlotRepository slotRepository) {
-        return new BlockSlotUseCase(slotRepository);
+    public IBlockSlotUseCase blockSlotUseCase(ISlotRepository slotRepository,
+                                              IScheduleRepository scheduleRepository) {
+        return new BlockSlotUseCase(slotRepository, scheduleRepository);
     }
 
     @Bean
-    public IUnblockSlotUseCase unblockSlotUseCase(ISlotRepository slotRepository) {
-        return new UnblockSlotUseCase(slotRepository);
+    public IUnblockSlotUseCase unblockSlotUseCase(ISlotRepository slotRepository,
+                                                  IScheduleRepository scheduleRepository) {
+        return new UnblockSlotUseCase(slotRepository, scheduleRepository);
     }
 }

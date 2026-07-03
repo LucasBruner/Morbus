@@ -49,15 +49,6 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
-    @ExceptionHandler(InvalidSlotStatusException.class)
-    public ProblemDetail handleInvalidSlotStatus(InvalidSlotStatusException ex) {
-        ProblemDetail problem = ProblemDetail.forStatus(422);
-        problem.setType(URI.create("https://httpstatuses.com/404"));
-        problem.setTitle("Status do slot invalido");
-        problem.setDetail(ex.getMessage());
-        return problem;
-    }
-
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ProblemDetail handleValidation(MethodArgumentNotValidException ex) {
         String detail = ex.getBindingResult().getFieldErrors().stream()

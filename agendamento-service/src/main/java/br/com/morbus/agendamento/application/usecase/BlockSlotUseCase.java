@@ -1,41 +1,47 @@
 package br.com.morbus.agendamento.application.usecase;
 
-import br.com.morbus.agendamento.application.command.AlterarSlotStatusResult;
 import br.com.morbus.agendamento.domain.enums.EStatusSlots;
-import br.com.morbus.agendamento.domain.exception.InvalidSlotStatusException;
 import br.com.morbus.agendamento.domain.exception.SlotNotFoundException;
+import br.com.morbus.agendamento.domain.model.Schedule;
 import br.com.morbus.agendamento.domain.model.Slot;
 import br.com.morbus.agendamento.domain.port.in.IBlockSlotUseCase;
+import br.com.morbus.agendamento.domain.port.out.IScheduleRepository;
 import br.com.morbus.agendamento.domain.port.out.ISlotRepository;
+import org.springframework.security.access.AccessDeniedException;
 
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public class BlockSlotUseCase implements IBlockSlotUseCase {
 
     private final ISlotRepository slotRepository;
+    private final IScheduleRepository scheduleRepository;
 
-    public BlockSlotUseCase(ISlotRepository slotRepository) {
+    public BlockSlotUseCase(ISlotRepository slotRepository, IScheduleRepository scheduleRepository) {
         this.slotRepository = slotRepository;
+        this.scheduleRepository = scheduleRepository;
     }
 
     @Override
-    public AlterarSlotStatusResult execute(UUID id) {
-        Slot slot = slotRepository.findById(id);
+    public void execute(UUID id, UUID unitId) {
+        Optional<Schedule> schedule = scheduleRepository.findById(id);
 
-        if (slot == null) {
-            throw new SlotNotFoundException("Nao foi encontrado um slot com esse id");
+        if (!schedule.get().getUnitId().equals(unitId)) {
+            throw new AccessDeniedException("EXECUTANTE restrito a sua unidade.");
         }
 
-        if (slot.getReservados() > 0 || !slot.getStatus().equals(EStatusSlots.DISPONIVEL)) {
-            throw new InvalidSlotStatusException("Slot nao pode ser bloqueado, verifique o status!");
+        List<Slot> slots = slotRepository
+                .findByScheduleId(id)
+                .stream()
+                .filter(s -> s.getStatus().equals(EStatusSlots.DISPONIVEL))
+                .toList();
+
+        if (slots.isEmpty()) {
+            throw new SlotNotFoundException("Nao foram encontrados slots com esse scheduleId");
         }
 
-        slot.block();
-        slotRepository.save(slot);
-
-        return new AlterarSlotStatusResult(
-                slot.getId(),
-                slot.getScheduleId(),
-                slot.getStatus());
+        slots.forEach(Slot::block);
+        slotRepository.saveAll(slots);
     }
 }
