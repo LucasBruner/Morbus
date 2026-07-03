@@ -67,6 +67,15 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
+    @ExceptionHandler(CancelamentoNaoPermitidoException.class)
+    public ProblemDetail handleCancelamentoNaoPermitido(CancelamentoNaoPermitidoException ex) {
+        ProblemDetail problem = ProblemDetail.forStatus(422);
+        problem.setType(URI.create("https://example.com/problems/cancel-not-allowed"));
+        problem.setTitle("Cancelamento nao permitido");
+        problem.setDetail(ex.getMessage());
+        return problem;
+    }
+
     @ExceptionHandler(SlotNotFoundException.class)
     public ProblemDetail handleSlotNotFound(SlotNotFoundException ex) {
         ProblemDetail problem = ProblemDetail.forStatus(404);

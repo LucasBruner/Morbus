@@ -11,6 +11,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.UUID;
 
 public class ConfirmarAgendamentoUseCase implements IConfirmarAgendamentoUseCase {
@@ -35,7 +36,7 @@ public class ConfirmarAgendamentoUseCase implements IConfirmarAgendamentoUseCase
             throw new InvalidAgendamentoStatusException("Agendamento nao esta aguardando confirmacao");
         }
 
-        if (LocalDateTime.now().isAfter(agendamento.getExpiresAt())) {
+        if (LocalDateTime.now(ZoneId.systemDefault()).isAfter(agendamento.getExpiresAt())) {
             throw new ExpiredConfirmationException("Prazo de confirmacao expirado");
         }
 

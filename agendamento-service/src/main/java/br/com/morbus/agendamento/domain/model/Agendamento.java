@@ -16,7 +16,7 @@ public class Agendamento {
     private EStatusAgendamento status;
     private final LocalDateTime expiresAt;
     private LocalDateTime confirmedAt;
-    private final String cancellationReason;
+    private String cancellationReason;
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -83,6 +83,12 @@ public class Agendamento {
     public void confirm() {
         this.status = EStatusAgendamento.CONFIRMADO;
         this.confirmedAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void cancel(String motivo) {
+        this.status = EStatusAgendamento.CANCELADO;
+        this.cancellationReason = motivo;
         this.updatedAt = LocalDateTime.now();
     }
 }

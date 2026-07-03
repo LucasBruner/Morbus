@@ -50,4 +50,13 @@ public class Slot {
                 ? EStatusSlots.OCUPADO
                 : EStatusSlots.DISPONIVEL;
     }
+
+    public void releaseOne() {
+        if (this.reservados > 0) {
+            this.reservados -= 1;
+        }
+        this.status = this.reservados >= this.capacidade
+                ? EStatusSlots.OCUPADO
+                : EStatusSlots.DISPONIVEL;
+    }
 }

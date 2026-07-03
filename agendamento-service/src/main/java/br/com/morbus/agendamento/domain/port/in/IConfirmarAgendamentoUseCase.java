@@ -7,5 +7,4 @@ import java.util.UUID;
 public interface IConfirmarAgendamentoUseCase {
 
     Agendamento execute(UUID agendamentoId, UUID userId);
-
 }
