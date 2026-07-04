@@ -8,6 +8,9 @@ import br.com.morbus.regulacao.domain.usecase.solicitacao.CriarSolicitacaoUseCas
 import br.com.morbus.regulacao.domain.usecase.solicitacao.CancelarSolicitacaoUseCase;
 import br.com.morbus.regulacao.domain.usecase.solicitacao.ListarSolicitacoesUseCase;
 import br.com.morbus.regulacao.domain.usecase.solicitacao.ReclassificarRiscoUseCase;
+import br.com.morbus.regulacao.domain.usecase.solicitacao.TransicionarParaAgendadaUseCase;
+import br.com.morbus.regulacao.domain.usecase.solicitacao.TransicionarParaAtendidaUseCase;
+import br.com.morbus.regulacao.domain.usecase.solicitacao.TransicionarParaFaltouUseCase;
 import br.com.morbus.regulacao.domain.usecase.unidade.BuscarUnidadeSolicitanteUseCase;
 import br.com.morbus.regulacao.domain.usecase.unidade.CadastrarUnidadeSolicitanteUseCase;
 import br.com.morbus.regulacao.ports.in.IAvaliarSolicitacaoUseCase;
@@ -20,6 +23,9 @@ import br.com.morbus.regulacao.ports.in.ICancelarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.in.IGerenciarCotaUseCase;
 import br.com.morbus.regulacao.ports.in.IListarSolicitacoesUseCase;
 import br.com.morbus.regulacao.ports.in.IReclassificarRiscoUseCase;
+import br.com.morbus.regulacao.ports.in.ITransicionarParaAgendadaUseCase;
+import br.com.morbus.regulacao.ports.in.ITransicionarParaAtendidaUseCase;
+import br.com.morbus.regulacao.ports.in.ITransicionarParaFaltouUseCase;
 import br.com.morbus.regulacao.ports.out.IParecerRepository;
 import br.com.morbus.regulacao.ports.out.IQuotaRepository;
 import br.com.morbus.regulacao.ports.out.IRegulacaoEventPublisher;
@@ -67,6 +73,11 @@ public class UseCaseConfig {
     }
 
     @Bean
+    public ITransicionarParaAgendadaUseCase transicionarParaAgendadaUseCase(ISolicitacaoRepository solicitacaoRepository) {
+        return new TransicionarParaAgendadaUseCase(solicitacaoRepository);
+    }
+
+    @Bean
     public IGerenciarCotaUseCase gerenciarCotaUseCase (IQuotaRepository quotaRepository,
                                                         IUnidadeSolicitanteRepository unidadeSolicitanteRepository) {
         return new GerenciarCotaUseCase(quotaRepository, unidadeSolicitanteRepository);
@@ -85,5 +96,15 @@ public class UseCaseConfig {
     @Bean
     public IBuscarUnidadeSolicitanteUseCase buscarUnidadeSolicitanteUseCase(IUnidadeSolicitanteRepository unidadeSolicitanteRepository) {
         return new BuscarUnidadeSolicitanteUseCase(unidadeSolicitanteRepository);
+    }
+
+    @Bean
+    public ITransicionarParaFaltouUseCase transicionarParaFaltouUseCase(ISolicitacaoRepository solicitacaoRepository) {
+        return new TransicionarParaFaltouUseCase(solicitacaoRepository);
+    }
+
+    @Bean
+    public ITransicionarParaAtendidaUseCase transicionarParaAtendidaUseCase(ISolicitacaoRepository solicitacaoRepository) {
+        return new TransicionarParaAtendidaUseCase(solicitacaoRepository);
     }
 }

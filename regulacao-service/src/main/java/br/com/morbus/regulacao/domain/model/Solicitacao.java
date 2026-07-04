@@ -16,6 +16,7 @@ public class Solicitacao {
     private UUID procedureId;
     private UUID unidadeSolicitanteId;
     private UUID unidadeExecutanteId;
+    private UUID appointmentId;
     private EStatusSolicitacao status;
     private ERiscoSolicitado riskColor;
     private String cid;
@@ -68,7 +69,8 @@ public class Solicitacao {
                        String justificativaNegacao,
                        UUID solicitadoPor,
                        LocalDateTime createdAt,
-                       LocalDateTime updatedAt) {
+                       LocalDateTime updatedAt,
+                       UUID appointmentId) {
         this.id = id;
         this.patientId = patientId;
         this.procedureId = procedureId;
@@ -85,6 +87,7 @@ public class Solicitacao {
         this.solicitadoPor = solicitadoPor;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.appointmentId = appointmentId;
     }
 
     public void cancelar() {
@@ -98,8 +101,8 @@ public class Solicitacao {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void aprovarParaFilaEspera(ERiscoSolicitado riskColor, UUID unidadeExecutanteId) {
-        aprovar(riskColor, unidadeExecutanteId);
+    public void aprovarParaFilaEspera(UUID unidadeExecutanteId) {
+        aprovar(ERiscoSolicitado.AZUL, unidadeExecutanteId);
         this.destino = EDestino.FILA_ESPERA;
     }
 
@@ -120,8 +123,24 @@ public class Solicitacao {
         this.updatedAt = LocalDateTime.now();
     }
 
+    public void agendar(UUID appointmentId) {
+        this.status = EStatusSolicitacao.AGENDADA;
+        this.appointmentId = appointmentId;
+        this.updatedAt = LocalDateTime.now();
+    }
+
     public void reclassificarRisco(ERiscoSolicitado novoRiskColor) {
         this.riskColor = novoRiskColor;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void atender() {
+        this.status = EStatusSolicitacao.ATENDIDA;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void registrarFalta() {
+        this.status = EStatusSolicitacao.FALTOU;
         this.updatedAt = LocalDateTime.now();
     }
 }

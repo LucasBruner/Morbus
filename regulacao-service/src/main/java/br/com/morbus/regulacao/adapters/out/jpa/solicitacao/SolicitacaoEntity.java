@@ -31,6 +31,9 @@ public class SolicitacaoEntity {
     @Column(name = "procedure_id", nullable = false)
     private UUID procedureId;
 
+    @Column(name = "appointment_id")
+    private UUID appointmentId;
+
     @Column(name = "unidade_solicitante_id", nullable = false)
     private UUID unidadeSolicitanteId;
 
@@ -90,7 +93,8 @@ public class SolicitacaoEntity {
                 this.justificativaNegacao,
                 this.solicitadoPor,
                 this.createdAt,
-                this.updatedAt
+                this.updatedAt,
+                this.appointmentId
         );
     }
 
@@ -112,6 +116,7 @@ public class SolicitacaoEntity {
         entity.solicitadoPor = s.getSolicitadoPor();
         entity.createdAt = s.getCreatedAt();
         entity.updatedAt = s.getUpdatedAt();
+        entity.appointmentId = s.getAppointmentId();
         return entity;
     }
 }

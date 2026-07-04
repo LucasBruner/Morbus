@@ -47,7 +47,8 @@ class SolicitacaoTest {
                 null,
                 UUID.randomUUID(),
                 LocalDateTime.now().minusHours(2),
-                LocalDateTime.now().minusHours(1)
+                LocalDateTime.now().minusHours(1),
+                null
         );
     }
 
@@ -135,10 +136,10 @@ class SolicitacaoTest {
             Solicitacao s = buildExistente(EStatusSolicitacao.AGUARDANDO);
             UUID unidadeExecutanteId = UUID.randomUUID();
 
-            s.aprovar(ERiscoSolicitado.VERMELHO, unidadeExecutanteId);
+            s.aprovar(ERiscoSolicitado.AMARELO, unidadeExecutanteId);
 
             assertThat(s.getStatus()).isEqualTo(EStatusSolicitacao.APROVADA);
-            assertThat(s.getRiskColor()).isEqualTo(ERiscoSolicitado.VERMELHO);
+            assertThat(s.getRiskColor()).isEqualTo(ERiscoSolicitado.AMARELO);
             assertThat(s.getUnidadeExecutanteId()).isEqualTo(unidadeExecutanteId);
         }
     }
@@ -152,7 +153,7 @@ class SolicitacaoTest {
         void deveAprovarParaFilaEspera() {
             Solicitacao s = buildExistente(EStatusSolicitacao.AGUARDANDO);
 
-            s.aprovarParaFilaEspera(ERiscoSolicitado.AMARELO, UUID.randomUUID());
+            s.aprovarParaFilaEspera(UUID.randomUUID());
 
             assertThat(s.getStatus()).isEqualTo(EStatusSolicitacao.APROVADA);
             assertThat(s.getDestino()).isEqualTo(EDestino.FILA_ESPERA);

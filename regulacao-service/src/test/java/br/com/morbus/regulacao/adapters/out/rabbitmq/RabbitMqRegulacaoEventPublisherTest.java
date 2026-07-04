@@ -44,7 +44,7 @@ class RabbitMqRegulacaoEventPublisherTest {
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
                 EStatusSolicitacao.APROVADA, ERiscoSolicitado.AMARELO, "I10", "justificativa", "Dr. Silva", null,
                 EDestino.FILA_REGULADA, "motivo", UUID.randomUUID(),
-                LocalDateTime.now().minusHours(1), LocalDateTime.now().minusHours(1)
+                LocalDateTime.now().minusHours(1), LocalDateTime.now().minusHours(1), null
         );
     }
 
@@ -79,7 +79,9 @@ class RabbitMqRegulacaoEventPublisherTest {
         @DisplayName("deve publicar no exchange e routing key corretos com o payload esperado")
         void devePublicar() {
             Solicitacao s = buildSolicitacao();
+            LocalDateTime antes = LocalDateTime.now();
             publisher.publishSolicitacaoNegada(s);
+            LocalDateTime depois = LocalDateTime.now();
 
             ArgumentCaptor<SolicitacaoNegadaPayload> captor = ArgumentCaptor.forClass(SolicitacaoNegadaPayload.class);
             verify(rabbitTemplate).convertAndSend(eq("sus.regulacao.exchange"), eq("solicitation.denied"), captor.capture());
@@ -87,6 +89,7 @@ class RabbitMqRegulacaoEventPublisherTest {
             SolicitacaoNegadaPayload payload = captor.getValue();
             assertThat(payload.solicitacaoId()).isEqualTo(s.getId());
             assertThat(payload.justificativa()).isEqualTo(s.getJustificativaNegacao());
+            assertThat(payload.negadoEm()).isAfterOrEqualTo(antes).isBeforeOrEqualTo(depois);
         }
     }
 
