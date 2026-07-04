@@ -1,5 +1,6 @@
 package br.com.morbus.agendamento.adapter.in.rest;
 
+import br.com.morbus.agendamento.adapter.in.rest.dto.BlockRequestDTO;
 import br.com.morbus.agendamento.adapter.in.rest.dto.ScheduleCreatedResponseDTO;
 import br.com.morbus.agendamento.adapter.in.rest.dto.ScheduleRequestDTO;
 import br.com.morbus.agendamento.adapter.security.UserPrincipal;
@@ -48,9 +49,10 @@ public class ScheduleController {
     @PostMapping("/{id}/block")
     @PreAuthorize("hasRole('EXECUTANTE')")
     public ResponseEntity<Void> block(@PathVariable UUID id,
+                                      @Valid @RequestBody BlockRequestDTO request,
                                       @AuthenticationPrincipal UserPrincipal principal) {
 
-        blockSlotUseCase.execute(id, principal.unitId());
+        blockSlotUseCase.execute(id, principal.unitId(), request.date(), request.motivo());
         return ResponseEntity.noContent().build();
     }
 

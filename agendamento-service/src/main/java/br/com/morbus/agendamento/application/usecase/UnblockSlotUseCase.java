@@ -1,6 +1,7 @@
 package br.com.morbus.agendamento.application.usecase;
 
 import br.com.morbus.agendamento.domain.enums.EStatusSlots;
+import br.com.morbus.agendamento.domain.exception.ScheduleNotFoundException;
 import br.com.morbus.agendamento.domain.exception.SlotNotFoundException;
 import br.com.morbus.agendamento.domain.model.Schedule;
 import br.com.morbus.agendamento.domain.model.Slot;
@@ -25,9 +26,10 @@ public class UnblockSlotUseCase implements IUnblockSlotUseCase {
 
     @Override
     public void execute(UUID id, UUID unitId) {
-        Optional<Schedule> schedule = scheduleRepository.findById(id);
+        Schedule schedule = scheduleRepository.findById(id)
+                .orElseThrow(() -> new ScheduleNotFoundException("Grade nao encontrada: " + id));
 
-        if (!schedule.get().getUnitId().equals(unitId)) {
+        if (!schedule.getUnitId().equals(unitId)) {
             throw new AccessDeniedException("EXECUTANTE restrito a sua unidade.");
         }
 

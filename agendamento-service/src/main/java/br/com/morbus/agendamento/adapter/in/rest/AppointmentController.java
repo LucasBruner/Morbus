@@ -1,8 +1,11 @@
 package br.com.morbus.agendamento.adapter.in.rest;
 
 import br.com.morbus.agendamento.adapter.security.UserPrincipal;
+import br.com.morbus.agendamento.adapter.in.rest.dto.ConfirmarAgendamentoResponseDTO;
+import br.com.morbus.agendamento.application.command.ConfirmarAgendamentoResult;
 import br.com.morbus.agendamento.domain.port.in.ICancelarAgendamentoUseCase;
 import br.com.morbus.agendamento.domain.port.in.IConfirmarAgendamentoUseCase;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -30,10 +33,11 @@ public class AppointmentController {
 
     @PatchMapping("/{id}/confirmar")
     @PreAuthorize("hasAuthority('ROLE_PACIENTE')")
-    public ResponseEntity<Void> confirmar(@PathVariable("id") UUID id,
-                                          @AuthenticationPrincipal UserPrincipal principal) {
-        confirmarAgendamentoUseCase.execute(id, principal.userId());
-        return ResponseEntity.ok().build();
+    public ResponseEntity<ConfirmarAgendamentoResponseDTO> confirmar(@PathVariable("id") UUID id,
+                                                                     @AuthenticationPrincipal UserPrincipal principal) {
+        ConfirmarAgendamentoResult result = confirmarAgendamentoUseCase.execute(id, principal.userId());
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ConfirmarAgendamentoResponseDTO.fromResult(result));
     }
 
     @DeleteMapping("/{id}")

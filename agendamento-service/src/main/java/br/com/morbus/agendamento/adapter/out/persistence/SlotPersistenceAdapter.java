@@ -39,7 +39,10 @@ public class SlotPersistenceAdapter implements ISlotRepository {
 
     @Override
     public List<Slot> findByScheduleId(UUID id) {
-        return slotJpaRepository.findByScheduleId(id);
+        return slotJpaRepository.findByScheduleId(id)
+                .stream()
+                .map(this::toDomain)
+                .toList();
     }
 
     @Override

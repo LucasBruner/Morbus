@@ -1,10 +1,10 @@
 package br.com.morbus.agendamento.domain.port.in;
 
-import br.com.morbus.agendamento.domain.model.Agendamento;
+import br.com.morbus.agendamento.application.command.ConfirmarAgendamentoResult;
 
 import java.util.UUID;
 
 public interface IConfirmarAgendamentoUseCase {
 
-    Agendamento execute(UUID agendamentoId, UUID userId);
+    ConfirmarAgendamentoResult execute(UUID agendamentoId, UUID userId);
 }

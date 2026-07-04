@@ -1,6 +1,5 @@
 package br.com.morbus.agendamento.adapter.out.persistence;
 
-import br.com.morbus.agendamento.domain.model.Slot;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -29,5 +28,5 @@ public interface ISlotJpaRepository extends JpaRepository<SlotEntity, UUID> {
             FROM SlotEntity s
             WHERE s.scheduleId = :scheduleId
             """)
-    List<Slot> findByScheduleId(@Param("scheduleId") UUID scheduleId);
+    List<SlotEntity> findByScheduleId(@Param("scheduleId") UUID scheduleId);
 }

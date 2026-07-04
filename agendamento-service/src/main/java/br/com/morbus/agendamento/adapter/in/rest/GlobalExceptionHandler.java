@@ -67,6 +67,15 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
+    @ExceptionHandler(ScheduleNotFoundException.class)
+    public ProblemDetail handleScheduleNotFound(ScheduleNotFoundException ex) {
+        ProblemDetail problem = ProblemDetail.forStatus(404);
+        problem.setType(URI.create("https://httpstatuses.com/404"));
+        problem.setTitle("Schedule nao encontrado");
+        problem.setDetail(ex.getMessage());
+        return problem;
+    }
+
     @ExceptionHandler(CancelamentoNaoPermitidoException.class)
     public ProblemDetail handleCancelamentoNaoPermitido(CancelamentoNaoPermitidoException ex) {
         ProblemDetail problem = ProblemDetail.forStatus(422);

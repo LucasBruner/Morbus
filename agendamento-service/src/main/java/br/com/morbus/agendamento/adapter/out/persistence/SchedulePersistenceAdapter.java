@@ -24,7 +24,7 @@ public class SchedulePersistenceAdapter implements IScheduleRepository {
 
     @Override
     public Optional<Schedule> findById(UUID id) {
-        return Optional.of(toDomain(scheduleJpaRepository.findById(id).get()));
+        return scheduleJpaRepository.findById(id).map(this::toDomain);
     }
 
     @Override

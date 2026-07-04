@@ -55,8 +55,9 @@ public class UseCaseConfig {
     }
 
     @Bean
-    public IConfirmarAgendamentoUseCase confirmarAgendamentoUseCase(IAgendamentoRepository agendamentoRepository) {
-        return new ConfirmarAgendamentoUseCase(agendamentoRepository);
+    public IConfirmarAgendamentoUseCase confirmarAgendamentoUseCase(IAgendamentoRepository agendamentoRepository,
+                                                                    ISlotRepository slotRepository) {
+        return new ConfirmarAgendamentoUseCase(agendamentoRepository, slotRepository);
     }
 
     @Bean
