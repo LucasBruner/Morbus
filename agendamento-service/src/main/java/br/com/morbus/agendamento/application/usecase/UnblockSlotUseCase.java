@@ -1,41 +1,49 @@
 package br.com.morbus.agendamento.application.usecase;
 
-import br.com.morbus.agendamento.application.command.AlterarSlotStatusResult;
 import br.com.morbus.agendamento.domain.enums.EStatusSlots;
-import br.com.morbus.agendamento.domain.exception.InvalidSlotStatusException;
+import br.com.morbus.agendamento.domain.exception.ScheduleNotFoundException;
 import br.com.morbus.agendamento.domain.exception.SlotNotFoundException;
+import br.com.morbus.agendamento.domain.model.Schedule;
 import br.com.morbus.agendamento.domain.model.Slot;
 import br.com.morbus.agendamento.domain.port.in.IUnblockSlotUseCase;
+import br.com.morbus.agendamento.domain.port.out.IScheduleRepository;
 import br.com.morbus.agendamento.domain.port.out.ISlotRepository;
+import org.springframework.security.access.AccessDeniedException;
 
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public class UnblockSlotUseCase implements IUnblockSlotUseCase {
 
     private final ISlotRepository slotRepository;
+    private final IScheduleRepository scheduleRepository;
 
-    public UnblockSlotUseCase(ISlotRepository slotRepository) {
+    public UnblockSlotUseCase(ISlotRepository slotRepository, IScheduleRepository scheduleRepository) {
         this.slotRepository = slotRepository;
+        this.scheduleRepository = scheduleRepository;
     }
 
     @Override
-    public AlterarSlotStatusResult execute(UUID id) {
-        Slot slot = slotRepository.findById(id);
+    public void execute(UUID id, UUID unitId) {
+        Schedule schedule = scheduleRepository.findById(id)
+                .orElseThrow(() -> new ScheduleNotFoundException("Grade nao encontrada: " + id));
 
-        if (slot == null) {
-            throw new SlotNotFoundException("Nao foi encontrado um slot com esse id");
+        if (!schedule.getUnitId().equals(unitId)) {
+            throw new AccessDeniedException("EXECUTANTE restrito a sua unidade.");
         }
 
-        if (!slot.getStatus().equals(EStatusSlots.INDISPONIVEL)) {
-            throw new InvalidSlotStatusException("Slot nao pode ser desbloqueado, verifique o status!");
+        List<Slot> slots = slotRepository
+                .findByScheduleId(id)
+                .stream()
+                .filter(s -> s.getStatus().equals(EStatusSlots.INDISPONIVEL))
+                .toList();
+
+        if (slots.isEmpty()) {
+            throw new SlotNotFoundException("Nao foram encontrados slots com esse scheduleId");
         }
 
-        slot.unblock();
-        slotRepository.save(slot);
-
-        return new AlterarSlotStatusResult(
-                slot.getId(),
-                slot.getScheduleId(),
-                slot.getStatus());
+        slots.forEach(Slot::unblock);
+        slotRepository.saveAll(slots);
     }
 }

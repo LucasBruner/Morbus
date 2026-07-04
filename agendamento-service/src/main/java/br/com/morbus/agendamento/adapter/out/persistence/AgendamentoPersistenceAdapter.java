@@ -1,6 +1,5 @@
 package br.com.morbus.agendamento.adapter.out.persistence;
 
-import br.com.morbus.agendamento.domain.enums.EStatusAgendamento;
 import br.com.morbus.agendamento.domain.model.Agendamento;
 import br.com.morbus.agendamento.domain.port.out.IAgendamentoRepository;
 import org.springframework.stereotype.Repository;
@@ -40,6 +39,7 @@ public class AgendamentoPersistenceAdapter implements IAgendamentoRepository {
                 agendamento.getPacienteId(),
                 agendamento.getStatus(),
                 agendamento.getExpiresAt(),
+                agendamento.getConfirmedAt(),
                 agendamento.getCancellationReason(),
                 agendamento.getCreatedAt(),
                 agendamento.getUpdatedAt()
@@ -54,6 +54,7 @@ public class AgendamentoPersistenceAdapter implements IAgendamentoRepository {
                 entity.getPacienteId(),
                 entity.getStatus(),
                 entity.getExpiresAt(),
+                entity.getConfirmedAt(),
                 entity.getCancellationReason(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()

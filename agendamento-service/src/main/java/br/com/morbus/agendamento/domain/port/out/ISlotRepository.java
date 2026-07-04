@@ -14,5 +14,7 @@ public interface ISlotRepository {
 
     Slot findById(UUID id);
 
+    List<Slot> findByScheduleId(UUID id);
+
     Optional<Slot> findAvailableSlotForProcedureAndUnit(UUID procedureId, UUID preferredUnitId);
 }

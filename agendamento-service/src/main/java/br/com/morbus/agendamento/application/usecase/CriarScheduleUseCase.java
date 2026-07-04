@@ -16,7 +16,6 @@ import java.time.LocalTime;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 public class CriarScheduleUseCase implements ICriarScheduleUseCase {
 

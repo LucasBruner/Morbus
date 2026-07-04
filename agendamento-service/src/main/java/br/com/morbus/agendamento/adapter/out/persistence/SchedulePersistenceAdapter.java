@@ -5,6 +5,7 @@ import br.com.morbus.agendamento.domain.model.Schedule;
 import br.com.morbus.agendamento.domain.port.out.IScheduleRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -19,6 +20,11 @@ public class SchedulePersistenceAdapter implements IScheduleRepository {
     @Override
     public Schedule save(Schedule schedule) {
         return toDomain(scheduleJpaRepository.save(toEntity(schedule)));
+    }
+
+    @Override
+    public Optional<Schedule> findById(UUID id) {
+        return scheduleJpaRepository.findById(id).map(this::toDomain);
     }
 
     @Override

@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -21,4 +22,11 @@ public interface ISlotJpaRepository extends JpaRepository<SlotEntity, UUID> {
             """)
     Optional<SlotEntity> findAvailableSlotForProcedureAndUnit(@Param("procedureId") UUID procedureId,
                                                              @Param("preferredUnitId") UUID preferredUnitId);
+
+    @Query(value = """
+            SELECT s
+            FROM SlotEntity s
+            WHERE s.scheduleId = :scheduleId
+            """)
+    List<SlotEntity> findByScheduleId(@Param("scheduleId") UUID scheduleId);
 }
