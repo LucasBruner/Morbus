@@ -64,11 +64,6 @@ public class RabbitMQConfig {
     }
 
     @Bean
-    public Queue patientCalledQueue() {
-        return new Queue("queue.patient.called", true);
-    }
-
-    @Bean
     public Binding patientRegisteredBinding(Queue patientRegisteredQueue,
                                             DirectExchange queueExchange) {
         return BindingBuilder
