@@ -2,6 +2,7 @@ package br.com.morbus.agendamento.infrastructure.config;
 
 import br.com.morbus.agendamento.adapter.out.rabbitmq.IAgendamentoEventPublisher;
 import br.com.morbus.agendamento.application.usecase.AlocarPacienteEmSlotUseCase;
+import br.com.morbus.agendamento.application.usecase.AtenderAgendamentoUseCase;
 import br.com.morbus.agendamento.application.usecase.BlockSlotUseCase;
 import br.com.morbus.agendamento.application.usecase.CancelarAgendamentoUseCase;
 import br.com.morbus.agendamento.application.usecase.ConfirmarAgendamentoUseCase;
@@ -9,6 +10,7 @@ import br.com.morbus.agendamento.application.usecase.CriarAgendamentoUseCase;
 import br.com.morbus.agendamento.application.usecase.CriarScheduleUseCase;
 import br.com.morbus.agendamento.application.usecase.UnblockSlotUseCase;
 import br.com.morbus.agendamento.domain.port.in.IAlocarPacienteEmSlotUseCase;
+import br.com.morbus.agendamento.domain.port.in.IAtenderAgendamentoUseCase;
 import br.com.morbus.agendamento.domain.port.in.IBlockSlotUseCase;
 import br.com.morbus.agendamento.domain.port.in.ICancelarAgendamentoUseCase;
 import br.com.morbus.agendamento.domain.port.in.IConfirmarAgendamentoUseCase;
@@ -58,6 +60,14 @@ public class UseCaseConfig {
     public IConfirmarAgendamentoUseCase confirmarAgendamentoUseCase(IAgendamentoRepository agendamentoRepository,
                                                                     ISlotRepository slotRepository) {
         return new ConfirmarAgendamentoUseCase(agendamentoRepository, slotRepository);
+    }
+
+    @Bean
+    public IAtenderAgendamentoUseCase atenderAgendamentoUseCase(IAgendamentoRepository agendamentoRepository,
+                                                                ISlotRepository slotRepository,
+                                                                IScheduleRepository scheduleRepository,
+                                                                IAgendamentoEventPublisher eventPublisher) {
+        return new AtenderAgendamentoUseCase(agendamentoRepository, slotRepository, scheduleRepository, eventPublisher);
     }
 
     @Bean

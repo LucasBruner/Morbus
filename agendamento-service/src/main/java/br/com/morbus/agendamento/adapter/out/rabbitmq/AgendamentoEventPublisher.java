@@ -46,4 +46,22 @@ public class AgendamentoEventPublisher implements IAgendamentoEventPublisher {
                 event
         );
     }
+
+    @Override
+    public void publishAppointmentAttended(UUID appointmentId,
+                                           UUID queueEntryId,
+                                           UUID patientId,
+                                           LocalDateTime ocorridoEm) {
+        AppointmentAttendedEvent event = new AppointmentAttendedEvent(
+                appointmentId,
+                queueEntryId,
+                patientId,
+                ocorridoEm
+        );
+        rabbitTemplate.convertAndSend(
+                RabbitMQConfig.AGENDAMENTO_EXCHANGE,
+                RabbitMQConfig.RK_APPOINTMENT_ATTENDED,
+                event
+        );
+    }
 }

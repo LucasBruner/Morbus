@@ -4,6 +4,7 @@ import br.com.morbus.agendamento.domain.enums.EStatusAgendamento;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.UUID;
 
 @Getter
@@ -16,6 +17,7 @@ public class Agendamento {
     private EStatusAgendamento status;
     private final LocalDateTime expiresAt;
     private LocalDateTime confirmedAt;
+    private LocalDateTime attendedAt;
     private String cancellationReason;
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -32,7 +34,9 @@ public class Agendamento {
                 EStatusAgendamento.AGUARDANDO_CONFIRMACAO,
                 expiresAt,
                 null,
-                LocalDateTime.now(),
+                null,
+                null,
+                LocalDateTime.now(ZoneId.systemDefault()),
                 null
         );
     }
@@ -46,16 +50,7 @@ public class Agendamento {
                        String cancellationReason,
                        LocalDateTime createdAt,
                        LocalDateTime updatedAt) {
-        this.id = id;
-        this.queueEntryId = queueEntryId;
-        this.slotId = slotId;
-        this.pacienteId = pacienteId;
-        this.status = status;
-        this.expiresAt = expiresAt;
-        this.confirmedAt = null;
-        this.cancellationReason = cancellationReason;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
+        this(id, queueEntryId, slotId, pacienteId, status, expiresAt, null, null, cancellationReason, createdAt, updatedAt);
     }
 
     public Agendamento(UUID id,
@@ -65,6 +60,7 @@ public class Agendamento {
                        EStatusAgendamento status,
                        LocalDateTime expiresAt,
                        LocalDateTime confirmedAt,
+                       LocalDateTime attendedAt,
                        String cancellationReason,
                        LocalDateTime createdAt,
                        LocalDateTime updatedAt) {
@@ -75,6 +71,7 @@ public class Agendamento {
         this.status = status;
         this.expiresAt = expiresAt;
         this.confirmedAt = confirmedAt;
+        this.attendedAt = attendedAt;
         this.cancellationReason = cancellationReason;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -82,13 +79,19 @@ public class Agendamento {
 
     public void confirm() {
         this.status = EStatusAgendamento.CONFIRMADO;
-        this.confirmedAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
+        this.confirmedAt = LocalDateTime.now(ZoneId.systemDefault());
+        this.updatedAt = LocalDateTime.now(ZoneId.systemDefault());
+    }
+
+    public void attend() {
+        this.status = EStatusAgendamento.ATENDIDO;
+        this.attendedAt = LocalDateTime.now(ZoneId.systemDefault());
+        this.updatedAt = LocalDateTime.now(ZoneId.systemDefault());
     }
 
     public void cancel(String motivo) {
         this.status = EStatusAgendamento.CANCELADO;
         this.cancellationReason = motivo;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now(ZoneId.systemDefault());
     }
 }

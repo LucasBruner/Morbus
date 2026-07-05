@@ -1,8 +1,11 @@
 package br.com.morbus.agendamento.adapter.in.rest;
 
+import br.com.morbus.agendamento.adapter.in.rest.dto.AgendamentoAttendResponseDTO;
 import br.com.morbus.agendamento.adapter.security.UserPrincipal;
 import br.com.morbus.agendamento.adapter.in.rest.dto.ConfirmarAgendamentoResponseDTO;
 import br.com.morbus.agendamento.application.command.ConfirmarAgendamentoResult;
+import br.com.morbus.agendamento.domain.model.Agendamento;
+import br.com.morbus.agendamento.domain.port.in.IAtenderAgendamentoUseCase;
 import br.com.morbus.agendamento.domain.port.in.ICancelarAgendamentoUseCase;
 import br.com.morbus.agendamento.domain.port.in.IConfirmarAgendamentoUseCase;
 import org.springframework.http.HttpStatus;
@@ -23,11 +26,14 @@ import java.util.UUID;
 public class AppointmentController {
 
     private final IConfirmarAgendamentoUseCase confirmarAgendamentoUseCase;
+    private final IAtenderAgendamentoUseCase atenderAgendamentoUseCase;
     private final ICancelarAgendamentoUseCase cancelarAgendamentoUseCase;
 
     public AppointmentController(IConfirmarAgendamentoUseCase confirmarAgendamentoUseCase,
+                                 IAtenderAgendamentoUseCase atenderAgendamentoUseCase,
                                  ICancelarAgendamentoUseCase cancelarAgendamentoUseCase) {
         this.confirmarAgendamentoUseCase = confirmarAgendamentoUseCase;
+        this.atenderAgendamentoUseCase = atenderAgendamentoUseCase;
         this.cancelarAgendamentoUseCase = cancelarAgendamentoUseCase;
     }
 
@@ -38,6 +44,14 @@ public class AppointmentController {
         ConfirmarAgendamentoResult result = confirmarAgendamentoUseCase.execute(id, principal.userId());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ConfirmarAgendamentoResponseDTO.fromResult(result));
+    }
+
+    @PatchMapping("/{id}/attend")
+    @PreAuthorize("hasAuthority('ROLE_EXECUTANTE')")
+    public ResponseEntity<AgendamentoAttendResponseDTO> attend(@PathVariable("id") UUID id,
+                                                               @AuthenticationPrincipal UserPrincipal principal) {
+        Agendamento agendamento = atenderAgendamentoUseCase.execute(id, principal.unitId());
+        return ResponseEntity.ok(AgendamentoAttendResponseDTO.fromEntity(agendamento));
     }
 
     @DeleteMapping("/{id}")

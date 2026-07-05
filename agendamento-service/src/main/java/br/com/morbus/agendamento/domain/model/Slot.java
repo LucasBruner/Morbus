@@ -59,4 +59,8 @@ public class Slot {
                 ? EStatusSlots.OCUPADO
                 : EStatusSlots.DISPONIVEL;
     }
+
+    public void markAsFull() {
+        this.status = EStatusSlots.OCUPADO;
+    }
 }

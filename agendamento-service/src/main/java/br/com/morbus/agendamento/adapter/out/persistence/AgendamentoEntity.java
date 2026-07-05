@@ -41,6 +41,9 @@ public class AgendamentoEntity {
     @Column(name = "confirmed_at")
     private LocalDateTime confirmedAt;
 
+    @Column(name = "attended_at")
+    private LocalDateTime attendedAt;
+
     @Column(name = "cancellation_reason")
     private String cancellationReason;
 

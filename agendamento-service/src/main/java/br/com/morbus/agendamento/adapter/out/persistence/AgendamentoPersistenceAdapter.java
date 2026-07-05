@@ -40,6 +40,7 @@ public class AgendamentoPersistenceAdapter implements IAgendamentoRepository {
                 agendamento.getStatus(),
                 agendamento.getExpiresAt(),
                 agendamento.getConfirmedAt(),
+                agendamento.getAttendedAt(),
                 agendamento.getCancellationReason(),
                 agendamento.getCreatedAt(),
                 agendamento.getUpdatedAt()
@@ -55,6 +56,7 @@ public class AgendamentoPersistenceAdapter implements IAgendamentoRepository {
                 entity.getStatus(),
                 entity.getExpiresAt(),
                 entity.getConfirmedAt(),
+                entity.getAttendedAt(),
                 entity.getCancellationReason(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()
