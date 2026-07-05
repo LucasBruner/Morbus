@@ -82,4 +82,22 @@ public class AgendamentoEventPublisher implements IAgendamentoEventPublisher {
                 event
         );
     }
+
+    @Override
+    public void publishAppointmentExpired(UUID appointmentId,
+                                           UUID queueEntryId,
+                                           UUID patientId,
+                                           LocalDateTime expirouEm) {
+        AppointmentExpiredEvent event = new AppointmentExpiredEvent(
+                appointmentId,
+                queueEntryId,
+                patientId,
+                expirouEm
+        );
+        rabbitTemplate.convertAndSend(
+                RabbitMQConfig.AGENDAMENTO_EXCHANGE,
+                RabbitMQConfig.RK_APPOINTMENT_EXPIRED,
+                event
+        );
+    }
 }

@@ -1,15 +1,7 @@
 package br.com.morbus.agendamento.infrastructure.config;
 
 import br.com.morbus.agendamento.adapter.out.rabbitmq.IAgendamentoEventPublisher;
-import br.com.morbus.agendamento.application.usecase.AlocarPacienteEmSlotUseCase;
-import br.com.morbus.agendamento.application.usecase.AtenderAgendamentoUseCase;
-import br.com.morbus.agendamento.application.usecase.BlockSlotUseCase;
-import br.com.morbus.agendamento.application.usecase.RegistrarFaltaAgendamentoUseCase;
-import br.com.morbus.agendamento.application.usecase.CancelarAgendamentoUseCase;
-import br.com.morbus.agendamento.application.usecase.ConfirmarAgendamentoUseCase;
-import br.com.morbus.agendamento.application.usecase.CriarAgendamentoUseCase;
-import br.com.morbus.agendamento.application.usecase.CriarScheduleUseCase;
-import br.com.morbus.agendamento.application.usecase.UnblockSlotUseCase;
+import br.com.morbus.agendamento.application.usecase.*;
 import br.com.morbus.agendamento.domain.port.in.IAlocarPacienteEmSlotUseCase;
 import br.com.morbus.agendamento.domain.port.in.IAtenderAgendamentoUseCase;
 import br.com.morbus.agendamento.domain.port.in.IBlockSlotUseCase;
@@ -78,6 +70,14 @@ public class UseCaseConfig {
                                                                               IScheduleRepository scheduleRepository,
                                                                               IAgendamentoEventPublisher eventPublisher) {
         return new RegistrarFaltaAgendamentoUseCase(agendamentoRepository, slotRepository, scheduleRepository, eventPublisher);
+    }
+
+    @Bean
+    public ExpirarAgendamentosUseCase expirarAgendamentosUseCase(IAgendamentoRepository agendamentoRepository,
+                                                                 ISlotRepository slotRepository,
+                                                                 IScheduleRepository scheduleRepository,
+                                                                 IAgendamentoEventPublisher eventPublisher) {
+        return new ExpirarAgendamentosUseCase(agendamentoRepository, slotRepository, scheduleRepository, eventPublisher);
     }
 
     @Bean

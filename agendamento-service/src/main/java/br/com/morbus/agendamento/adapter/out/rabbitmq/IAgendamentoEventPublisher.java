@@ -24,4 +24,9 @@ public interface IAgendamentoEventPublisher {
                               UUID queueEntryId,
                               UUID patientId,
                               LocalDateTime ocorridoEm);
+
+    void publishAppointmentExpired(UUID appointmentId,
+                                   UUID queueEntryId,
+                                   UUID patientId,
+                                   LocalDateTime expirouEm);
 }
