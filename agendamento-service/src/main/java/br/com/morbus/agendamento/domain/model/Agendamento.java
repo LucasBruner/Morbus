@@ -10,23 +10,24 @@ import java.util.UUID;
 @Getter
 public class Agendamento {
 
-    private final UUID id;
-    private final UUID queueEntryId;
-    private final UUID slotId;
-    private final UUID pacienteId;
+    private UUID id;
+    private UUID queueEntryId;
+    private UUID slotId;
+    private UUID pacienteId;
     private EStatusAgendamento status;
-    private final LocalDateTime expiresAt;
+    private LocalDateTime expiresAt;
     private LocalDateTime confirmedAt;
     private LocalDateTime attendedAt;
+    private LocalDateTime noShowAt;
     private String cancellationReason;
-    private final LocalDateTime createdAt;
+    private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
     public Agendamento(UUID queueEntryId,
                        UUID slotId,
                        UUID pacienteId,
                        LocalDateTime expiresAt) {
-        this(
+        this(new AgendamentoSnapshot(
                 UUID.randomUUID(),
                 queueEntryId,
                 slotId,
@@ -36,45 +37,43 @@ public class Agendamento {
                 null,
                 null,
                 null,
+                null,
                 LocalDateTime.now(ZoneId.systemDefault()),
                 null
-        );
+        ));
     }
 
-    public Agendamento(UUID id,
-                       UUID queueEntryId,
-                       UUID slotId,
-                       UUID pacienteId,
-                       EStatusAgendamento status,
-                       LocalDateTime expiresAt,
-                       String cancellationReason,
-                       LocalDateTime createdAt,
-                       LocalDateTime updatedAt) {
-        this(id, queueEntryId, slotId, pacienteId, status, expiresAt, null, null, cancellationReason, createdAt, updatedAt);
+    public static Agendamento fromPersistence(AgendamentoSnapshot snapshot) {
+        return new Agendamento(snapshot);
     }
 
-    public Agendamento(UUID id,
-                       UUID queueEntryId,
-                       UUID slotId,
-                       UUID pacienteId,
-                       EStatusAgendamento status,
-                       LocalDateTime expiresAt,
-                       LocalDateTime confirmedAt,
-                       LocalDateTime attendedAt,
-                       String cancellationReason,
-                       LocalDateTime createdAt,
-                       LocalDateTime updatedAt) {
-        this.id = id;
-        this.queueEntryId = queueEntryId;
-        this.slotId = slotId;
-        this.pacienteId = pacienteId;
-        this.status = status;
-        this.expiresAt = expiresAt;
-        this.confirmedAt = confirmedAt;
-        this.attendedAt = attendedAt;
-        this.cancellationReason = cancellationReason;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
+    private Agendamento(AgendamentoSnapshot snapshot) {
+        this.id = snapshot.id();
+        this.queueEntryId = snapshot.queueEntryId();
+        this.slotId = snapshot.slotId();
+        this.pacienteId = snapshot.pacienteId();
+        this.status = snapshot.status();
+        this.expiresAt = snapshot.expiresAt();
+        this.confirmedAt = snapshot.confirmedAt();
+        this.attendedAt = snapshot.attendedAt();
+        this.noShowAt = snapshot.noShowAt();
+        this.cancellationReason = snapshot.cancellationReason();
+        this.createdAt = snapshot.createdAt();
+        this.updatedAt = snapshot.updatedAt();
+    }
+
+    public record AgendamentoSnapshot(UUID id,
+                                      UUID queueEntryId,
+                                      UUID slotId,
+                                      UUID pacienteId,
+                                      EStatusAgendamento status,
+                                      LocalDateTime expiresAt,
+                                      LocalDateTime confirmedAt,
+                                      LocalDateTime attendedAt,
+                                      LocalDateTime noShowAt,
+                                      String cancellationReason,
+                                      LocalDateTime createdAt,
+                                      LocalDateTime updatedAt) {
     }
 
     public void confirm() {
@@ -86,6 +85,12 @@ public class Agendamento {
     public void attend() {
         this.status = EStatusAgendamento.ATENDIDO;
         this.attendedAt = LocalDateTime.now(ZoneId.systemDefault());
+        this.updatedAt = LocalDateTime.now(ZoneId.systemDefault());
+    }
+
+    public void noShow() {
+        this.status = EStatusAgendamento.FALTOU;
+        this.noShowAt = LocalDateTime.now(ZoneId.systemDefault());
         this.updatedAt = LocalDateTime.now(ZoneId.systemDefault());
     }
 

@@ -41,6 +41,7 @@ public class AgendamentoPersistenceAdapter implements IAgendamentoRepository {
                 agendamento.getExpiresAt(),
                 agendamento.getConfirmedAt(),
                 agendamento.getAttendedAt(),
+                agendamento.getNoShowAt(),
                 agendamento.getCancellationReason(),
                 agendamento.getCreatedAt(),
                 agendamento.getUpdatedAt()
@@ -48,7 +49,7 @@ public class AgendamentoPersistenceAdapter implements IAgendamentoRepository {
     }
 
     private Agendamento toDomain(AgendamentoEntity entity) {
-        return new Agendamento(
+        return Agendamento.fromPersistence(new Agendamento.AgendamentoSnapshot(
                 entity.getId(),
                 entity.getQueueEntryId(),
                 entity.getSlotId(),
@@ -57,9 +58,10 @@ public class AgendamentoPersistenceAdapter implements IAgendamentoRepository {
                 entity.getExpiresAt(),
                 entity.getConfirmedAt(),
                 entity.getAttendedAt(),
+                entity.getNoShowAt(),
                 entity.getCancellationReason(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()
-        );
+        ));
     }
 }

@@ -26,7 +26,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class AtenderAgendamentoUseCaseTest {
+class RegistrarFaltaAgendamentoUseCaseTest {
 
     @Mock
     private IAgendamentoRepository agendamentoRepository;
@@ -40,15 +40,15 @@ class AtenderAgendamentoUseCaseTest {
     @Mock
     private IAgendamentoEventPublisher eventPublisher;
 
-    private AtenderAgendamentoUseCase useCase;
+    private RegistrarFaltaAgendamentoUseCase useCase;
 
     @BeforeEach
     void setUp() {
-        useCase = new AtenderAgendamentoUseCase(agendamentoRepository, slotRepository, scheduleRepository, eventPublisher);
+        useCase = new RegistrarFaltaAgendamentoUseCase(agendamentoRepository, slotRepository, scheduleRepository, eventPublisher);
     }
 
     @Test
-    void deveAtenderAgendamentoEManterSlotOcupado() {
+    void deveRegistrarFaltaLiberarSlotEPublicarEvento() {
         UUID appointmentId = UUID.randomUUID();
         UUID slotId = UUID.randomUUID();
         UUID scheduleId = UUID.randomUUID();
@@ -82,9 +82,9 @@ class AtenderAgendamentoUseCaseTest {
 
         Agendamento result = useCase.execute(appointmentId, unitId);
 
-        assertEquals(EStatusAgendamento.ATENDIDO, result.getStatus());
-        assertNotNull(result.getAttendedAt());
-        assertEquals(EStatusSlots.OCUPADO, slot.getStatus());
-        verify(eventPublisher).publishAppointmentAttended(appointmentId, queueEntryId, patientId, result.getAttendedAt());
+        assertEquals(EStatusAgendamento.FALTOU, result.getStatus());
+        assertNotNull(result.getNoShowAt());
+        assertEquals(EStatusSlots.DISPONIVEL, slot.getStatus());
+        verify(eventPublisher).publishPatientNoShow(appointmentId, queueEntryId, patientId, result.getNoShowAt());
     }
 }

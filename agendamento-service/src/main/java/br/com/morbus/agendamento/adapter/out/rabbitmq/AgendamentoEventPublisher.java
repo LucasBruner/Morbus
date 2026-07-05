@@ -64,4 +64,22 @@ public class AgendamentoEventPublisher implements IAgendamentoEventPublisher {
                 event
         );
     }
+
+    @Override
+    public void publishPatientNoShow(UUID appointmentId,
+                                     UUID queueEntryId,
+                                     UUID patientId,
+                                     LocalDateTime ocorridoEm) {
+        PatientNoShowEvent event = new PatientNoShowEvent(
+                appointmentId,
+                queueEntryId,
+                patientId,
+                ocorridoEm
+        );
+        rabbitTemplate.convertAndSend(
+                RabbitMQConfig.AGENDAMENTO_EXCHANGE,
+                RabbitMQConfig.RK_PATIENT_NO_SHOW,
+                event
+        );
+    }
 }
