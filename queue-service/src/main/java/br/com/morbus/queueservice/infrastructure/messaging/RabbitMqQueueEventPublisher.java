@@ -46,6 +46,13 @@ public class RabbitMqQueueEventPublisher implements IQueueEventPublisher {
         log.info("Evento publicado: {}", payload.eventType());
     }
 
+    @Override
+    public void publishPatientReinstated(QueueEntry queueEntry) {
+        QueueEventPayload payload = buildPayload("PATIENT_REINSTATED", queueEntry);
+        rabbitTemplate.convertAndSend("sus.queue.exchange", "patient.reinstated", payload);
+        log.info("Evento publicado: {}", payload.eventType());
+    }
+
     private QueueEventPayload buildPayload(String eventType, QueueEntry queueEntry) {
         String fullName = queueEntry.getPatient().getNome() + " " + queueEntry.getPatient().getSobrenome();
         return new QueueEventPayload(eventType,

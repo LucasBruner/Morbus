@@ -1,12 +1,18 @@
 package br.com.sus.notificationservice.service;
 
 import br.com.sus.notificationservice.model.Notification;
+import br.com.sus.notificationservice.model.dto.AppointmentConfirmedEventDTO;
+import br.com.sus.notificationservice.model.dto.AppointmentNoSlotEventDTO;
 import br.com.sus.notificationservice.model.dto.QueueEventDTO;
+import br.com.sus.notificationservice.model.dto.SolicitacaoDevolvidaEventDTO;
+import br.com.sus.notificationservice.model.dto.SolicitacaoNegadaEventDTO;
 import br.com.sus.notificationservice.model.enums.ENotificationType;
 import br.com.sus.notificationservice.repository.NotificationRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+
+import java.time.LocalDateTime;
 import java.util.logging.Logger;
 
 @ApplicationScoped
@@ -25,12 +31,40 @@ public class NotificationService {
         String message = buildMessage(event);
         if (message == null) return;
 
+        persist(event.eventType(), event.patientName(), event.patientContact(), message, event.timestamp());
+    }
+
+    @Transactional
+    public void processSolicitacaoNegada(SolicitacaoNegadaEventDTO event) {
+        String message = "Sua solicitação de atendimento foi negada. Motivo: %s".formatted(event.justificativa());
+        persist(ENotificationType.SOLICITATION_DENIED.name(), null, null, message, event.negadoEm());
+    }
+
+    @Transactional
+    public void processSolicitacaoDevolvida(SolicitacaoDevolvidaEventDTO event) {
+        String message = "Sua solicitação foi devolvida para complementação de informações. Motivo: %s".formatted(event.justificativa());
+        persist(ENotificationType.SOLICITATION_DEVOLVED.name(), null, null, message, LocalDateTime.now());
+    }
+
+    @Transactional
+    public void processAppointmentConfirmed(AppointmentConfirmedEventDTO event) {
+        String message = "Seu agendamento foi confirmado para %s.".formatted(event.agendadoEm());
+        persist(ENotificationType.APPOINTMENT_CONFIRMED.name(), null, null, message, event.agendadoEm());
+    }
+
+    @Transactional
+    public void processAppointmentNoSlot(AppointmentNoSlotEventDTO event) {
+        String message = "Não há vaga disponível no momento para o seu atendimento. Você será notificado assim que uma vaga for aberta.";
+        persist(ENotificationType.APPOINTMENT_NO_SLOT.name(), null, null, message, LocalDateTime.now());
+    }
+
+    private void persist(String eventType, String recipientName, String recipientContact, String message, LocalDateTime sentAt) {
         Notification notification = new Notification();
-        notification.eventType = event.eventType();
-        notification.recipientName = event.patientName();
-        notification.recipientContact = event.patientContact();
+        notification.eventType = eventType;
+        notification.recipientName = recipientName;
+        notification.recipientContact = recipientContact;
         notification.message = message;
-        notification.sentAt = event.timestamp();
+        notification.sentAt = sentAt;
         notification.status = "ENVIADO";
 
         notificationRepository.persist(notification);
@@ -58,6 +92,10 @@ public class NotificationService {
                     .formatted(eventDTO.riskColor());
             case PATIENT_CANCELLED -> "Seu agendamento para %s foi cancelado."
                     .formatted(eventDTO.procedureName());
+            case SOLICITATION_DENIED, SOLICITATION_DEVOLVED, APPOINTMENT_CONFIRMED, APPOINTMENT_NO_SLOT -> {
+                LOG.warning("Tipo de evento nao esperado no canal queue-events: " + type);
+                yield null;
+            }
         };
     }
 }

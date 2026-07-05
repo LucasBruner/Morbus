@@ -7,4 +7,5 @@ public interface IQueueEventPublisher {
     void publishPatientCalled(QueueEntry queueEntry);
     void publishPriorityUpdated(QueueEntry queueEntry);
     void publishPatientCancelled(QueueEntry queueEntry, String reason);
+    void publishPatientReinstated(QueueEntry queueEntry);
 }

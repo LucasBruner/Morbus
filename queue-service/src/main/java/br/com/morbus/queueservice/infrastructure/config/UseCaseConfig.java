@@ -5,6 +5,7 @@ import br.com.morbus.queueservice.domain.repository.IPatientProcedureRepository;
 import br.com.morbus.queueservice.domain.repository.IPatientRepository;
 import br.com.morbus.queueservice.domain.repository.IProcedureRepository;
 import br.com.morbus.queueservice.domain.repository.IQueueEntryRepository;
+import br.com.morbus.queueservice.domain.usecase.AddToQueue;
 import br.com.morbus.queueservice.domain.usecase.AssignProcedureToPatient;
 import br.com.morbus.queueservice.domain.usecase.CallNextPatient;
 import br.com.morbus.queueservice.domain.usecase.CancelQueueEntry;
@@ -19,6 +20,7 @@ import br.com.morbus.queueservice.domain.usecase.ListQueueByPriority;
 import br.com.morbus.queueservice.domain.usecase.ReclassifyPriority;
 import br.com.morbus.queueservice.domain.usecase.RegisterPatient;
 import br.com.morbus.queueservice.domain.usecase.RegisterPatientInQueue;
+import br.com.morbus.queueservice.domain.usecase.ReinstatePatientInQueue;
 import br.com.morbus.queueservice.domain.usecase.RemoveProcedureFromPatient;
 import br.com.morbus.queueservice.domain.usecase.UpdatePatient;
 import org.springframework.context.annotation.Bean;
@@ -91,6 +93,17 @@ public class UseCaseConfig {
                                                          IQueueEventPublisher eventPublisher) {
         return RegisterPatientInQueue.create(patientRepository, procedureRepository,
                 queueEntryRepository, eventPublisher);
+    }
+
+    @Bean
+    public AddToQueue addToQueue(RegisterPatientInQueue registerPatientInQueue) {
+        return AddToQueue.create(registerPatientInQueue);
+    }
+
+    @Bean
+    public ReinstatePatientInQueue reinstatePatientInQueue(IQueueEntryRepository queueEntryRepository,
+                                                            IQueueEventPublisher eventPublisher) {
+        return ReinstatePatientInQueue.create(queueEntryRepository, eventPublisher);
     }
 
     @Bean

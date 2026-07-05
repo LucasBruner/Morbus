@@ -1,0 +1,309 @@
+{
+  "info": {
+    "_postman_id": "76550818-5922-4edd-80a4-3c283d039fd8",
+    "name": "Morbus - Queue Service",
+    "description": "Coleção para o queue-service (porta 8080). Gerencia catálogo de procedimentos (SIGTAP), pacientes e filas de atendimento. Todos os endpoints exigem JWT Bearer, exceto swagger/actuator.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Procedures",
+      "item": [
+        {
+          "name": "List Procedures (paginated)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/procedures?page=1&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "procedures"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "size", "value": "20" }
+              ]
+            },
+            "description": "Lista o catálogo de procedimentos SIGTAP paginado. Requer role MEDICO ou PACIENTE."
+          },
+          "response": []
+        },
+        {
+          "name": "Find Procedure by Codigo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/procedures?codigo={{procedureCodigo}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "procedures"],
+              "query": [
+                { "key": "codigo", "value": "{{procedureCodigo}}" }
+              ]
+            },
+            "description": "Busca um procedimento pelo código SIGTAP (`coProcedimento`)."
+          },
+          "response": []
+        },
+        {
+          "name": "Find Procedure by Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/procedures/{{procedureId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "procedures", "{{procedureId}}"]
+            },
+            "description": "Busca um procedimento pelo UUID."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Patients",
+      "item": [
+        {
+          "name": "Register Patient",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cpf\": \"123.456.789-09\",\n  \"cns\": \"123456789012345\",\n  \"nome\": \"Maria\",\n  \"sobrenome\": \"Silva\",\n  \"dataNascimento\": \"1990-05-15\",\n  \"gender\": \"FEMININO\",\n  \"contato\": \"maria.silva@example.com\",\n  \"grupoLegal\": \"GERAL\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patients",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "patients"]
+            },
+            "description": "Cadastra um novo paciente. Requer role MEDICO. `gender` aceita MASCULINO|FEMININO|OUTROS. `grupoLegal` aceita IDOSO|GESTANTE|DEFICIENTE|LACTANTE|OBESO|GERAL (pacientes com >=60 anos recebem prioridade IDOSO automaticamente)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Patient by Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patients/{{patientId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "patients", "{{patientId}}"]
+            },
+            "description": "Requer role MEDICO."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Patient by CPF",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patients?cpf={{patientCpf}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "patients"],
+              "query": [
+                { "key": "cpf", "value": "{{patientCpf}}" }
+              ]
+            },
+            "description": "Requer role MEDICO."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Patient",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cpf\": \"123.456.789-09\",\n  \"cns\": \"123456789012345\",\n  \"nome\": \"Maria\",\n  \"sobrenome\": \"Silva Santos\",\n  \"dataNascimento\": \"1990-05-15\",\n  \"gender\": \"FEMININO\",\n  \"contato\": \"maria.santos@example.com\",\n  \"grupoLegal\": \"GERAL\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patients/{{patientId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "patients", "{{patientId}}"]
+            },
+            "description": "Atualiza dados do paciente. Requer role MEDICO."
+          },
+          "response": []
+        },
+        {
+          "name": "Inactivate Patient",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patients/{{patientId}}/inactivate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "patients", "{{patientId}}", "inactivate"]
+            },
+            "description": "Inativa o paciente. Bloqueado (422) se houver entradas de fila ativas. Requer role MEDICO."
+          },
+          "response": []
+        },
+        {
+          "name": "Assign Procedure to Patient",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patients/{{patientId}}/procedures/{{procedureId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "patients", "{{patientId}}", "procedures", "{{procedureId}}"]
+            },
+            "description": "Associa um procedimento ao paciente (valida idade mínima/máxima e status ativo). Requer role MEDICO."
+          },
+          "response": []
+        },
+        {
+          "name": "Unassign Procedure from Patient",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patients/{{patientId}}/procedures/{{procedureId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "patients", "{{patientId}}", "procedures", "{{procedureId}}"]
+            },
+            "description": "Remove a associação. Bloqueado (409) se houver entradas de fila ativas para o procedimento. Requer role MEDICO."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Queue",
+      "item": [
+        {
+          "name": "Register Queue Entry",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": \"{{patientId}}\",\n  \"procedureId\": \"{{procedureId}}\",\n  \"riskColor\": \"VERDE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/queue",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "queue"]
+            },
+            "description": "Registra um paciente em uma fila. `riskColor` aceita VERMELHO|AMARELO|VERDE|AZUL. Requer role MEDICO."
+          },
+          "response": []
+        },
+        {
+          "name": "List Queue by Priority",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/queue?procedureId={{procedureId}}&status=AGUARDANDO&riskColor=VERMELHO&page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "queue"],
+              "query": [
+                { "key": "procedureId", "value": "{{procedureId}}" },
+                { "key": "status", "value": "AGUARDANDO", "description": "AGUARDANDO|AGENDADO|ATENDIDO|FALTOU|CANCELADO|DEVOLVIDO" },
+                { "key": "riskColor", "value": "VERMELHO", "description": "VERMELHO|AMARELO|VERDE|AZUL" },
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" }
+              ]
+            },
+            "description": "Lista a fila ordenada por prioridade. `procedureId` é obrigatório. Requer role MEDICO."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Queue Entry Position",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/queue/{{queueEntryId}}/position",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "queue", "{{queueEntryId}}", "position"]
+            },
+            "description": "Requer role MEDICO ou PACIENTE."
+          },
+          "response": []
+        },
+        {
+          "name": "Call Next Patient",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/queue/call-next",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "queue", "call-next"]
+            },
+            "description": "Chama o próximo paciente de maior prioridade (publica evento no RabbitMQ, status muda para AGENDADO). Requer role MEDICO."
+          },
+          "response": []
+        },
+        {
+          "name": "Reclassify Priority",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"riskColor\": \"AMARELO\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/queue/{{queueEntryId}}/priority",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "queue", "{{queueEntryId}}", "priority"]
+            },
+            "description": "Reclassifica a cor de risco. Permitido apenas quando status é AGUARDANDO ou DEVOLVIDO em FILA_REGULADA. Requer role MEDICO."
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Queue Entry",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"motivoCancelamento\": \"Paciente desistiu do procedimento\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/queue/{{queueEntryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "queue", "{{queueEntryId}}"]
+            },
+            "description": "Cancela uma entrada de fila com justificativa. Requer role MEDICO."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080", "type": "string" },
+    { "key": "token", "value": "", "type": "string" },
+    { "key": "patientId", "value": "", "type": "string" },
+    { "key": "procedureId", "value": "", "type": "string" },
+    { "key": "procedureCodigo", "value": "", "type": "string" },
+    { "key": "patientCpf", "value": "", "type": "string" },
+    { "key": "queueEntryId", "value": "", "type": "string" }
+  ]
+}

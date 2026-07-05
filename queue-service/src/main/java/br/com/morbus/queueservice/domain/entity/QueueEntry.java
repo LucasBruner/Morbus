@@ -47,4 +47,10 @@ public class QueueEntry {
         this.queueStatus = EQueueStatus.CANCELADO;
         this.updatedAt = LocalDateTime.now();
     }
+
+    public void reinstate() {
+        this.queueStatus = EQueueStatus.AGUARDANDO;
+        this.registeredAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
 }

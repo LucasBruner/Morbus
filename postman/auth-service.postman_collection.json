@@ -1,0 +1,78 @@
+{
+  "info": {
+    "_postman_id": "a10a2def-2cc9-498e-bc22-93c52d680f99",
+    "name": "Morbus - Auth Service",
+    "description": "Coleção para o auth-service (porta 8082). Responsável por cadastro e autenticação de usuários (MEDICO, PACIENTE). Emite o JWT usado pelos demais serviços.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"dr.joao\",\n  \"email\": \"dr.joao@example.com\",\n  \"password\": \"SenhaForte123\",\n  \"role\": \"MEDICO\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Cadastra um novo usuário. `role` aceita `MEDICO` ou `PACIENTE`. Não requer autenticação."
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const body = pm.response.json();",
+                  "    pm.collectionVariables.set('token', body.token);",
+                  "    pm.test('Token salvo na variável de coleção', function () {",
+                  "        pm.expect(body.token).to.be.a('string');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"dr.joao\",\n  \"password\": \"SenhaForte123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Autentica o usuário e retorna o JWT (`token`, `type`, `expiresIn`, `role`). O script de teste salva o token na variável de coleção `token`, reutilizada pelas coleções queue-service e regulacao-service."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8082", "type": "string" },
+    { "key": "token", "value": "", "type": "string" }
+  ]
+}

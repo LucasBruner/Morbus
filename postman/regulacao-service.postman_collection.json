@@ -1,0 +1,264 @@
+{
+  "info": {
+    "_postman_id": "0b317f22-7e81-452c-94cd-e03be1dff672",
+    "name": "Morbus - Regulacao Service",
+    "description": "Coleção para o regulacao-service (porta 8083). Gerencia solicitações de regulação, avaliação/decisão do regulador, cotas e unidades solicitantes. Todos os endpoints exigem JWT Bearer, exceto swagger/actuator.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Solicitacoes",
+      "item": [
+        {
+          "name": "Create Solicitacao",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": \"{{patientId}}\",\n  \"procedureId\": \"{{procedureId}}\",\n  \"cid\": \"M54.5\",\n  \"justificativaClinica\": \"Paciente com dor lombar cronica, necessita avaliacao especializada\",\n  \"profissionalSolicitante\": \"Dra. Ana Souza\",\n  \"crmProfissional\": \"CRM-SP 123456\",\n  \"unitSolicitanteId\": \"{{unidadeId}}\",\n  \"destino\": \"FILA_REGULADA\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/solicitacoes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "solicitacoes"]
+            },
+            "description": "Cria uma solicitação de regulação. `destino` aceita FILA_ESPERA|FILA_REGULADA. Requer role SOLICITANTE."
+          },
+          "response": []
+        },
+        {
+          "name": "List Solicitacoes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/solicitacoes?unidadeId={{unidadeId}}&status=AGUARDANDO&procedureId={{procedureId}}&page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "solicitacoes"],
+              "query": [
+                { "key": "unidadeId", "value": "{{unidadeId}}" },
+                { "key": "status", "value": "AGUARDANDO", "description": "AGUARDANDO|APROVADA|NEGADA|CANCELADA|DEVOLVIDA|PENDENTE|AGENDADA|ATENDIDA|FALTOU" },
+                { "key": "procedureId", "value": "{{procedureId}}" },
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" }
+              ]
+            },
+            "description": "Lista/filtra solicitações paginadas. Se o usuário autenticado tiver role SOLICITANTE, `unidadeId` é forçado para a unidade do próprio usuário. Requer role SOLICITANTE ou REGULADOR."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Solicitacao by Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/solicitacoes/{{solicitacaoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "solicitacoes", "{{solicitacaoId}}"]
+            },
+            "description": "Detalhes/status de uma solicitação. Requer role SOLICITANTE ou REGULADOR."
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Solicitacao",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/solicitacoes/{{solicitacaoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "solicitacoes", "{{solicitacaoId}}"]
+            },
+            "description": "Cancela uma solicitação. Requer role MEDICO ou SOLICITANTE."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Regulacao",
+      "item": [
+        {
+          "name": "List Pendentes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/regulacao/pendentes?procedureId={{procedureId}}&page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "regulacao", "pendentes"],
+              "query": [
+                { "key": "procedureId", "value": "{{procedureId}}" },
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" }
+              ]
+            },
+            "description": "Lista solicitações com status AGUARDANDO. Requer role REGULADOR."
+          },
+          "response": []
+        },
+        {
+          "name": "List Pendentes Vaga",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/regulacao/pendentes-vaga?procedureId={{procedureId}}&page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "regulacao", "pendentes-vaga"],
+              "query": [
+                { "key": "procedureId", "value": "{{procedureId}}" },
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" }
+              ]
+            },
+            "description": "Lista solicitações com status PENDENTE (aguardando vaga/cota). Requer role REGULADOR."
+          },
+          "response": []
+        },
+        {
+          "name": "Avaliar Solicitacao",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decisao\": \"AUTORIZAR\",\n  \"riskColorDefinido\": \"AMARELO\",\n  \"justificativa\": \"Solicitação dentro dos critérios clínicos\",\n  \"unidadeExecutanteId\": \"{{unidadeId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/regulacao/{{solicitacaoId}}/avaliar",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "regulacao", "{{solicitacaoId}}", "avaliar"]
+            },
+            "description": "Avalia/decide uma solicitação. `decisao` aceita AUTORIZAR|FILA_ESPERA|NEGAR|DEVOLVER|PENDENTE. Requer role REGULADOR."
+          },
+          "response": []
+        },
+        {
+          "name": "Reclassificar Risco",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"riskColor\": \"VERMELHO\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/regulacao/solicitacoes/{{solicitacaoId}}/risco",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "regulacao", "solicitacoes", "{{solicitacaoId}}", "risco"]
+            },
+            "description": "Reclassifica a cor de risco de uma solicitação. Requer role REGULADOR."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Cotas",
+      "item": [
+        {
+          "name": "Create/Upsert Cota",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"unitId\": \"{{unidadeId}}\",\n  \"procedureId\": \"{{procedureId}}\",\n  \"maxPerPeriod\": 50,\n  \"periodStart\": \"2026-07-01\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/regulacao/cotas",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "regulacao", "cotas"]
+            },
+            "description": "Cria ou atualiza (upsert) uma cota mensal para um procedimento/unidade. Requer role REGULADOR."
+          },
+          "response": []
+        },
+        {
+          "name": "List Cotas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/regulacao/cotas?unitId={{unidadeId}}&procedureId={{procedureId}}&mes=2026-07&page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "regulacao", "cotas"],
+              "query": [
+                { "key": "unitId", "value": "{{unidadeId}}" },
+                { "key": "procedureId", "value": "{{procedureId}}" },
+                { "key": "mes", "value": "2026-07", "description": "Formato YYYY-MM" },
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" }
+              ]
+            },
+            "description": "Lista/filtra cotas paginadas. Requer role REGULADOR."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Unidades Solicitantes",
+      "item": [
+        {
+          "name": "Register Unidade Solicitante",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cnes\": \"1234567\",\n  \"nome\": \"UBS Jardim das Flores\",\n  \"endereco\": \"Rua das Acacias, 100\",\n  \"telefone\": \"(11) 4002-8922\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/unidades-solicitantes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "unidades-solicitantes"]
+            },
+            "description": "Cadastra uma unidade solicitante. `cnes` deve ter no máximo 7 caracteres. Requer role REGULADOR."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Unidade Solicitante by Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/unidades-solicitantes/{{unidadeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "unidades-solicitantes", "{{unidadeId}}"]
+            },
+            "description": "Requer role REGULADOR ou SOLICITANTE."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8083", "type": "string" },
+    { "key": "token", "value": "", "type": "string" },
+    { "key": "patientId", "value": "", "type": "string" },
+    { "key": "procedureId", "value": "", "type": "string" },
+    { "key": "unidadeId", "value": "", "type": "string" },
+    { "key": "solicitacaoId", "value": "", "type": "string" }
+  ]
+}

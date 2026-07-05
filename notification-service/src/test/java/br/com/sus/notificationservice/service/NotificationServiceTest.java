@@ -1,7 +1,11 @@
 package br.com.sus.notificationservice.service;
 
 import br.com.sus.notificationservice.model.Notification;
+import br.com.sus.notificationservice.model.dto.AppointmentConfirmedEventDTO;
+import br.com.sus.notificationservice.model.dto.AppointmentNoSlotEventDTO;
 import br.com.sus.notificationservice.model.dto.QueueEventDTO;
+import br.com.sus.notificationservice.model.dto.SolicitacaoDevolvidaEventDTO;
+import br.com.sus.notificationservice.model.dto.SolicitacaoNegadaEventDTO;
 import br.com.sus.notificationservice.repository.NotificationRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -163,6 +167,105 @@ class NotificationServiceTest {
             ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
             verify(notificationRepository).persist(captor.capture());
             assertThat(captor.getValue().sentAt).isEqualTo(timestamp);
+        }
+    }
+
+    // ── processSolicitacaoNegada() ──────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("processSolicitacaoNegada()")
+    class ProcessSolicitacaoNegada {
+
+        @Test
+        @DisplayName("deve persistir notificação com o motivo da negação")
+        void devePersistirNotificacao() {
+            SolicitacaoNegadaEventDTO event = new SolicitacaoNegadaEventDTO(
+                    UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                    "Sem indicação clínica", LocalDateTime.of(2026, 6, 12, 11, 30));
+
+            notificationService.processSolicitacaoNegada(event);
+
+            ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+            verify(notificationRepository).persist(captor.capture());
+            Notification saved = captor.getValue();
+
+            assertThat(saved.eventType).isEqualTo("SOLICITATION_DENIED");
+            assertThat(saved.message).contains("Sem indicação clínica");
+            assertThat(saved.sentAt).isEqualTo(LocalDateTime.of(2026, 6, 12, 11, 30));
+            assertThat(saved.status).isEqualTo("ENVIADO");
+        }
+    }
+
+    // ── processSolicitacaoDevolvida() ───────────────────────────────────────────
+
+    @Nested
+    @DisplayName("processSolicitacaoDevolvida()")
+    class ProcessSolicitacaoDevolvida {
+
+        @Test
+        @DisplayName("deve persistir notificação com o motivo da devolução")
+        void devePersistirNotificacao() {
+            SolicitacaoDevolvidaEventDTO event = new SolicitacaoDevolvidaEventDTO(
+                    UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                    "Faltam dados do CID");
+
+            notificationService.processSolicitacaoDevolvida(event);
+
+            ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+            verify(notificationRepository).persist(captor.capture());
+            Notification saved = captor.getValue();
+
+            assertThat(saved.eventType).isEqualTo("SOLICITATION_DEVOLVED");
+            assertThat(saved.message).contains("Faltam dados do CID");
+            assertThat(saved.status).isEqualTo("ENVIADO");
+        }
+    }
+
+    // ── processAppointmentConfirmed() ───────────────────────────────────────────
+
+    @Nested
+    @DisplayName("processAppointmentConfirmed()")
+    class ProcessAppointmentConfirmed {
+
+        @Test
+        @DisplayName("deve persistir notificação com a data do agendamento")
+        void devePersistirNotificacao() {
+            LocalDateTime agendadoEm = LocalDateTime.of(2026, 7, 10, 8, 30);
+            AppointmentConfirmedEventDTO event = new AppointmentConfirmedEventDTO(
+                    UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), agendadoEm);
+
+            notificationService.processAppointmentConfirmed(event);
+
+            ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+            verify(notificationRepository).persist(captor.capture());
+            Notification saved = captor.getValue();
+
+            assertThat(saved.eventType).isEqualTo("APPOINTMENT_CONFIRMED");
+            assertThat(saved.sentAt).isEqualTo(agendadoEm);
+            assertThat(saved.status).isEqualTo("ENVIADO");
+        }
+    }
+
+    // ── processAppointmentNoSlot() ───────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("processAppointmentNoSlot()")
+    class ProcessAppointmentNoSlot {
+
+        @Test
+        @DisplayName("deve persistir notificação informando ausência de vaga")
+        void devePersistirNotificacao() {
+            AppointmentNoSlotEventDTO event = new AppointmentNoSlotEventDTO(
+                    UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
+
+            notificationService.processAppointmentNoSlot(event);
+
+            ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+            verify(notificationRepository).persist(captor.capture());
+            Notification saved = captor.getValue();
+
+            assertThat(saved.eventType).isEqualTo("APPOINTMENT_NO_SLOT");
+            assertThat(saved.status).isEqualTo("ENVIADO");
         }
     }
 }
