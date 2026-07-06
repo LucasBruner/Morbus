@@ -3,6 +3,7 @@ package br.com.morbus.agendamento.domain.port.out;
 import br.com.morbus.agendamento.domain.model.Slot;
 
 import java.util.List;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -17,4 +18,9 @@ public interface ISlotRepository {
     List<Slot> findByScheduleId(UUID id);
 
     Optional<Slot> findAvailableSlotForProcedureAndUnit(UUID procedureId, UUID preferredUnitId);
+
+    List<Slot> findByProcedureAndUnitAndDate(   UUID procedureId,
+                                                UUID unitId,
+                                                LocalDateTime dateFrom,
+                                                LocalDateTime dateTo);
 }

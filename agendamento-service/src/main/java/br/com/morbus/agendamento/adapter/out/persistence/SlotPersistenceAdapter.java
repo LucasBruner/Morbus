@@ -4,6 +4,7 @@ import br.com.morbus.agendamento.domain.model.Slot;
 import br.com.morbus.agendamento.domain.port.out.ISlotRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,7 +35,9 @@ public class SlotPersistenceAdapter implements ISlotRepository {
 
     @Override
     public Slot findById(UUID id) {
-        return toDomain(slotJpaRepository.findById(id).get());
+        return slotJpaRepository.findById(id)
+            .map(this::toDomain)
+            .orElseThrow();
     }
 
     @Override
@@ -49,6 +52,17 @@ public class SlotPersistenceAdapter implements ISlotRepository {
     public Optional<Slot> findAvailableSlotForProcedureAndUnit(UUID procedureId, UUID preferredUnitId) {
         return slotJpaRepository.findAvailableSlotForProcedureAndUnit(procedureId, preferredUnitId)
                 .map(this::toDomain);
+    }
+
+    @Override
+    public List<Slot> findByProcedureAndUnitAndDate(UUID procedureId,
+                                                    UUID unitId,
+                                                    LocalDateTime dateFrom,
+                                                    LocalDateTime dateTo) {
+        return slotJpaRepository.findByProcedureAndUnitAndDate(procedureId, unitId, dateFrom, dateTo)
+                .stream()
+                .map(this::toDomain)
+                .toList();
     }
 
     private SlotEntity toEntity(Slot slot) {

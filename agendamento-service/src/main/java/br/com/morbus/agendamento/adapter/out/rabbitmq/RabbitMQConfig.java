@@ -26,6 +26,7 @@ public class RabbitMQConfig {
     public static final String QUEUE_APPOINTMENT_CONFIRMED   = "queue.appointment.confirmed";
     public static final String QUEUE_APPOINTMENT_CANCELLED   = "queue.appointment.cancelled";
     public static final String QUEUE_APPOINTMENT_RESCHEDULED = "queue.appointment.rescheduled";
+    public static final String QUEUE_APPOINTMENT_ATTENDED    = "queue.appointment.attended";
     public static final String QUEUE_APPOINTMENT_NO_SLOT     = "queue.appointment.no_slot";
     public static final String QUEUE_APPOINTMENT_EXPIRED     = "queue.appointment.expired";
     public static final String QUEUE_PATIENT_NO_SHOW         = "queue.patient.no_show";
@@ -34,6 +35,7 @@ public class RabbitMQConfig {
     public static final String RK_APPOINTMENT_CONFIRMED   = "appointment.confirmed";
     public static final String RK_APPOINTMENT_CANCELLED   = "appointment.cancelled";
     public static final String RK_APPOINTMENT_RESCHEDULED = "appointment.rescheduled";
+    public static final String RK_APPOINTMENT_ATTENDED    = "appointment.attended";
     public static final String RK_APPOINTMENT_NO_SLOT     = "appointment.no_slot";
     public static final String RK_APPOINTMENT_EXPIRED     = "appointment.expired";
     public static final String RK_PATIENT_NO_SHOW         = "patient.no_show";
@@ -78,6 +80,11 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public Queue appointmentAttendedQueue() {
+        return QueueBuilder.durable(QUEUE_APPOINTMENT_ATTENDED).build();
+    }
+
+    @Bean
     public Queue appointmentNoSlotQueue() {
         return QueueBuilder.durable(QUEUE_APPOINTMENT_NO_SLOT).build();
     }
@@ -114,6 +121,14 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(appointmentRescheduledQueue)
                 .to(agendamentoExchange)
                 .with(RK_APPOINTMENT_RESCHEDULED);
+    }
+
+    @Bean
+    public Binding bindingAppointmentAttended(Queue appointmentAttendedQueue,
+                                              DirectExchange agendamentoExchange) {
+        return BindingBuilder.bind(appointmentAttendedQueue)
+                .to(agendamentoExchange)
+                .with(RK_APPOINTMENT_ATTENDED);
     }
 
     @Bean

@@ -6,8 +6,8 @@ type Query {
     disponibilidade(
         procedureId: ID!
         unitId: ID
-        dataInicio: String!
-        dataFim: String!
+        dateFrom: String!
+        dateTo: String!
     ): [Slot!]!
 
     agendamentos(
@@ -25,7 +25,8 @@ type Query {
 
 type Slot {
     id: ID!
-    dataHora: String!
+    dateTime: String!
+    dataHora: String! @deprecated(reason: "Use dateTime")
     capacity: Int!
     booked: Int!
     remainingCapacity: Int!

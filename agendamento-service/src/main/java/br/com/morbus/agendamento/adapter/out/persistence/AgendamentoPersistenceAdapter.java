@@ -1,9 +1,12 @@
 package br.com.morbus.agendamento.adapter.out.persistence;
 
+import br.com.morbus.agendamento.domain.enums.EStatusAgendamento;
 import br.com.morbus.agendamento.domain.model.Agendamento;
 import br.com.morbus.agendamento.domain.port.out.IAgendamentoRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -31,6 +34,14 @@ public class AgendamentoPersistenceAdapter implements IAgendamentoRepository {
         return jpaRepository.existsByPacienteIdAndSlotId(pacienteId, slotId);
     }
 
+    @Override
+    public List<Agendamento> findAllByStatusAndExpiresAtBefore(EStatusAgendamento status, LocalDateTime now) {
+        return jpaRepository.findAllByStatusAndExpiresAtBefore(status, now)
+                .stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
     private AgendamentoEntity toEntity(Agendamento agendamento) {
         return new AgendamentoEntity(
                 agendamento.getId(),
@@ -40,6 +51,8 @@ public class AgendamentoPersistenceAdapter implements IAgendamentoRepository {
                 agendamento.getStatus(),
                 agendamento.getExpiresAt(),
                 agendamento.getConfirmedAt(),
+                agendamento.getAttendedAt(),
+                agendamento.getNoShowAt(),
                 agendamento.getCancellationReason(),
                 agendamento.getCreatedAt(),
                 agendamento.getUpdatedAt()
@@ -47,7 +60,7 @@ public class AgendamentoPersistenceAdapter implements IAgendamentoRepository {
     }
 
     private Agendamento toDomain(AgendamentoEntity entity) {
-        return new Agendamento(
+        return Agendamento.fromPersistence(new Agendamento.AgendamentoSnapshot(
                 entity.getId(),
                 entity.getQueueEntryId(),
                 entity.getSlotId(),
@@ -55,9 +68,11 @@ public class AgendamentoPersistenceAdapter implements IAgendamentoRepository {
                 entity.getStatus(),
                 entity.getExpiresAt(),
                 entity.getConfirmedAt(),
+                entity.getAttendedAt(),
+                entity.getNoShowAt(),
                 entity.getCancellationReason(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()
-        );
+        ));
     }
 }
