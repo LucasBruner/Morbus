@@ -1,7 +1,6 @@
 package br.com.morbus.agendamento.adapter.in.rest;
 
 import br.com.morbus.agendamento.adapter.in.rest.dto.AgendamentoAttendResponseDTO;
-import br.com.morbus.agendamento.adapter.in.rest.dto.AgendamentoNoShowResponseDTO;
 import br.com.morbus.agendamento.adapter.security.UserPrincipal;
 import br.com.morbus.agendamento.adapter.in.rest.dto.ConfirmarAgendamentoResponseDTO;
 import br.com.morbus.agendamento.application.command.ConfirmarAgendamentoResult;
@@ -62,10 +61,10 @@ public class AppointmentController {
 
     @PostMapping("/{id}/falta")
     @PreAuthorize("hasAuthority('ROLE_EXECUTANTE')")
-    public ResponseEntity<AgendamentoNoShowResponseDTO> falta(@PathVariable("id") UUID id,
-                                                              @AuthenticationPrincipal UserPrincipal principal) {
-        Agendamento agendamento = registrarFaltaAgendamentoUseCase.execute(id, principal.unitId());
-        return ResponseEntity.ok(AgendamentoNoShowResponseDTO.fromEntity(agendamento));
+    public ResponseEntity<Void> falta(@PathVariable("id") UUID id,
+                                      @AuthenticationPrincipal UserPrincipal principal) {
+        registrarFaltaAgendamentoUseCase.execute(id, principal.unitId());
+        return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/{id}")

@@ -36,7 +36,7 @@ public class RegistrarFaltaAgendamentoUseCase implements IRegistrarFaltaAgendame
 
     @Override
     @Transactional
-    public Agendamento execute(UUID agendamentoId, UUID unitId) {
+    public void execute(UUID agendamentoId, UUID unitId) {
         Agendamento agendamento = agendamentoRepository.findById(agendamentoId)
                 .orElseThrow(() -> new AgendamentoNotFoundException("Agendamento nao encontrado: " + agendamentoId));
 
@@ -64,7 +64,5 @@ public class RegistrarFaltaAgendamentoUseCase implements IRegistrarFaltaAgendame
                 saved.getPacienteId(),
                 saved.getNoShowAt()
         );
-
-        return saved;
     }
 }

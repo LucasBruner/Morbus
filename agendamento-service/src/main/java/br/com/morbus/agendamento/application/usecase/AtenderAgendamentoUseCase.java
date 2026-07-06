@@ -53,7 +53,6 @@ public class AtenderAgendamentoUseCase implements IAtenderAgendamentoUseCase {
         }
 
         agendamento.attend();
-        slot.markAsFull();
 
         slotRepository.save(slot);
         Agendamento saved = agendamentoRepository.save(agendamento);
