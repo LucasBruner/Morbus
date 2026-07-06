@@ -16,9 +16,8 @@ public interface ISlotJpaRepository extends JpaRepository<SlotEntity, UUID> {
             FROM SlotEntity s
             JOIN ScheduleEntity sch ON sch.id = s.scheduleId
             WHERE sch.procedureId = :procedureId
-              AND sch.unitId = COALESCE(:preferredUnitId, sch.unitId)
-              AND s.status = 'DISPONIVEL'
-              AND s.reservados < s.capacidade
+            AND sch.unitId = COALESCE(:preferredUnitId, sch.unitId)
+            AND s.status = 'DISPONIVEL'
             ORDER BY s.dataHora ASC
             """)
     Optional<SlotEntity> findAvailableSlotForProcedureAndUnit(@Param("procedureId") UUID procedureId,
@@ -28,19 +27,17 @@ public interface ISlotJpaRepository extends JpaRepository<SlotEntity, UUID> {
             SELECT s
             FROM SlotEntity s
             JOIN ScheduleEntity sch ON sch.id = s.scheduleId
-            LEFT JOIN agendamento.providers p ON p.id = sch.provider_id
             WHERE sch.procedureId = :procedureId
             AND sch.unitId = COALESCE(:unitId, sch.unitId)
             AND s.status = 'DISPONIVEL'
-            AND s.reservados < s.capacidade
             AND s.dataHora >= :dateFrom
             AND s.dataHora <= :dateTo
             ORDER BY s.data_hora ASC
             """)
-    List<SlotEntity> findByProcedureAndUnitAndDate(@Param("procedureId") UUID procedureId,
-                                                            @Param("unitId") UUID unitId,
-                                                            @Param("dateFrom") LocalDateTime dateFrom,
-                                                            @Param("dateTo") LocalDateTime dateTo);
+    List<SlotEntity> findByProcedureAndUnitAndDate( @Param("procedureId") UUID procedureId,
+                                                    @Param("unitId") UUID unitId,
+                                                    @Param("dateFrom") LocalDateTime dateFrom,
+                                                    @Param("dateTo") LocalDateTime dateTo);
 
     @Query(value = """
             SELECT s
