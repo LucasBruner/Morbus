@@ -80,11 +80,11 @@ class RegistrarFaltaAgendamentoUseCaseTest {
         when(agendamentoRepository.save(agendamento)).thenReturn(agendamento);
         when(slotRepository.save(slot)).thenReturn(slot);
 
-        Agendamento result = useCase.execute(appointmentId, unitId);
+        useCase.execute(appointmentId, unitId);
 
-        assertEquals(EStatusAgendamento.FALTOU, result.getStatus());
-        assertNotNull(result.getNoShowAt());
+        assertEquals(EStatusAgendamento.FALTOU, agendamento.getStatus());
+        assertNotNull(agendamento.getNoShowAt());
         assertEquals(EStatusSlots.DISPONIVEL, slot.getStatus());
-        verify(eventPublisher).publishPatientNoShow(appointmentId, queueEntryId, patientId, result.getNoShowAt());
+        verify(eventPublisher).publishPatientNoShow(appointmentId, queueEntryId, patientId, agendamento.getNoShowAt());
     }
 }
