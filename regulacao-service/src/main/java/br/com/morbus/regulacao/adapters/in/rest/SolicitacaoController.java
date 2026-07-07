@@ -13,6 +13,13 @@ import br.com.morbus.regulacao.ports.in.ICancelarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.in.IConsultarStatusSolicitacao;
 import br.com.morbus.regulacao.ports.in.ICriarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.in.IListarSolicitacoesUseCase;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -29,6 +36,7 @@ import java.util.UUID;
 @Validated
 @RestController
 @RequestMapping("/api/v1/solicitacoes")
+@Tag(name = "Solicitações", description = "Criação, consulta e cancelamento de solicitações de regulação")
 public class SolicitacaoController {
 
     private final ICriarSolicitacaoUseCase criarSolicitacaoUseCase;
@@ -48,6 +56,50 @@ public class SolicitacaoController {
 
     @PostMapping
     @PreAuthorize("hasRole('SOLICITANTE')")
+    @Operation(
+            summary = "Cria solicitação de regulação",
+            description = "Registra uma nova solicitação de regulação de procedimento para um paciente, direcionada a uma fila de espera ou fila regulada.",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = SolicitacaoRequestDTO.class),
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "patientId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                                      "procedureId": "7b3c1a2d-9e4f-4a8b-b6d1-1f2e3a4b5c6d",
+                                      "cid": "I10",
+                                      "justificativaClinica": "Paciente hipertenso, necessita avaliação cardiológica com urgência",
+                                      "profissionalSolicitante": "Dra. Ana Souza",
+                                      "crmProfissional": "123456-SP",
+                                      "unitSolicitanteId": "9c7b1a2d-3e4f-4a8b-b6d1-1f2e3a4b5c6d",
+                                      "destino": "FILA_REGULADA"
+                                    }""")
+                    )
+            )
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Solicitação criada com sucesso",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = SolicitacaoCreatedResponseDTO.class),
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "id": "a1b2c3d4-e5f6-7890-ab12-cd34ef567890",
+                                      "patientId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                                      "procedureId": "7b3c1a2d-9e4f-4a8b-b6d1-1f2e3a4b5c6d",
+                                      "cid": "I10",
+                                      "destino": "FILA_REGULADA",
+                                      "riskColor": null,
+                                      "status": "AGUARDANDO",
+                                      "criadaEm": "2026-07-06T10:30:00"
+                                    }"""))),
+            @ApiResponse(responseCode = "400", description = "Dados de entrada inválidos", content = @Content),
+            @ApiResponse(responseCode = "401", description = "Token ausente ou inválido", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Perfil sem permissão (requer ROLE_SOLICITANTE)", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Unidade solicitante não encontrada", content = @Content),
+            @ApiResponse(responseCode = "409", description = "Já existe solicitação equivalente em aberto para o paciente/procedimento", content = @Content),
+            @ApiResponse(responseCode = "422", description = "Cota do procedimento esgotada para a unidade/período", content = @Content)
+    })
     public ResponseEntity<SolicitacaoCreatedResponseDTO> criar(
             @Valid @RequestBody SolicitacaoRequestDTO request,
             @AuthenticationPrincipal UserPrincipal principal) {
@@ -61,6 +113,16 @@ public class SolicitacaoController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('SOLICITANTE', 'REGULADOR')")
+    @Operation(
+            summary = "Lista solicitações",
+            description = "Retorna as solicitações de regulação, filtráveis por unidade, status e procedimento. Usuários com ROLE_SOLICITANTE só visualizam solicitações da própria unidade.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Lista recuperada com sucesso",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = SolicitacaoSummaryDTO.class))),
+            @ApiResponse(responseCode = "400", description = "Parâmetros inválidos", content = @Content),
+            @ApiResponse(responseCode = "401", description = "Token ausente ou inválido", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Perfil sem permissão", content = @Content)
+    })
     public ResponseEntity<Page<SolicitacaoSummaryDTO>> listar(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(required = false) UUID unidadeId,
@@ -82,6 +144,16 @@ public class SolicitacaoController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('MEDICO', 'SOLICITANTE')")
+    @Operation(
+            summary = "Cancela solicitação",
+            description = "Cancela uma solicitação de regulação. Permitido apenas enquanto o status for AGUARDANDO.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Cancelamento realizado", content = @Content),
+            @ApiResponse(responseCode = "401", description = "Token ausente ou inválido", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Perfil sem permissão (requer ROLE_MEDICO ou ROLE_SOLICITANTE)", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Solicitação não encontrada", content = @Content),
+            @ApiResponse(responseCode = "422", description = "Status atual não permite cancelamento (diferente de AGUARDANDO)", content = @Content)
+    })
     public ResponseEntity<?> cancelarSolicitacao(@PathVariable UUID id) {
         deletarSolicitacaoUseCase.execute(id);
         return ResponseEntity.noContent().build();
@@ -89,6 +161,16 @@ public class SolicitacaoController {
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('SOLICITANTE', 'REGULADOR')")
+    @Operation(
+            summary = "Consulta status da solicitação",
+            description = "Retorna os dados completos e o status atual de uma solicitação de regulação.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Solicitação encontrada",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = SolicitacaoStatusResponseDTO.class))),
+            @ApiResponse(responseCode = "401", description = "Token ausente ou inválido", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Perfil sem permissão", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Solicitação não encontrada", content = @Content)
+    })
     public ResponseEntity<SolicitacaoStatusResponseDTO> consultarStatusSolicitacao(
             @PathVariable UUID id,
             @AuthenticationPrincipal UserPrincipal principal) {
