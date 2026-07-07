@@ -2,6 +2,8 @@ package br.com.morbus.agendamento.adapter.out.persistence;
 
 import br.com.morbus.agendamento.domain.enums.EStatusAgendamento;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -12,4 +14,22 @@ public interface IAgendamentoJpaRepository extends JpaRepository<AgendamentoEnti
     boolean existsByPacienteIdAndSlotId(UUID pacienteId, UUID slotId);
 
     List<AgendamentoEntity> findAllByStatusAndExpiresAtBefore(EStatusAgendamento status, LocalDateTime now);
+
+    @Query(value = """
+            SELECT a
+            FROM AgendamentoEntity a
+            JOIN SlotEntity s ON s.id = a.slotId
+            JOIN ScheduleEntity sch ON sch.id = s.scheduleId
+            WHERE a.pacienteId = :pacienteId
+            AND sch.unitId = COALESCE(:unitId, sch.unitId)
+            AND a.status = COALESCE(:status, a.status)
+            AND s.dataHora >= :dateFrom
+            AND s.dataHora <= :dateTo
+            ORDER BY a.createdAt DESC
+            """)
+    List<AgendamentoEntity> findByPatientAndStatusAndDate(  @Param("pacienteId") UUID pacienteId,
+                                                            @Param("unitId") UUID unitId,
+                                                            @Param("status") EStatusAgendamento status,
+                                                            @Param("dateFrom") LocalDateTime dateFrom,
+                                                            @Param("dateTo") LocalDateTime dateTo);
 }

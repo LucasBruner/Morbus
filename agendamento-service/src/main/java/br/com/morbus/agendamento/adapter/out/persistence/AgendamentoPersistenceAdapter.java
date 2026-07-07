@@ -42,6 +42,18 @@ public class AgendamentoPersistenceAdapter implements IAgendamentoRepository {
                 .toList();
     }
 
+    @Override
+    public List<Agendamento> findByPatientAndStatusAndDate(UUID patientId,
+                                                           UUID unitId,
+                                                           EStatusAgendamento status,
+                                                           LocalDateTime dateFrom,
+                                                           LocalDateTime dateTo) {
+        return jpaRepository.findByPatientAndStatusAndDate(patientId, unitId, status, dateFrom, dateTo)
+                .stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
     private AgendamentoEntity toEntity(Agendamento agendamento) {
         return new AgendamentoEntity(
                 agendamento.getId(),

@@ -17,4 +17,10 @@ public interface IAgendamentoRepository {
     boolean existsByPacienteIdAndSlotId(UUID pacienteId, UUID slotId);
 
     List<Agendamento> findAllByStatusAndExpiresAtBefore(EStatusAgendamento status, LocalDateTime now);
+
+    List<Agendamento> findByPatientAndStatusAndDate(UUID patientId,
+                                                    UUID unitId,
+                                                    EStatusAgendamento status,
+                                                    LocalDateTime dateFrom,
+                                                    LocalDateTime dateTo);
 }
