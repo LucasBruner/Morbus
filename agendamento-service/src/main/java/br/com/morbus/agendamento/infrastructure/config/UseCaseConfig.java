@@ -12,6 +12,7 @@ import br.com.morbus.agendamento.domain.port.in.IConsultarDisponibilidadeUseCase
 import br.com.morbus.agendamento.domain.port.in.IConfirmarAgendamentoUseCase;
 import br.com.morbus.agendamento.domain.port.in.ICriarAgendamentoUseCase;
 import br.com.morbus.agendamento.domain.port.in.ICriarScheduleUseCase;
+import br.com.morbus.agendamento.domain.port.in.IConsultarGradeUseCase;
 import br.com.morbus.agendamento.domain.port.in.IDetalharAgendamentoUseCase;
 import br.com.morbus.agendamento.domain.port.in.IUnblockSlotUseCase;
 import br.com.morbus.agendamento.domain.port.out.IAgendamentoRepository;
@@ -109,5 +110,12 @@ public class UseCaseConfig {
                                                                   IProviderRepository providerRepository) {
         return new DetalharAgendamentoUseCase(agendamentoRepository, slotRepository, scheduleRepository,
                 healthUnitRepository, providerRepository);
+    }
+
+    @Bean
+    public IConsultarGradeUseCase consultarGradeUseCase(IScheduleRepository scheduleRepository,
+                                                        IHealthUnitRepository healthUnitRepository,
+                                                        IProviderRepository providerRepository) {
+        return new ConsultarGradeUseCase(scheduleRepository, healthUnitRepository, providerRepository);
     }
 }

@@ -5,6 +5,7 @@ import br.com.morbus.agendamento.domain.model.Schedule;
 import br.com.morbus.agendamento.domain.port.out.IScheduleRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -33,6 +34,14 @@ public class SchedulePersistenceAdapter implements IScheduleRepository {
                                                              EDiaSemana diaDaSemana) {
         return scheduleJpaRepository.existsByProviderIdAndUnitIdAndDiaDaSemana(
                 providerId, unitId, diaDaSemana);
+    }
+
+    @Override
+    public List<Schedule> findByUnitId(UUID unitId) {
+        return scheduleJpaRepository.findByUnitId(unitId)
+                .stream()
+                .map(this::toDomain)
+                .toList();
     }
 
     private ScheduleEntity toEntity(Schedule schedule) {
