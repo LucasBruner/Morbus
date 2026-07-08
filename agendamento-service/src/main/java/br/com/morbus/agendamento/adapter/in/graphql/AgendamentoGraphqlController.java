@@ -1,11 +1,13 @@
 package br.com.morbus.agendamento.adapter.in.graphql;
 
+import br.com.morbus.agendamento.adapter.in.graphql.dto.AgendamentoDetalheResponseDTO;
 import br.com.morbus.agendamento.adapter.in.graphql.dto.AgendamentosPacienteResponseDTO;
 import br.com.morbus.agendamento.adapter.in.graphql.dto.SlotsAvailableResponseDTO;
 import br.com.morbus.agendamento.adapter.security.UserPrincipal;
 import br.com.morbus.agendamento.domain.enums.EStatusAgendamento;
 import br.com.morbus.agendamento.domain.port.in.IAgendamentosPacienteUseCase;
 import br.com.morbus.agendamento.domain.port.in.IConsultarDisponibilidadeUseCase;
+import br.com.morbus.agendamento.domain.port.in.IDetalharAgendamentoUseCase;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
@@ -22,10 +24,14 @@ public class AgendamentoGraphqlController {
 
 	private final IConsultarDisponibilidadeUseCase consultarDisponibilidadeUseCase;
     private final IAgendamentosPacienteUseCase agendamentosPacienteUseCase;
+    private final IDetalharAgendamentoUseCase detalharAgendamentoUseCase;
 
-	public AgendamentoGraphqlController(IConsultarDisponibilidadeUseCase consultarDisponibilidadeUseCase, IAgendamentosPacienteUseCase agendamentosPacienteUseCase) {
+	public AgendamentoGraphqlController(IConsultarDisponibilidadeUseCase consultarDisponibilidadeUseCase,
+                                        IAgendamentosPacienteUseCase agendamentosPacienteUseCase,
+                                        IDetalharAgendamentoUseCase detalharAgendamentoUseCase) {
 		this.consultarDisponibilidadeUseCase = consultarDisponibilidadeUseCase;
         this.agendamentosPacienteUseCase = agendamentosPacienteUseCase;
+        this.detalharAgendamentoUseCase = detalharAgendamentoUseCase;
     }
 
 	@QueryMapping
@@ -47,16 +53,24 @@ public class AgendamentoGraphqlController {
                                                                       @Argument EStatusAgendamento status,
                                                                       @Argument @NotNull String dateFrom,
                                                                       @Argument @NotNull String dateTo) {
-        UUID effectivePatientId = resolvePatientId(patientId);
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        return agendamentosPacienteUseCase.execute(effectivePatientId, unitId, status, dateFrom, dateTo)
+        return agendamentosPacienteUseCase.execute(patientId, unitId, status, dateFrom, dateTo,authentication)
                 .stream()
                 .map(AgendamentosPacienteResponseDTO::fromEntity)
                 .toList();
     }
 
-    private UUID resolvePatientId(UUID requestedPatientId) {
+    @QueryMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_REGULADOR','ROLE_MEDICO','ROLE_PACIENTE','ROLE_EXECUTANTE')")
+    public AgendamentoDetalheResponseDTO agendamento(@Argument @NotNull UUID id) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return detalharAgendamentoUseCase.execute(id, authentication)
+                .map(AgendamentoDetalheResponseDTO::fromDetalhe)
+                .orElse(null);
+    }
+
+    private UUID resolvePatientId(UUID requestedPatientId, Authentication authentication) {
         if (authentication == null) {
             return requestedPatientId;
         }

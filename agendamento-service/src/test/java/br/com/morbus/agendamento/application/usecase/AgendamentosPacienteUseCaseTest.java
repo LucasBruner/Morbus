@@ -55,7 +55,8 @@ class AgendamentosPacienteUseCaseTest {
                 unitId,
                 status,
                 "2026-07-01",
-                "2026-07-31"
+                "2026-07-31",
+                null
         );
 
         assertEquals(esperado, resultado);
@@ -74,7 +75,7 @@ class AgendamentosPacienteUseCaseTest {
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> useCase.execute(patientId, null, null, "2026-07-10", "2026-07-01")
+                () -> useCase.execute(patientId, null, null, "2026-07-10", "2026-07-01", null)
         );
 
         assertEquals("dateFrom deve ser anterior ou igual a dateTo", exception.getMessage());
@@ -86,7 +87,7 @@ class AgendamentosPacienteUseCaseTest {
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> useCase.execute(patientId, null, null, "01/07/2026", "2026-07-31")
+                () -> useCase.execute(patientId, null, null, "01/07/2026", "2026-07-31", null)
         );
 
         assertEquals("Formato de data invalido. Use ISO-8601 em dateFrom/dateTo.", exception.getMessage());

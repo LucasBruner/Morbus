@@ -2,6 +2,7 @@ package br.com.morbus.agendamento.infrastructure.config;
 
 import br.com.morbus.agendamento.adapter.out.rabbitmq.IAgendamentoEventPublisher;
 import br.com.morbus.agendamento.application.usecase.*;
+import br.com.morbus.agendamento.domain.port.in.IAgendamentosPacienteUseCase;
 import br.com.morbus.agendamento.domain.port.in.IAlocarPacienteEmSlotUseCase;
 import br.com.morbus.agendamento.domain.port.in.IAtenderAgendamentoUseCase;
 import br.com.morbus.agendamento.domain.port.in.IBlockSlotUseCase;
@@ -11,8 +12,11 @@ import br.com.morbus.agendamento.domain.port.in.IConsultarDisponibilidadeUseCase
 import br.com.morbus.agendamento.domain.port.in.IConfirmarAgendamentoUseCase;
 import br.com.morbus.agendamento.domain.port.in.ICriarAgendamentoUseCase;
 import br.com.morbus.agendamento.domain.port.in.ICriarScheduleUseCase;
+import br.com.morbus.agendamento.domain.port.in.IDetalharAgendamentoUseCase;
 import br.com.morbus.agendamento.domain.port.in.IUnblockSlotUseCase;
 import br.com.morbus.agendamento.domain.port.out.IAgendamentoRepository;
+import br.com.morbus.agendamento.domain.port.out.IHealthUnitRepository;
+import br.com.morbus.agendamento.domain.port.out.IProviderRepository;
 import br.com.morbus.agendamento.domain.port.out.IScheduleRepository;
 import br.com.morbus.agendamento.domain.port.out.ISlotRepository;
 import org.springframework.context.annotation.Bean;
@@ -90,5 +94,20 @@ public class UseCaseConfig {
     @Bean
     public IConsultarDisponibilidadeUseCase consultarDisponibilidadeUseCase(ISlotRepository slotRepository) {
         return new ConsultarDisponibilidadeUseCase(slotRepository);
+    }
+
+    @Bean
+    public IAgendamentosPacienteUseCase agendamentosPacienteUseCase(IAgendamentoRepository agendamentoRepository) {
+        return new AgendamentosPacienteUseCase(agendamentoRepository);
+    }
+
+    @Bean
+    public IDetalharAgendamentoUseCase detalharAgendamentoUseCase(IAgendamentoRepository agendamentoRepository,
+                                                                  ISlotRepository slotRepository,
+                                                                  IScheduleRepository scheduleRepository,
+                                                                  IHealthUnitRepository healthUnitRepository,
+                                                                  IProviderRepository providerRepository) {
+        return new DetalharAgendamentoUseCase(agendamentoRepository, slotRepository, scheduleRepository,
+                healthUnitRepository, providerRepository);
     }
 }

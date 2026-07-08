@@ -1,9 +1,11 @@
 package br.com.morbus.agendamento.application.usecase;
 
+import br.com.morbus.agendamento.adapter.security.UserPrincipal;
 import br.com.morbus.agendamento.domain.enums.EStatusAgendamento;
 import br.com.morbus.agendamento.domain.model.Agendamento;
 import br.com.morbus.agendamento.domain.port.in.IAgendamentosPacienteUseCase;
 import br.com.morbus.agendamento.domain.port.out.IAgendamentoRepository;
+import org.springframework.security.core.Authentication;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -21,11 +23,14 @@ public class AgendamentosPacienteUseCase implements IAgendamentosPacienteUseCase
     }
 
     @Override
-    public List<Agendamento> execute(UUID patientId,
+    public List<Agendamento> execute(UUID id,
                                      UUID unitId,
                                      EStatusAgendamento status,
                                      String dateFrom,
-                                     String dateTo) {
+                                     String dateTo,
+                                     Authentication authentication) {
+
+        UUID patientId = resolvePatientId(id, authentication);
 
         LocalDateTime parsedDateFrom = parseDate(dateFrom, false);
         LocalDateTime parsedDateTo = parseDate(dateTo, true);
@@ -40,6 +45,30 @@ public class AgendamentosPacienteUseCase implements IAgendamentosPacienteUseCase
                 status,
                 parsedDateFrom,
                 parsedDateTo);
+    }
+
+    private UUID resolvePatientId(UUID patientId, Authentication authentication) {
+        if (authentication == null) {
+            return patientId;
+        }
+
+        boolean isPaciente = authentication.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_PACIENTE".equals(authority.getAuthority()));
+
+        if (!isPaciente) {
+            return patientId;
+        }
+
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof UserPrincipal userPrincipal) {
+            return userPrincipal.userId();
+        }
+
+        try {
+            return UUID.fromString(authentication.getName());
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalStateException("Nao foi possivel identificar o paciente autenticado no token.", ex);
+        }
     }
 
     private LocalDateTime parseDate(String value, boolean endOfDay) {
