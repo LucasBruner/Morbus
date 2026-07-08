@@ -1,7 +1,7 @@
 package br.com.morbus.agendamento.application.usecase;
 
 import br.com.morbus.agendamento.domain.enums.EStatusAgendamento;
-import br.com.morbus.agendamento.domain.model.Agendamento;
+import br.com.morbus.agendamento.domain.model.AgendamentoComDetalhes;
 import br.com.morbus.agendamento.domain.port.out.IAgendamentoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,7 +37,7 @@ class AgendamentosPacienteUseCaseTest {
         UUID patientId = UUID.randomUUID();
         UUID unitId = UUID.randomUUID();
         EStatusAgendamento status = EStatusAgendamento.CONFIRMADO;
-        List<Agendamento> esperado = List.of();
+        List<AgendamentoComDetalhes> esperado = List.of();
 
         LocalDateTime dateFrom = LocalDateTime.of(2026, Month.JULY, 1, 0, 0);
         LocalDateTime dateTo = LocalDateTime.of(2026, Month.JULY, 31, 23, 59, 59, 999999999);
@@ -50,7 +50,7 @@ class AgendamentosPacienteUseCaseTest {
                 dateTo
         )).thenReturn(esperado);
 
-        List<Agendamento> resultado = useCase.execute(
+        List<AgendamentoComDetalhes> resultado = useCase.execute(
                 patientId,
                 unitId,
                 status,

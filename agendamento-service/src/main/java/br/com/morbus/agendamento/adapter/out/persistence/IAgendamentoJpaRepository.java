@@ -16,10 +16,12 @@ public interface IAgendamentoJpaRepository extends JpaRepository<AgendamentoEnti
     List<AgendamentoEntity> findAllByStatusAndExpiresAtBefore(EStatusAgendamento status, LocalDateTime now);
 
     @Query(value = """
-            SELECT a
+            SELECT new br.com.morbus.agendamento.adapter.out.persistence.AgendamentoListProjection(a, s, sch, hu, p)
             FROM AgendamentoEntity a
             JOIN SlotEntity s ON s.id = a.slotId
             JOIN ScheduleEntity sch ON sch.id = s.scheduleId
+            JOIN HealthUnitEntity hu ON hu.id = sch.unitId
+            LEFT JOIN ProviderEntity p ON p.id = sch.providerId
             WHERE a.pacienteId = :pacienteId
             AND sch.unitId = COALESCE(:unitId, sch.unitId)
             AND a.status = COALESCE(:status, a.status)
@@ -27,9 +29,9 @@ public interface IAgendamentoJpaRepository extends JpaRepository<AgendamentoEnti
             AND s.dataHora <= :dateTo
             ORDER BY a.createdAt DESC
             """)
-    List<AgendamentoEntity> findByPatientAndStatusAndDate(  @Param("pacienteId") UUID pacienteId,
-                                                            @Param("unitId") UUID unitId,
-                                                            @Param("status") EStatusAgendamento status,
-                                                            @Param("dateFrom") LocalDateTime dateFrom,
-                                                            @Param("dateTo") LocalDateTime dateTo);
+    List<AgendamentoListProjection> findByPatientAndStatusAndDate(  @Param("pacienteId") UUID pacienteId,
+                                                                    @Param("unitId") UUID unitId,
+                                                                    @Param("status") EStatusAgendamento status,
+                                                                    @Param("dateFrom") LocalDateTime dateFrom,
+                                                                    @Param("dateTo") LocalDateTime dateTo);
 }

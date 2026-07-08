@@ -2,6 +2,7 @@ package br.com.morbus.agendamento.domain.port.out;
 
 import br.com.morbus.agendamento.domain.enums.EStatusAgendamento;
 import br.com.morbus.agendamento.domain.model.Agendamento;
+import br.com.morbus.agendamento.domain.model.AgendamentoComDetalhes;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -18,9 +19,9 @@ public interface IAgendamentoRepository {
 
     List<Agendamento> findAllByStatusAndExpiresAtBefore(EStatusAgendamento status, LocalDateTime now);
 
-    List<Agendamento> findByPatientAndStatusAndDate(UUID patientId,
-                                                    UUID unitId,
-                                                    EStatusAgendamento status,
-                                                    LocalDateTime dateFrom,
-                                                    LocalDateTime dateTo);
+    List<AgendamentoComDetalhes> findByPatientAndStatusAndDate(UUID patientId,
+                                                               UUID unitId,
+                                                               EStatusAgendamento status,
+                                                               LocalDateTime dateFrom,
+                                                               LocalDateTime dateTo);
 }
