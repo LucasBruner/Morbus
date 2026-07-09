@@ -31,8 +31,8 @@ public class QueueEntryEntity {
     @Column(name = "risk_color", nullable = false)
     private ERiskColor riskColor;
 
-    @Enumerated(EnumType.ORDINAL)
-    @Column(name = "tipo_fila", nullable = false)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_fila", nullable = false, length = 20)
     private EDestino tipoFila;
 
     @Enumerated(EnumType.STRING)

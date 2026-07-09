@@ -3,6 +3,7 @@ package br.com.morbus.queueservice.domain.usecase;
 import br.com.morbus.queueservice.domain.entity.Patient;
 import br.com.morbus.queueservice.domain.entity.Procedure;
 import br.com.morbus.queueservice.domain.entity.QueueEntry;
+import br.com.morbus.queueservice.domain.enums.EDestino;
 import br.com.morbus.queueservice.domain.enums.EGender;
 import br.com.morbus.queueservice.domain.enums.EPriorityGroup;
 import br.com.morbus.queueservice.domain.enums.EQueueStatus;
@@ -13,6 +14,7 @@ import br.com.morbus.queueservice.domain.exception.PatientNotEligibleForProcedur
 import br.com.morbus.queueservice.domain.exception.PatientNotFoundException;
 import br.com.morbus.queueservice.domain.exception.PatientInactiveException;
 import br.com.morbus.queueservice.domain.exception.ProcedureNotFoundException;
+import br.com.morbus.queueservice.domain.exception.QueueNotAllowedException;
 import br.com.morbus.queueservice.domain.repository.IPatientRepository;
 import br.com.morbus.queueservice.domain.repository.IProcedureRepository;
 import br.com.morbus.queueservice.domain.repository.IQueueEntryRepository;
@@ -331,6 +333,57 @@ class RegisterPatientInQueueUseCaseTest {
     }
 
     // Testes para validateIfActivePatient
+
+    // Testes para tipoFila (FILA_REGULADA/FILA_ESPERA)
+
+    @Test
+    @DisplayName("Propaga tipoFila informado no DTO para a QueueEntry persistida")
+    void testExecutePropagatesTipoFila() {
+        RegisterQueueRequestDTO dto = new RegisterQueueRequestDTO(patient.getId(), procedureId, ERiskColor.AZUL, EDestino.FILA_ESPERA);
+
+        when(patientRepository.findById(patientId)).thenReturn(Optional.of(patient));
+        when(procedureRepository.findById(procedureId)).thenReturn(Optional.of(procedure));
+        when(queueEntryRepository.existsByPatientAndProcedureAndStatusIn(
+                eq(patient), eq(procedure), any(List.class)
+        )).thenReturn(false);
+
+        QueueEntry result = useCase.execute(dto);
+
+        assertThat(result.getTipoFila()).isEqualTo(EDestino.FILA_ESPERA);
+    }
+
+    @Test
+    @DisplayName("DTO sem tipoFila é tratado como FILA_REGULADA por padrão")
+    void testExecuteDefaultsTipoFilaToFilaRegulada() {
+        RegisterQueueRequestDTO dto = new RegisterQueueRequestDTO(patient.getId(), procedureId, ERiskColor.AZUL);
+
+        when(patientRepository.findById(patientId)).thenReturn(Optional.of(patient));
+        when(procedureRepository.findById(procedureId)).thenReturn(Optional.of(procedure));
+        when(queueEntryRepository.existsByPatientAndProcedureAndStatusIn(
+                eq(patient), eq(procedure), any(List.class)
+        )).thenReturn(false);
+
+        QueueEntry result = useCase.execute(dto);
+
+        assertThat(result.getTipoFila()).isEqualTo(EDestino.FILA_REGULADA);
+    }
+
+    @Test
+    @DisplayName("Lança QueueNotAllowedException quando FILA_ESPERA recebe cor diferente de AZUL")
+    void testExecuteRejectsNonAzulColorInFilaEspera() {
+        RegisterQueueRequestDTO dto = new RegisterQueueRequestDTO(patient.getId(), procedureId, ERiskColor.VERMELHO, EDestino.FILA_ESPERA);
+
+        when(patientRepository.findById(patientId)).thenReturn(Optional.of(patient));
+        when(procedureRepository.findById(procedureId)).thenReturn(Optional.of(procedure));
+        when(queueEntryRepository.existsByPatientAndProcedureAndStatusIn(
+                eq(patient), eq(procedure), any(List.class)
+        )).thenReturn(false);
+
+        assertThatThrownBy(() -> useCase.execute(dto))
+                .isInstanceOf(QueueNotAllowedException.class);
+
+        verify(queueEntryRepository, never()).save(any());
+    }
 
     @Test
     @DisplayName("validateIfActivePatient: Lança PatientInactivatedException quando paciente está inativo")

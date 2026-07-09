@@ -7,27 +7,18 @@ import br.com.morbus.queueservice.infrastructure.database.entity.ProcedureEntity
 import br.com.morbus.queueservice.infrastructure.database.repository.PatientJpaRepository;
 import br.com.morbus.queueservice.infrastructure.database.repository.ProcedureJpaRepository;
 import br.com.morbus.queueservice.infrastructure.database.repository.QueueEntryJpaRepository;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.RestTemplate;
 
-import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
-import java.util.Date;
 import java.util.Map;
 import java.util.UUID;
 
@@ -48,20 +39,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("IT — Fluxo do paciente na fila")
 class QueuePatientFlowIT extends AbstractContainerIT {
 
-    // RestTemplate com error handler permissivo para capturar 4xx/5xx como ResponseEntity
-    private final RestTemplate rest = new RestTemplate() {{
-        setErrorHandler(new org.springframework.web.client.DefaultResponseErrorHandler() {
-            @Override public boolean hasError(org.springframework.http.client.ClientHttpResponse r) { return false; }
-        });
-    }};
     @Autowired PatientJpaRepository patientRepo;
     @Autowired ProcedureJpaRepository procedureRepo;
     @Autowired QueueEntryJpaRepository queueEntryRepo;
 
-    @Value("${jwt.secret}")
-    private String jwtSecret;
-
     private UUID procedureId;
+
+    // Intervalo mínimo entre inserções para garantir registeredAt distintos (mesma
+    // convenção usada em QueueFlowIntegrationTest.OrdenacaoPorRegisteredAt).
+    private static final long ARRIVAL_ORDER_GAP_MS = 50;
 
     @BeforeEach
     void cleanAndSetup() {
@@ -75,6 +61,7 @@ class QueuePatientFlowIT extends AbstractContainerIT {
     }
 
     // ─────────────────── helpers ───────────────────────────────────────────────
+    // buildJwt(...) e bearerHeaders(...) são herdados de AbstractContainerIT.
 
     private String jwtMedico() {
         return buildJwt("dr.integração", "ROLE_MEDICO");
@@ -82,24 +69,6 @@ class QueuePatientFlowIT extends AbstractContainerIT {
 
     private String jwtPaciente() {
         return buildJwt("paciente.it", "ROLE_PACIENTE");
-    }
-
-    private String buildJwt(String username, String role) {
-        SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
-        return Jwts.builder()
-                .subject(username)
-                .claim("role", role)
-                .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + 3_600_000L))
-                .signWith(key)
-                .compact();
-    }
-
-    private HttpHeaders bearerHeaders(String token) {
-        HttpHeaders h = new HttpHeaders();
-        h.setContentType(MediaType.APPLICATION_JSON);
-        h.setBearerAuth(token);
-        return h;
     }
 
     private UUID registerPatient(String cpf, String nome, LocalDate dob, EPriorityGroup grupo) {
@@ -224,7 +193,7 @@ class QueuePatientFlowIT extends AbstractContainerIT {
 
             // Pedro: VERDE (prioridade mais baixa)
             ResponseEntity<Map> enqVerde = enqueue(pacienteVerde, ERiskColor.VERDE, EDestino.FILA_REGULADA);
-            Thread.sleep(50);
+            Thread.sleep(ARRIVAL_ORDER_GAP_MS);
             // Rosa: AMARELO (prioridade maior que VERDE)
             enqueue(pacienteAmarelo, ERiskColor.AMARELO, EDestino.FILA_REGULADA);
 

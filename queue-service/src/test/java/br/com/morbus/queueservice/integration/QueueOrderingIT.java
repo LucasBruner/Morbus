@@ -57,6 +57,11 @@ class QueueOrderingIT extends AbstractContainerIT {
 
     private UUID procedureId;
 
+    // Intervalo mínimo entre inserções para garantir registeredAt distintos (mesma
+    // convenção usada em QueueFlowIntegrationTest.OrdenacaoPorRegisteredAt).
+    private static final long REGISTERED_AT_GAP_MS = 20;
+    private static final long ARRIVAL_ORDER_GAP_MS = 50;
+
     @BeforeEach
     void cleanAndSetup() {
         queueEntryJpaRepository.deleteAll();
@@ -75,7 +80,7 @@ class QueueOrderingIT extends AbstractContainerIT {
             throws InterruptedException {
         var patient = registerPatient.run(new RegisterPatientDTO(
                 cpf, null, nome, "Sobrenome", dob, EGender.MASCULINO, null, grupo));
-        Thread.sleep(20); // garante timestamps distintos
+        Thread.sleep(REGISTERED_AT_GAP_MS); // garante timestamps distintos
         return registerPatientInQueue.execute(
                 new RegisterQueueRequestDTO(patient.getId(), procedureId, cor, tipoFila));
     }
@@ -92,7 +97,7 @@ class QueueOrderingIT extends AbstractContainerIT {
             // FILA_ESPERA chega primeiro (timestamp menor)
             enqueue("111.111.111-91", "Espera", LocalDate.of(1985, 1, 1),
                     EPriorityGroup.GERAL, ERiskColor.AZUL, EDestino.FILA_ESPERA);
-            Thread.sleep(50);
+            Thread.sleep(ARRIVAL_ORDER_GAP_MS);
             // FILA_REGULADA chega depois (timestamp maior), mas deve ter prioridade
             enqueue("222.222.222-00", "Regulada", LocalDate.of(1985, 1, 1),
                     EPriorityGroup.GERAL, ERiskColor.AZUL, EDestino.FILA_REGULADA);
@@ -109,7 +114,7 @@ class QueueOrderingIT extends AbstractContainerIT {
         void filaRegulada_vermelho_sempresAntesDeFilaEspera() throws InterruptedException {
             enqueue("333.333.333-09", "EsperaAzul", LocalDate.of(1990, 3, 3),
                     EPriorityGroup.GERAL, ERiskColor.AZUL, EDestino.FILA_ESPERA);
-            Thread.sleep(50);
+            Thread.sleep(ARRIVAL_ORDER_GAP_MS);
             enqueue("444.444.444-08", "ReguladaVermelho", LocalDate.of(1990, 3, 3),
                     EPriorityGroup.GERAL, ERiskColor.VERMELHO, EDestino.FILA_REGULADA);
 

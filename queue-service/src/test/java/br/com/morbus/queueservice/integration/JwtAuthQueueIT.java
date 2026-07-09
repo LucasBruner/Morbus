@@ -10,14 +10,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.RestTemplate;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
@@ -42,18 +40,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("IT — Autenticação JWT no queue-service")
 class JwtAuthQueueIT extends AbstractContainerIT {
 
-    // RestTemplate com error handler permissivo para capturar 4xx/5xx como ResponseEntity
-    private final RestTemplate rest = new RestTemplate() {{
-        setErrorHandler(new org.springframework.web.client.DefaultResponseErrorHandler() {
-            @Override public boolean hasError(org.springframework.http.client.ClientHttpResponse r) { return false; }
-        });
-    }};
     @Autowired PatientJpaRepository patientRepo;
     @Autowired QueueEntryJpaRepository queueEntryRepo;
     @Autowired ProcedureJpaRepository procedureRepo;
-
-    @Value("${jwt.secret}")
-    private String jwtSecret;
 
     @BeforeEach
     void clean() {
@@ -62,17 +51,7 @@ class JwtAuthQueueIT extends AbstractContainerIT {
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
-
-    private String buildJwt(String username, String role, long expiresInMs) {
-        SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
-        return Jwts.builder()
-                .subject(username)
-                .claim("role", role)
-                .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + expiresInMs))
-                .signWith(key)
-                .compact();
-    }
+    // buildJwt(...) e bearerHeaders(...) são herdados de AbstractContainerIT.
 
     private String buildJwtWithWrongSecret(String username, String role) {
         SecretKey wrongKey = Keys.hmacShaKeyFor(
@@ -84,13 +63,6 @@ class JwtAuthQueueIT extends AbstractContainerIT {
                 .expiration(new Date(System.currentTimeMillis() + 3_600_000L))
                 .signWith(wrongKey)
                 .compact();
-    }
-
-    private HttpHeaders headersWithToken(String token) {
-        HttpHeaders h = new HttpHeaders();
-        h.setContentType(MediaType.APPLICATION_JSON);
-        h.setBearerAuth(token);
-        return h;
     }
 
     private Map<String, Object> patientBody() {
@@ -117,7 +89,7 @@ class JwtAuthQueueIT extends AbstractContainerIT {
             ResponseEntity<Map> resp = rest.exchange(
                     "http://localhost:" + port + "/api/v1/patients",
                     HttpMethod.POST,
-                    new HttpEntity<>(patientBody(), headersWithToken(token)),
+                    new HttpEntity<>(patientBody(), bearerHeaders(token)),
                     Map.class);
             assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         }
@@ -148,7 +120,7 @@ class JwtAuthQueueIT extends AbstractContainerIT {
             ResponseEntity<String> resp = rest.exchange(
                     "http://localhost:" + port + "/api/v1/patients",
                     HttpMethod.POST,
-                    new HttpEntity<>(patientBody(), headersWithToken(expiredToken)),
+                    new HttpEntity<>(patientBody(), bearerHeaders(expiredToken)),
                     String.class);
             assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         }
@@ -160,7 +132,7 @@ class JwtAuthQueueIT extends AbstractContainerIT {
             ResponseEntity<String> resp = rest.exchange(
                     "http://localhost:" + port + "/api/v1/patients",
                     HttpMethod.POST,
-                    new HttpEntity<>(patientBody(), headersWithToken(badToken)),
+                    new HttpEntity<>(patientBody(), bearerHeaders(badToken)),
                     String.class);
             assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         }
@@ -191,7 +163,7 @@ class JwtAuthQueueIT extends AbstractContainerIT {
             ResponseEntity<String> resp = rest.exchange(
                     "http://localhost:" + port + "/api/v1/patients",
                     HttpMethod.POST,
-                    new HttpEntity<>(patientBody(), headersWithToken(token)),
+                    new HttpEntity<>(patientBody(), bearerHeaders(token)),
                     String.class);
             assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         }
@@ -204,7 +176,7 @@ class JwtAuthQueueIT extends AbstractContainerIT {
             ResponseEntity<Map> patResp = rest.exchange(
                     "http://localhost:" + port + "/api/v1/patients",
                     HttpMethod.POST,
-                    new HttpEntity<>(patientBody(), headersWithToken(medicoToken)),
+                    new HttpEntity<>(patientBody(), bearerHeaders(medicoToken)),
                     Map.class);
             UUID patientId = UUID.fromString((String) patResp.getBody().get("id"));
 
@@ -222,7 +194,7 @@ class JwtAuthQueueIT extends AbstractContainerIT {
             ResponseEntity<Map> enqResp = rest.exchange(
                     "http://localhost:" + port + "/api/v1/queue",
                     HttpMethod.POST,
-                    new HttpEntity<>(enqBody, headersWithToken(medicoToken)),
+                    new HttpEntity<>(enqBody, bearerHeaders(medicoToken)),
                     Map.class);
             String entryId = (String) enqResp.getBody().get("id");
 
@@ -231,7 +203,7 @@ class JwtAuthQueueIT extends AbstractContainerIT {
             ResponseEntity<Map> posResp = rest.exchange(
                     "http://localhost:" + port + "/api/v1/queue/" + entryId + "/position",
                     HttpMethod.GET,
-                    new HttpEntity<>(headersWithToken(pacienteToken)),
+                    new HttpEntity<>(bearerHeaders(pacienteToken)),
                     Map.class);
             assertThat(posResp.getStatusCode()).isEqualTo(HttpStatus.OK);
         }

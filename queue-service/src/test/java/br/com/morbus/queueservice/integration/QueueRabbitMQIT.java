@@ -87,6 +87,10 @@ class QueueRabbitMQIT extends AbstractContainerIT {
                 BindingBuilder.bind(q)
                         .to(new DirectExchange(TEST_EXCHANGE))
                         .with(routingKey));
+        // Descarta qualquer mensagem remanescente de um teste anterior que tenha
+        // publicado mas não consumido (ex.: falha no meio do teste), evitando que
+        // ela seja entregue ao próximo método da mesma classe/container.
+        amqpAdmin.purgeQueue(queueName, false);
     }
 
     private UUID registerAndEnqueue(String cpf, String nome, ERiskColor cor, EDestino tipoFila) {
