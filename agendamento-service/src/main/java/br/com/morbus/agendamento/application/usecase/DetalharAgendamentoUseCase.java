@@ -2,6 +2,7 @@ package br.com.morbus.agendamento.application.usecase;
 
 import br.com.morbus.agendamento.adapter.in.graphql.dto.AgendamentoDetalheRequestDTO;
 import br.com.morbus.agendamento.adapter.security.UserPrincipal;
+import br.com.morbus.agendamento.domain.exception.AgendamentoNotFoundException;
 import br.com.morbus.agendamento.domain.model.Agendamento;
 import br.com.morbus.agendamento.domain.model.HealthUnit;
 import br.com.morbus.agendamento.domain.model.Provider;
@@ -40,7 +41,8 @@ public class DetalharAgendamentoUseCase implements IDetalharAgendamentoUseCase {
 
     @Override
     public Optional<AgendamentoDetalheRequestDTO> execute(UUID id, Authentication authentication) {
-        Agendamento agendamento = agendamentoRepository.findById(id).orElse(null);
+        Agendamento agendamento = agendamentoRepository.findById(id)
+                .orElseThrow(() -> new AgendamentoNotFoundException("Agendamento nao encontrado: " + id));
 
         if(!isAccessAllowed(authentication, agendamento)){
             return Optional.empty();

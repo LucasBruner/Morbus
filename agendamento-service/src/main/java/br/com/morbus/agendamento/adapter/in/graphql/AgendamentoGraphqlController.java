@@ -16,11 +16,13 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
+import org.springframework.validation.annotation.Validated;
 
 import java.util.List;
 import java.util.UUID;
 
 @Controller
+@Validated
 public class AgendamentoGraphqlController {
 
 	private final IConsultarDisponibilidadeUseCase consultarDisponibilidadeUseCase;
@@ -38,9 +40,9 @@ public class AgendamentoGraphqlController {
         this.consultarGradeUseCase = consultarGradeUseCase;
     }
 
-	@QueryMapping
+    @QueryMapping(name = "disponibilidade")
 	@PreAuthorize("hasAnyAuthority('ROLE_REGULADOR','ROLE_MEDICO','ROLE_PACIENTE','ROLE_EXECUTANTE')")
-	public List<SlotsAvailableResponseDTO> disponibilidadeSlots(@Argument @NotNull UUID procedureId,
+	public List<SlotsAvailableResponseDTO> disponibilidade(@Argument @NotNull UUID procedureId,
                                                                 @Argument UUID unitId,
                                                                 @Argument @NotNull String dateFrom,
                                                                 @Argument @NotNull String dateTo) {
@@ -50,9 +52,9 @@ public class AgendamentoGraphqlController {
 				.toList();
 	}
 
-    @QueryMapping
+    @QueryMapping(name = "agendamentos")
     @PreAuthorize("hasAnyAuthority('ROLE_REGULADOR','ROLE_MEDICO','ROLE_PACIENTE','ROLE_EXECUTANTE')")
-    public List<AgendamentosPacienteResponseDTO> agendamentosPaciente(@Argument UUID patientId,
+    public List<AgendamentosPacienteResponseDTO> agendamentos(@Argument UUID patientId,
                                                                       @Argument UUID unitId,
                                                                       @Argument EStatusAgendamento status,
                                                                       @Argument @NotNull String dateFrom,
@@ -65,7 +67,7 @@ public class AgendamentoGraphqlController {
                 .toList();
     }
 
-    @QueryMapping
+    @QueryMapping(name = "agendamento")
     @PreAuthorize("hasAnyAuthority('ROLE_REGULADOR','ROLE_MEDICO','ROLE_PACIENTE','ROLE_EXECUTANTE')")
     public AgendamentoDetalheResponseDTO agendamento(@Argument @NotNull UUID id) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -74,7 +76,7 @@ public class AgendamentoGraphqlController {
                 .orElse(null);
     }
 
-    @QueryMapping
+    @QueryMapping(name = "grade")
     @PreAuthorize("hasAnyAuthority('ROLE_EXECUTANTE','ROLE_MEDICO','ROLE_REGULADOR')")
     public List<ScheduleResponseDTO> grade(@Argument @NotNull UUID unitId,
                                            @Argument @NotNull String week) {

@@ -37,9 +37,7 @@ public class ConsultarGradeUseCase implements IConsultarGradeUseCase {
 
         List<Schedule> schedule = scheduleRepository.findByUnitId(unitId)
                 .stream()
-                .filter(s ->
-                        s.isAtivo() &&
-                        s.getDiaDaSemana().toDayOfWeek().equals(LocalDate.parse(week).getDayOfWeek()))
+                .filter(Schedule::isAtivo)
                 .sorted(Comparator
                         .comparing(Schedule::getDiaDaSemana)
                         .thenComparing(Schedule::getHorarioInicio))
