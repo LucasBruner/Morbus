@@ -1,5 +1,6 @@
 package br.com.morbus.queueservice.domain.usecase.dto;
 
+import br.com.morbus.queueservice.domain.enums.EDestino;
 import br.com.morbus.queueservice.domain.enums.ERiskColor;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
@@ -16,6 +17,14 @@ public record RegisterQueueRequestDTO(
         UUID procedureId,
 
         @NotNull
-        @Schema(description = "Cor de risco clínico. FILA_ESPERA sempre recebe AZUL automaticamente.", example = "AMARELO")
-        ERiskColor riskColor
-) {}
+        @Schema(description = "Cor de risco clínico. FILA_ESPERA só aceita AZUL; outra cor retorna 422.", example = "AMARELO")
+        ERiskColor riskColor,
+
+        @Schema(description = "Tipo de fila. FILA_REGULADA (padrão) ou FILA_ESPERA.", example = "FILA_REGULADA")
+        EDestino tipoFila
+) {
+    /** Construtor de compatibilidade que mantém tipoFila como FILA_REGULADA por padrão. */
+    public RegisterQueueRequestDTO(UUID patientId, UUID procedureId, ERiskColor riskColor) {
+        this(patientId, procedureId, riskColor, EDestino.FILA_REGULADA);
+    }
+}

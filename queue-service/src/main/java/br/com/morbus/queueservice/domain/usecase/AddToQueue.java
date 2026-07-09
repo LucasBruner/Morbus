@@ -22,6 +22,6 @@ public class AddToQueue {
     public QueueEntry execute(UUID patientId, UUID procedureId, EDestino tipoFila, ERiskColor riskColor) {
         ERiskColor effectiveRiskColor = tipoFila == EDestino.FILA_ESPERA ? ERiskColor.AZUL : riskColor;
         return registerPatientInQueue.execute(
-                new RegisterQueueRequestDTO(patientId, procedureId, effectiveRiskColor));
+                new RegisterQueueRequestDTO(patientId, procedureId, effectiveRiskColor, tipoFila));
     }
 }

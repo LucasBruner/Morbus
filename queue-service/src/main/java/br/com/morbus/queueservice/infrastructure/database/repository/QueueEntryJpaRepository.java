@@ -20,6 +20,7 @@ public interface QueueEntryJpaRepository extends JpaRepository<QueueEntryEntity,
         WHERE (:status IS NULL OR q.status = :status)
           AND (:riskColor IS NULL OR q.riskColor = :riskColor)
         ORDER BY
+            q.tipoFila DESC,
             q.riskColor ASC,
             q.patient.grupoLegal ASC,
             q.registeredAt ASC
@@ -34,6 +35,7 @@ public interface QueueEntryJpaRepository extends JpaRepository<QueueEntryEntity,
         FROM QueueEntryEntity q
         WHERE q.status = 'AGUARDANDO'
         ORDER BY
+            q.tipoFila DESC,
             q.riskColor ASC,
             q.patient.grupoLegal ASC,
             q.registeredAt ASC

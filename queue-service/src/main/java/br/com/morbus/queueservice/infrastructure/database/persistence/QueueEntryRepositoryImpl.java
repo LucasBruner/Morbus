@@ -3,6 +3,7 @@ package br.com.morbus.queueservice.infrastructure.database.persistence;
 import br.com.morbus.queueservice.domain.entity.Patient;
 import br.com.morbus.queueservice.domain.entity.Procedure;
 import br.com.morbus.queueservice.domain.entity.QueueEntry;
+import br.com.morbus.queueservice.domain.enums.EDestino;
 import br.com.morbus.queueservice.domain.enums.EQueueStatus;
 import br.com.morbus.queueservice.domain.enums.ERiskColor;
 import br.com.morbus.queueservice.domain.repository.IQueueEntryRepository;
@@ -56,6 +57,7 @@ public class QueueEntryRepositoryImpl implements IQueueEntryRepository {
                             .patient(patientRef)
                             .procedure(procedureRef)
                             .riskColor(entry.getRiskColor())
+                            .tipoFila(entry.getTipoFila() != null ? entry.getTipoFila() : EDestino.FILA_REGULADA)
                             .status(entry.getQueueStatus())
                             .registeredAt(entry.getRegisteredAt())
                             .updatedAt(entry.getUpdatedAt())
@@ -133,6 +135,7 @@ public class QueueEntryRepositoryImpl implements IQueueEntryRepository {
                 .patient(patient)
                 .procedure(procedure)
                 .riskColor(entity.getRiskColor())
+                .tipoFila(entity.getTipoFila())
                 .queueStatus(entity.getStatus())
                 .registeredAt(entity.getRegisteredAt())
                 .updatedAt(entity.getUpdatedAt())
