@@ -203,6 +203,7 @@ public class RabbitMQConfig {
                                          JacksonJsonMessageConverter messageConverter) {
         RabbitTemplate template = new RabbitTemplate(connectionFactory);
         template.setMessageConverter(messageConverter);
+        template.setChannelTransacted(true);
         return template;
     }
 }
