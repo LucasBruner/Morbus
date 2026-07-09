@@ -2,7 +2,7 @@ package br.com.morbus.agendamento.application.usecase;
 
 import br.com.morbus.agendamento.adapter.security.UserPrincipal;
 import br.com.morbus.agendamento.domain.enums.EStatusAgendamento;
-import br.com.morbus.agendamento.domain.model.Agendamento;
+import br.com.morbus.agendamento.domain.model.AgendamentoComDetalhes;
 import br.com.morbus.agendamento.domain.port.in.IAgendamentosPacienteUseCase;
 import br.com.morbus.agendamento.domain.port.out.IAgendamentoRepository;
 import org.springframework.security.core.Authentication;
@@ -23,12 +23,12 @@ public class AgendamentosPacienteUseCase implements IAgendamentosPacienteUseCase
     }
 
     @Override
-    public List<Agendamento> execute(UUID id,
-                                     UUID unitId,
-                                     EStatusAgendamento status,
-                                     String dateFrom,
-                                     String dateTo,
-                                     Authentication authentication) {
+    public List<AgendamentoComDetalhes> execute(UUID id,
+                                                UUID unitId,
+                                                EStatusAgendamento status,
+                                                String dateFrom,
+                                                String dateTo,
+                                                Authentication authentication) {
 
         UUID patientId = resolvePatientId(id, authentication);
 
