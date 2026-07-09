@@ -61,7 +61,7 @@ public class AgendamentoGraphqlController {
 
         return agendamentosPacienteUseCase.execute(patientId, unitId, status, dateFrom, dateTo,authentication)
                 .stream()
-                .map(AgendamentosPacienteResponseDTO::fromEntity)
+                .map(AgendamentosPacienteResponseDTO::fromDetalhe)
                 .toList();
     }
 
