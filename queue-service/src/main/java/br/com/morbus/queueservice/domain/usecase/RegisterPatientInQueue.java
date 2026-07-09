@@ -5,6 +5,7 @@ import br.com.morbus.queueservice.domain.exception.*;
 import br.com.morbus.queueservice.domain.entity.Patient;
 import br.com.morbus.queueservice.domain.entity.Procedure;
 import br.com.morbus.queueservice.domain.entity.QueueEntry;
+import br.com.morbus.queueservice.domain.enums.EDestino;
 import br.com.morbus.queueservice.domain.enums.EPriorityGroup;
 import br.com.morbus.queueservice.domain.enums.EQueueStatus;
 import br.com.morbus.queueservice.domain.enums.ERiskColor;
@@ -53,8 +54,11 @@ public class RegisterPatientInQueue {
         patient.updateGrupoLegal(priorityGroup);
         patientRepository.save(patient);
 
+        EDestino tipoFila = patientDTO.tipoFila() == null ? EDestino.FILA_REGULADA : patientDTO.tipoFila();
         ERiskColor riskColor = patientDTO.riskColor() == null ? ERiskColor.AZUL : patientDTO.riskColor();
-        QueueEntry queueEntry = buildQueueEntry(patient, procedure, riskColor);
+        validateTipoFilaRiskColor(tipoFila, riskColor);
+
+        QueueEntry queueEntry = buildQueueEntry(patient, procedure, riskColor, tipoFila);
 
         queueEntryRepository.save(queueEntry);
         eventPublisher.publishPatientRegistered(queueEntry);
@@ -100,12 +104,19 @@ public class RegisterPatientInQueue {
         }
     }
 
-    private QueueEntry buildQueueEntry(Patient patient, Procedure procedure, ERiskColor riskColor) {
+    private void validateTipoFilaRiskColor(EDestino tipoFila, ERiskColor riskColor) {
+        if (tipoFila == EDestino.FILA_ESPERA && riskColor != ERiskColor.AZUL) {
+            throw new QueueNotAllowedException("FILA_ESPERA aceita somente pacientes com cor de risco AZUL");
+        }
+    }
+
+    private QueueEntry buildQueueEntry(Patient patient, Procedure procedure, ERiskColor riskColor, EDestino tipoFila) {
         return QueueEntry.builder()
                 .id(UUID.randomUUID())
                 .patient(patient)
                 .procedure(procedure)
                 .riskColor(riskColor)
+                .tipoFila(tipoFila)
                 .queueStatus(EQueueStatus.AGUARDANDO)
                 .registeredAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())

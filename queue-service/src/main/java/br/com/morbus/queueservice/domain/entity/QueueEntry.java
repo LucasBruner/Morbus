@@ -1,5 +1,6 @@
 package br.com.morbus.queueservice.domain.entity;
 
+import br.com.morbus.queueservice.domain.enums.EDestino;
 import br.com.morbus.queueservice.domain.enums.EQueueStatus;
 import br.com.morbus.queueservice.domain.enums.ERiskColor;
 import lombok.Builder;
@@ -15,6 +16,7 @@ public class QueueEntry {
     private Patient patient;
     private Procedure procedure;
     private ERiskColor riskColor;
+    private EDestino tipoFila;
     private EQueueStatus queueStatus;
     private LocalDateTime registeredAt;
     private LocalDateTime updatedAt;

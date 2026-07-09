@@ -67,8 +67,8 @@ class AddToQueueTest {
     }
 
     @Test
-    @DisplayName("FILA_ESPERA força AZUL mesmo que o evento traga outra cor")
-    void filaEspera_forcaAzul() {
+    @DisplayName("FILA_ESPERA força AZUL e propaga tipoFila=FILA_ESPERA para o repositório")
+    void filaEspera_forcaAzul_ePropagatTipoFila() {
         QueueEntry expected = buildQueueEntry();
         when(registerPatientInQueue.execute(any(RegisterQueueRequestDTO.class))).thenReturn(expected);
 
@@ -77,5 +77,6 @@ class AddToQueueTest {
         ArgumentCaptor<RegisterQueueRequestDTO> captor = ArgumentCaptor.forClass(RegisterQueueRequestDTO.class);
         verify(registerPatientInQueue).execute(captor.capture());
         assertThat(captor.getValue().riskColor()).isEqualTo(ERiskColor.AZUL);
+        assertThat(captor.getValue().tipoFila()).isEqualTo(EDestino.FILA_ESPERA);
     }
 }

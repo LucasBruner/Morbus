@@ -1,5 +1,6 @@
 package br.com.morbus.queueservice.infrastructure.database.entity;
 
+import br.com.morbus.queueservice.domain.enums.EDestino;
 import br.com.morbus.queueservice.domain.enums.EQueueStatus;
 import br.com.morbus.queueservice.domain.enums.ERiskColor;
 import jakarta.persistence.*;
@@ -29,6 +30,10 @@ public class QueueEntryEntity {
     @Enumerated(EnumType.ORDINAL)
     @Column(name = "risk_color", nullable = false)
     private ERiskColor riskColor;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_fila", nullable = false, length = 20)
+    private EDestino tipoFila;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)

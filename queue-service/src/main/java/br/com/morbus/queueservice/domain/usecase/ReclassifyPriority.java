@@ -1,6 +1,7 @@
 package br.com.morbus.queueservice.domain.usecase;
 
 import br.com.morbus.queueservice.domain.entity.QueueEntry;
+import br.com.morbus.queueservice.domain.enums.EDestino;
 import br.com.morbus.queueservice.domain.enums.EQueueStatus;
 import br.com.morbus.queueservice.domain.event.IQueueEventPublisher;
 import br.com.morbus.queueservice.domain.exception.QueueNotAllowedException;
@@ -28,6 +29,11 @@ public class ReclassifyPriority {
         QueueEntry queueEntryUpdateRiskyColor = queueEntryRepository
                 .findById(queueUpdateRiskColorDTO.queueId())
                 .orElseThrow(() -> new QueueNotExistException("Não existe fila com esse ID"));
+
+        if (EDestino.FILA_ESPERA.equals(queueEntryUpdateRiskyColor.getTipoFila())) {
+            throw new QueueNotAllowedException(
+                    "Entradas em FILA_ESPERA não podem ter a cor de risco reclassificada");
+        }
 
         if(queueEntryUpdateRiskyColor.getQueueStatus().equals(EQueueStatus.AGUARDANDO)
                 || queueEntryUpdateRiskyColor.getQueueStatus().equals(EQueueStatus.DEVOLVIDO)) {
