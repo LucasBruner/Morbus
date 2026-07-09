@@ -52,7 +52,7 @@ class NotificationControllerTest {
 
         @Test
         @DisplayName("deve retornar 200 com lista de notificações")
-        void deveRetornar200ComListaDeNotificacoes() {
+        void retorna200ComListaDeNotificacoes() {
             Notification n1 = buildNotification(1L, "PATIENT_CALLED", "João Silva");
             Notification n2 = buildNotification(2L, "PATIENT_REGISTERED", "Maria Souza");
             when(Notification.listAll(any(Sort.class))).thenReturn(List.of(n1, n2));
@@ -69,7 +69,7 @@ class NotificationControllerTest {
 
         @Test
         @DisplayName("deve retornar 200 com lista vazia quando não há notificações")
-        void deveRetornar200ComListaVazia() {
+        void retorna200ComListaVazia() {
             when(Notification.listAll(any(Sort.class))).thenReturn(List.of());
 
             given()
@@ -81,7 +81,7 @@ class NotificationControllerTest {
 
         @Test
         @DisplayName("deve retornar notificações filtradas por eventType")
-        void deveRetornarNotificacoesFiltradas() {
+        void retornaNotificacoesFiltradas() {
             Notification n = buildNotification(1L, "PATIENT_CALLED", "Carlos Lima");
             when(Notification.list(anyString(), any(Sort.class), any(Object[].class)))
                     .thenReturn(List.of(n));
@@ -97,7 +97,7 @@ class NotificationControllerTest {
 
         @Test
         @DisplayName("deve retornar lista vazia quando filtro não encontra resultados")
-        void deveRetornarListaVaziaQuandoFiltroSemResultados() {
+        void retornaListaVaziaFiltroSemResultado() {
             // PanacheMock retorna lista vazia por padrão para chamadas não-stubadas
             // Não configuramos stub para evitar conflito de arity causado por estado do Mockito entre testes
 
@@ -118,7 +118,7 @@ class NotificationControllerTest {
 
         @Test
         @DisplayName("deve retornar 200 com a notificação quando encontrada")
-        void deveRetornar200QuandoNotificacaoEncontrada() {
+        void retorna200NotificacaoEncontrada() {
             Notification n = buildNotification(1L, "PATIENT_REGISTERED", "Ana Costa");
             when(Notification.findById(1L)).thenReturn(n);
 
@@ -134,7 +134,7 @@ class NotificationControllerTest {
 
         @Test
         @DisplayName("deve retornar 404 quando notificação não é encontrada")
-        void deveRetornar404QuandoNotificacaoNaoEncontrada() {
+        void retorna404NotificacaoNaoEncontrada() {
             when(Notification.findById(any())).thenReturn(null);
 
             given()
