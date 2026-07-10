@@ -156,12 +156,12 @@ A tabela `unit_procedure_quotas` controla quantas inserções em `FILA_ESPERA` c
 
 | Transição                       | Gatilho                                          |
 |---------------------------------|--------------------------------------------------|
-| AGUARDANDO → AGENDADO           | `CallNextPatient` (POST /call-next)              |
-| AGUARDANDO → CANCELADO          | `CancelQueueEntry` (DELETE /queue/{id})          |
-| AGENDADO → ATENDIDO             | Evento `appointment.attended` do agendamento     |
-| AGENDADO → FALTOU               | Evento `appointment.no_show` do agendamento      |
-| FALTOU → DEVOLVIDO → AGUARDANDO | Evento `patient.reinstated` (reinserção)         |
-| AGUARDANDO_VAGA → AGUARDANDO    | Evento `appointment.expired` (sem slot disponível)|
+| AGUARDANDO → CHAMADO            | `CallNextPatient` (POST /call-next)              |
+| CHAMADO → AGENDADO              | Evento `appointment.confirmed` do agendamento-service (`AppointmentConfirmedConsumer`) |
+| AGUARDANDO / AGENDADO → CANCELADO | `CancelQueueEntry` (DELETE /queue/{id})        |
+| AGENDADO → AGUARDANDO           | Evento `appointment.expired` ou `patient.no_show` do agendamento-service (reinserção no fim da fila, via `ReinstatePatientInQueue`) |
+
+> `ATENDIDO`, `FALTOU` e `DEVOLVIDO` existem no enum `EQueueStatus`, mas hoje nenhum fluxo do domínio os produz — nenhum método de `QueueEntry` atribui esses valores (`DEVOLVIDO` só é *lido* como precondição em `ReclassifyPriority`). `AGUARDANDO_VAGA` (chamado sem slot disponível, ao consumir `appointment.no_slot`) não existe no enum — ver nota de "planejado" em `erd.md`.
 
 ### Solicitação (regulacao-service)
 
@@ -186,7 +186,7 @@ A tabela `unit_procedure_quotas` controla quantas inserções em `FILA_ESPERA` c
 | Reclassificação de cor | `ReclassifyPriority` | Só permitida em status `AGUARDANDO` ou `DEVOLVIDO`, apenas em `FILA_REGULADA` |
 | Cancelamento | `CancelQueueEntry` | Só permitido em status `AGUARDANDO` ou `AGENDADO` |
 | FILA_ESPERA sempre AZUL | `AddToQueue` | Ao criar entrada em FILA_ESPERA, cor é forçada para AZUL |
-| Unicidade na fila | `AddToQueue` | Paciente não pode ter duas entradas ativas (`AGUARDANDO`/`DEVOLVIDO`) para o mesmo procedimento |
+| Unicidade na fila | `RegisterPatientInQueue` | Paciente não pode ter duas entradas ativas (`AGUARDANDO`/`CHAMADO`/`AGENDADO`) para o mesmo procedimento |
 | Elegibilidade etária | `AddToQueue` | Paciente deve estar dentro da faixa `idadeMinima`-`idadeMaxima` do procedimento |
 | IDOSO automático | `PriorityCalculator` | Idade ≥ 60 anos na data da ordenação → grupo IDOSO, independente do cadastro |
 | Cota por UBS | `CheckAndEnforceQuota` | Somente para FILA_ESPERA; bloqueia inserção se `current_count >= max_per_period` |

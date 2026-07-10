@@ -52,9 +52,13 @@ erDiagram
         UUID        patient_id      FK  "REFERENCES patients(id)"
         UUID        procedure_id    FK  "REFERENCES procedures(id)"
         SMALLINT     risk_color         "ordinal: 0=VERMELHO,1=AMARELO,2=VERDE,3=AZUL, DEFAULT 3"
-        VARCHAR(20)  status             "AGUARDANDO|AGENDADO|ATENDIDO|FALTOU|CANCELADO|DEVOLVIDO, DEFAULT AGUARDANDO"
+        VARCHAR(20)  tipo_fila          "FILA_ESPERA|FILA_REGULADA, DEFAULT FILA_REGULADA"
+        VARCHAR(20)  status             "AGUARDANDO|CHAMADO|AGENDADO|ATENDIDO|FALTOU|CANCELADO|DEVOLVIDO, DEFAULT AGUARDANDO"
         TIMESTAMP    registered_at      "NOT NULL, DEFAULT NOW()"
         TIMESTAMP    updated_at         "nullable"
+        UUID        solicitacao_id      "nullable, sem FK cross-schema"
+        UUID        preferred_unit_id   "nullable, sem FK cross-schema"
+        SMALLINT     priority_group     "nullable, snapshot de EPriorityGroup"
     }
 
     UNIT_PROCEDURE_QUOTAS {
@@ -439,6 +443,8 @@ Horários individuais gerados a partir de uma grade semanal.
 | `capacity`    | INTEGER     | NOT NULL                          | Herdado da grade                                             |
 | `booked`      | INTEGER     | NOT NULL, DEFAULT 0               | Quantidade já alocada                                        |
 | `status`      | VARCHAR(20) | NOT NULL, DEFAULT `DISPONIVEL`    | `DISPONIVEL`, `RESERVADO`, `OCUPADO`, `INDISPONIVEL`         |
+
+> `RESERVADO` está no `CHECK` da tabela e no schema GraphQL, mas é um estado morto no domínio Java hoje — `EStatusSlots` só tem `DISPONIVEL`/`OCUPADO`/`INDISPONIVEL`, nenhum fluxo o produz.
 
 ---
 

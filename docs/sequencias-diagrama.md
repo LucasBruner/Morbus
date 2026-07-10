@@ -220,14 +220,14 @@ sequenceDiagram
 
     Note over UC,DB: Paciente encontrado: Maria, VERMELHO, IDOSO
 
-    UC->>DB: UPDATE queue_entries<br/>SET status = 'AGENDADO', updated_at = NOW()<br/>WHERE id = ?
+    UC->>DB: UPDATE queue_entries<br/>SET status = 'CHAMADO', updated_at = NOW()<br/>WHERE id = ?
     DB-->>UC: OK
 
     UC->>Publisher: publishPatientCalled(QueueEventDTO)
     Publisher->>MQ: Exchange: sus.queue.exchange<br/>Routing key: patient.called<br/>Payload: { eventType: PATIENT_CALLED,<br/>patientName, patientContact,<br/>procedureName, riskColor, timestamp }
 
     UC-->>QS: CalledPatientResponse
-    QS-->>Medico: 200 OK<br/>{ id, patient, procedure,<br/>riskColor, status: AGENDADO, calledAt }
+    QS-->>Medico: 200 OK<br/>{ id, patient, procedure,<br/>riskColor, status: CHAMADO, calledAt }
 
     MQ-->>NS: Entrega mensagem na fila<br/>queue.patient.called
 
@@ -236,6 +236,8 @@ sequenceDiagram
     NS->>DB: INSERT INTO notifications
     NS->>NS: EmailService.send(...)<br/>[EMAIL SIMULADO] Para: maria@email.com | ...
 ```
+
+> O status `AGENDADO` só é atribuído posteriormente, quando o `queue-service` consome o evento `appointment.confirmed` publicado pelo `agendamento-service` (ver seção 10, e `AppointmentConfirmedConsumer`/`ConfirmAppointment`).
 
 ---
 
@@ -565,7 +567,7 @@ sequenceDiagram
     AS--)MQ: APPOINTMENT_EXPIRED { queueEntryId, patientId, procedureName }
 
     MQ--)QS: Consome APPOINTMENT_EXPIRED
-    QS->>QS: QueueEntry: CHAMADO → AGUARDANDO (reinserido no fim da fila)
+    QS->>QS: QueueEntry: AGENDADO → AGUARDANDO (reinserido no fim da fila)
     QS--)MQ: PATIENT_REINSTATED { queueEntryId, patientId }
 
     MQ--)NS: Consome APPOINTMENT_EXPIRED
