@@ -94,6 +94,15 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
+    @ExceptionHandler(SlotIndisponivelException.class)
+    public ProblemDetail handleSlotIndisponivel(SlotIndisponivelException ex) {
+        ProblemDetail problem = ProblemDetail.forStatus(422);
+        problem.setType(URI.create("https://httpstatuses.com/422"));
+        problem.setTitle("Slot indisponivel");
+        problem.setDetail(ex.getMessage());
+        return problem;
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ProblemDetail handleValidation(MethodArgumentNotValidException ex) {
         String detail = ex.getBindingResult().getFieldErrors().stream()

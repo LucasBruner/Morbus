@@ -14,6 +14,8 @@ import br.com.morbus.agendamento.domain.port.in.ICriarAgendamentoUseCase;
 import br.com.morbus.agendamento.domain.port.in.ICriarScheduleUseCase;
 import br.com.morbus.agendamento.domain.port.in.IConsultarGradeUseCase;
 import br.com.morbus.agendamento.domain.port.in.IDetalharAgendamentoUseCase;
+import br.com.morbus.agendamento.domain.port.in.IReagendarAgendamentoUseCase;
+import br.com.morbus.agendamento.domain.port.in.IAtualizarScheduleUseCase;
 import br.com.morbus.agendamento.domain.port.in.IUnblockSlotUseCase;
 import br.com.morbus.agendamento.domain.port.out.IAgendamentoRepository;
 import br.com.morbus.agendamento.domain.port.out.IHealthUnitRepository;
@@ -90,6 +92,18 @@ public class UseCaseConfig {
     public ICancelarAgendamentoUseCase cancelarAgendamentoUseCase(IAgendamentoRepository agendamentoRepository,
                                                                   ISlotRepository slotRepository) {
         return new CancelarAgendamentoUseCase(agendamentoRepository, slotRepository);
+    }
+
+    @Bean
+    public IReagendarAgendamentoUseCase reagendarAgendamentoUseCase(IAgendamentoRepository agendamentoRepository,
+                                                                    ISlotRepository slotRepository,
+                                                                    IAgendamentoEventPublisher eventPublisher) {
+        return new ReagendarAgendamentoUseCase(agendamentoRepository, slotRepository, eventPublisher);
+    }
+
+    @Bean
+    public IAtualizarScheduleUseCase atualizarScheduleUseCase(IScheduleRepository scheduleRepository) {
+        return new AtualizarScheduleUseCase(scheduleRepository);
     }
 
     @Bean

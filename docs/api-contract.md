@@ -1117,6 +1117,30 @@ Reagenda para outro slot disponível, liberando o slot atual.
 
 ---
 
+#### PATCH /api/v1/appointments/{id}/attend
+
+Marca o agendamento como atendido (paciente compareceu).
+
+**Auth:** `ROLE_EXECUTANTE`
+
+**Response `200 OK`:**
+```json
+{
+  "id": "cc44dd55-ee66-ff77-0011-223344556677",
+  "status": "ATENDIDO",
+  "attendedAt": "2026-07-10T08:35:00Z"
+}
+```
+
+**Erros:**
+
+| Status | Motivo                                            |
+|--------|-----------------------------------------------------|
+| `404`  | Agendamento não encontrado                          |
+| `422`  | Agendamento deve estar `CONFIRMADO` para ser atendido |
+
+---
+
 #### POST /api/v1/appointments/{id}/falta
 
 Registra a falta do paciente, libera o slot e publica o evento `PATIENT_NO_SHOW` que reinserirá o paciente na fila.
@@ -1176,9 +1200,9 @@ Atualiza uma grade existente (horários, capacidade, profissional).
 
 ---
 
-#### POST /api/v1/schedules/{id}/bloquear
+#### POST /api/v1/schedules/{id}/block
 
-Bloqueia slots de uma grade para uma data específica (feriado, manutenção, etc.).
+Bloqueia slots disponíveis de uma grade para uma data específica (feriado, manutenção, etc.).
 
 **Auth:** `ROLE_EXECUTANTE`
 
@@ -1191,6 +1215,30 @@ Bloqueia slots de uma grade para uma data específica (feriado, manutenção, et
 ```
 
 **Response `204 No Content`**
+
+**Erros:**
+
+| Status | Motivo                                                      |
+|--------|---------------------------------------------------------------|
+| `404`  | Grade não encontrada                                          |
+| `404`  | Nenhum slot disponível encontrado para a data informada        |
+
+---
+
+#### POST /api/v1/schedules/{id}/unblock
+
+Desbloqueia (volta para `DISPONIVEL`) todos os slots `INDISPONIVEL` da grade — não é filtrado por data.
+
+**Auth:** `ROLE_EXECUTANTE`
+
+**Response `204 No Content`**
+
+**Erros:**
+
+| Status | Motivo                                                 |
+|--------|----------------------------------------------------------|
+| `404`  | Grade não encontrada                                      |
+| `404`  | Nenhum slot bloqueado (`INDISPONIVEL`) encontrado nessa grade |
 
 ---
 
@@ -1408,8 +1456,9 @@ type Appointment {
 
 enum SlotStatus {
   DISPONIVEL
-  INDISPONIVEL
+  RESERVADO
   OCUPADO
+  INDISPONIVEL
 }
 
 enum AppointmentStatus {
@@ -1500,8 +1549,9 @@ enum AppointmentStatus {
 | Valor          | Descrição                         |
 |----------------|-----------------------------------|
 | `DISPONIVEL`   | Slot disponível para alocação     |
-| `INDISPONIVEL` | Slot bloqueado (feriado etc.)     |
+| `RESERVADO`    | Reservado no banco (`chk_slots_status`) e no schema GraphQL — não é produzido pelo domínio Java hoje (`EStatusSlots` só tem `DISPONIVEL`/`OCUPADO`/`INDISPONIVEL`) |
 | `OCUPADO`      | Capacidade esgotada               |
+| `INDISPONIVEL` | Slot bloqueado (feriado etc.)     |
 
 ### NotificationType
 

@@ -29,4 +29,10 @@ public interface IAgendamentoEventPublisher {
                                    UUID queueEntryId,
                                    UUID patientId,
                                    LocalDateTime expirouEm);
+
+    void publishAppointmentRescheduled(UUID appointmentId,
+                                       UUID slotId,
+                                       UUID queueEntryId,
+                                       UUID patientId,
+                                       LocalDateTime reagendadoEm);
 }

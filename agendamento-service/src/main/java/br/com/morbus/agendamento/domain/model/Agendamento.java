@@ -99,4 +99,9 @@ public class Agendamento {
         this.cancellationReason = motivo;
         this.updatedAt = LocalDateTime.now(ZoneId.systemDefault());
     }
+
+    public void reschedule(UUID newSlotId) {
+        this.slotId = newSlotId;
+        this.updatedAt = LocalDateTime.now(ZoneId.systemDefault());
+    }
 }

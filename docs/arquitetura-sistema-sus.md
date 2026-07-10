@@ -375,12 +375,14 @@ type Query {
 | Método | Path                                 | Role       | Descrição                        |
 |--------|--------------------------------------|------------|----------------------------------|
 | PATCH  | /api/v1/appointments/{id}/confirmar  | PACIENTE   | Confirma presença (prazo 72h)    |
+| PATCH  | /api/v1/appointments/{id}/attend     | EXECUTANTE | Marca agendamento como atendido  |
 | DELETE | /api/v1/appointments/{id}            | PACIENTE / MEDICO | Cancela agendamento       |
 | PATCH  | /api/v1/appointments/{id}/reagendar  | MEDICO     | Reagenda para outro slot         |
 | POST   | /api/v1/appointments/{id}/falta      | EXECUTANTE | Registra falta do paciente       |
 | POST   | /api/v1/schedules                    | EXECUTANTE | Cria grade semanal               |
 | PUT    | /api/v1/schedules/{id}               | EXECUTANTE | Atualiza grade                   |
-| POST   | /api/v1/schedules/{id}/bloquear      | EXECUTANTE | Bloqueia slots (feriado etc.)    |
+| POST   | /api/v1/schedules/{id}/block         | EXECUTANTE | Bloqueia slots (feriado etc.)    |
+| POST   | /api/v1/schedules/{id}/unblock       | EXECUTANTE | Desbloqueia slots da grade       |
 
 ---
 
@@ -547,9 +549,14 @@ auth-service   queue-service   regulacao-service   agendamento-service
 | GET  /api/v1/regulacao/pendentes              | ❌          | ✅        | ❌     | ❌       | ❌         |
 | GraphQL queries (agendamento)                 | ❌          | ✅        | ✅     | ✅*      | ✅         |
 | PATCH /api/v1/appointments/{id}/confirmar     | ❌          | ❌        | ❌     | ✅       | ❌         |
+| PATCH /api/v1/appointments/{id}/attend        | ❌          | ❌        | ❌     | ❌       | ✅         |
 | DELETE /api/v1/appointments/{id}              | ❌          | ❌        | ✅     | ✅       | ❌         |
+| PATCH /api/v1/appointments/{id}/reagendar     | ❌          | ❌        | ✅     | ❌       | ❌         |
 | POST  /api/v1/appointments/{id}/falta         | ❌          | ❌        | ❌     | ❌       | ✅         |
 | POST  /api/v1/schedules                       | ❌          | ❌        | ❌     | ❌       | ✅         |
+| PUT   /api/v1/schedules/{id}                  | ❌          | ❌        | ❌     | ❌       | ✅         |
+| POST  /api/v1/schedules/{id}/block            | ❌          | ❌        | ❌     | ❌       | ✅         |
+| POST  /api/v1/schedules/{id}/unblock          | ❌          | ❌        | ❌     | ❌       | ✅         |
 
 > * PACIENTE vê apenas seus próprios agendamentos (filtro por patientId extraído do JWT).
 
