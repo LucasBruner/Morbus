@@ -118,7 +118,7 @@ queue-service/
 └── src/main/java/br.com.morbus.queueservice/
     ├── domain/
     │   ├── entity/       # Patient, QueueEntry, Procedure, UnitProcedureQuota
-    │   ├── enums/        # ERiskColor, EPriorityGroup, EQueueStatus, EGender, ETipoFila
+    │   ├── enums/        # ERiskColor, EPriorityGroup, EQueueStatus, EGender, EDestino
     │   ├── event/        # IQueueEventPublisher (contrato de saída)
     │   ├── exceptions/   # QueueNotExistException, QueueNotAllowedException,
     │   │                 # QueueEmptyException, QuotaExceededException
@@ -136,7 +136,8 @@ queue-service/
         ├── http/
         │   └── controller/   # QueueController, PatientController, ProcedureController
         ├── messaging/    # RabbitMqQueueEventPublisher
-        │   ├── consumer/ # SolicitacaoEventConsumer, AgendamentoEventConsumer
+        │   ├── consumer/ # SolicitationApprovedConsumer, AppointmentConfirmedConsumer,
+        │   │             # AppointmentExpiredConsumer, PatientNoShowConsumer
         │   └── dto/      # QueueEventDTO, SolicitacaoApprovedEventDTO, AppointmentEventDTO
         └── security/     # JwtAuthFilter, SecurityConfig
 ```
@@ -168,7 +169,7 @@ Nenhuma classe do `domain` importa Spring, JPA ou RabbitMQ.
 | GET    | /api/v1/procedures?codigo=                  | MEDICO, PACIENTE | Busca procedimento por código SIGTAP|
 | GET    | /api/v1/procedures/{id}                     | MEDICO, PACIENTE | Busca procedimento por ID          |
 
-**Tipos de fila (ETipoFila):**
+**Tipos de fila (EDestino):**
 
 | Tipo            | Cor de risco     | Algoritmo de ordenação                  | Controle de cota |
 |-----------------|------------------|-----------------------------------------|------------------|
@@ -435,6 +436,10 @@ sus.agendamento.exchange (direct)      publicado por: agendamento-service
 └── patient.no_show         →  queue.patient.no_show
        consumido por: queue-service, notification-service
 ```
+
+**Dead Letter Exchange (DLX):**
+
+Cada consumer do `queue-service` (`SolicitationApprovedConsumer`, `AppointmentConfirmedConsumer`, `AppointmentExpiredConsumer`, `PatientNoShowConsumer`) tem sua fila principal ligada a um exchange de dead-letter dedicado, `sus.queue.dlx` (`RabbitMQConfig.java`). Mensagens que falham repetidamente no processamento (após as tentativas de retry do `spring.rabbitmq.listener.simple.retry.*`) são roteadas para uma fila `.dlq` correspondente (ex.: `queue.solicitation.approved.dlq`) em vez de serem perdidas ou reentregues indefinidamente — permitindo inspeção/reprocessamento manual via RabbitMQ Management.
 
 **Payload base dos eventos (JSON):**
 ```json

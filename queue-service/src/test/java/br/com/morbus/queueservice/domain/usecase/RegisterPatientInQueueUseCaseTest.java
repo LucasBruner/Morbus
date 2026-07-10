@@ -274,6 +274,27 @@ class RegisterPatientInQueueUseCaseTest {
     }
 
     @Test
+    @DisplayName("Verifica duplicidade considerando AGUARDANDO, CHAMADO e AGENDADO")
+    void testValidateIfPatientInQueueIncludesChamado() {
+        RegisterQueueRequestDTO dto = new RegisterQueueRequestDTO(patient.getId(), procedureId, ERiskColor.AZUL);
+
+        when(patientRepository.findById(patientId)).thenReturn(Optional.of(patient));
+        when(procedureRepository.findById(procedureId)).thenReturn(Optional.of(procedure));
+        when(queueEntryRepository.existsByPatientAndProcedureAndStatusIn(
+                eq(patient), eq(procedure), any(List.class)
+        )).thenReturn(false);
+
+        useCase.execute(dto);
+
+        org.mockito.ArgumentCaptor<List<EQueueStatus>> statusesCaptor = org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(queueEntryRepository).existsByPatientAndProcedureAndStatusIn(
+                eq(patient), eq(procedure), statusesCaptor.capture());
+
+        assertThat(statusesCaptor.getValue())
+                .containsExactlyInAnyOrder(EQueueStatus.AGUARDANDO, EQueueStatus.CHAMADO, EQueueStatus.AGENDADO);
+    }
+
+    @Test
     @DisplayName("Atualiza grupoLegal do paciente durante registro")
     void testExecuteUpdatesPatientPriorityGroup() {
         Patient patientIdoso = Patient.builder()

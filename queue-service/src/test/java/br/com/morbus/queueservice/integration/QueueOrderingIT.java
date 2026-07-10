@@ -122,7 +122,7 @@ class QueueOrderingIT extends AbstractContainerIT {
 
             assertThat(next.getPatient().getNome()).isEqualTo("ReguladaVermelho");
             assertThat(next.getTipoFila()).isEqualTo(EDestino.FILA_REGULADA);
-            assertThat(next.getQueueStatus()).isEqualTo(EQueueStatus.AGENDADO);
+            assertThat(next.getQueueStatus()).isEqualTo(EQueueStatus.CHAMADO);
         }
 
         @Test

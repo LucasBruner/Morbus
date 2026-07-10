@@ -15,6 +15,8 @@ import br.com.morbus.queueservice.domain.usecase.dto.RegisterPatientDTO;
 import br.com.morbus.queueservice.domain.usecase.dto.RegisterQueueRequestDTO;
 import br.com.morbus.queueservice.infrastructure.database.entity.ProcedureEntity;
 import br.com.morbus.queueservice.infrastructure.database.repository.ProcedureJpaRepository;
+import br.com.morbus.queueservice.infrastructure.messaging.consumer.AppointmentConfirmedConsumer;
+import br.com.morbus.queueservice.infrastructure.messaging.consumer.AppointmentConfirmedEvent;
 import br.com.morbus.queueservice.infrastructure.messaging.consumer.AppointmentExpiredConsumer;
 import br.com.morbus.queueservice.infrastructure.messaging.consumer.AppointmentExpiredEvent;
 import br.com.morbus.queueservice.infrastructure.messaging.consumer.PatientNoShowConsumer;
@@ -61,10 +63,12 @@ class RegulacaoAgendamentoConsumerIntegrationTest {
     @Autowired SolicitationApprovedConsumer solicitationApprovedConsumer;
     @Autowired AppointmentExpiredConsumer appointmentExpiredConsumer;
     @Autowired PatientNoShowConsumer patientNoShowConsumer;
+    @Autowired AppointmentConfirmedConsumer appointmentConfirmedConsumer;
 
     @Autowired RegisterPatient registerPatient;
     @Autowired RegisterPatientInQueue registerPatientInQueue;
     @Autowired CallNextPatient callNextPatient;
+    @Autowired br.com.morbus.queueservice.domain.usecase.ConfirmAppointment confirmAppointment;
     @Autowired IQueueEntryRepository queueEntryRepository;
     @Autowired ProcedureJpaRepository procedureJpaRepository;
 
@@ -143,7 +147,9 @@ class RegulacaoAgendamentoConsumerIntegrationTest {
             UUID patientId = registerPatientId("33333333333", "Carlos");
             registerPatientInQueue.execute(new RegisterQueueRequestDTO(patientId, procedureId, ERiskColor.AMARELO));
             QueueEntry chamado = callNextPatient.run();
-            assertThat(chamado.getQueueStatus()).isEqualTo(EQueueStatus.AGENDADO);
+            assertThat(chamado.getQueueStatus()).isEqualTo(EQueueStatus.CHAMADO);
+            // Simula a confirmação do agendamento-service (evento appointment.confirmed)
+            confirmAppointment.execute(chamado.getId());
 
             appointmentExpiredConsumer.onAppointmentExpired(
                     new AppointmentExpiredEvent(chamado.getId(), patientId, "Consulta Ambulatorial de Integração"));
@@ -151,6 +157,29 @@ class RegulacaoAgendamentoConsumerIntegrationTest {
             QueueEntry reinstated = queueEntryRepository.findById(chamado.getId()).orElseThrow();
             assertThat(reinstated.getQueueStatus()).isEqualTo(EQueueStatus.AGUARDANDO);
             verify(eventPublisher, times(1)).publishPatientReinstated(any(QueueEntry.class));
+        }
+    }
+
+    // ── AppointmentConfirmedConsumer ─────────────────────────────────────────
+
+    @Nested
+    @DisplayName("AppointmentConfirmedConsumer")
+    class AppointmentConfirmed {
+
+        @Test
+        @DisplayName("confirma o agendamento, transicionando CHAMADO para AGENDADO")
+        void confirmaAgendamento() {
+            UUID patientId = registerPatientId("55555555555", "Eduardo");
+            registerPatientInQueue.execute(new RegisterQueueRequestDTO(patientId, procedureId, ERiskColor.VERMELHO));
+            QueueEntry chamado = callNextPatient.run();
+            assertThat(chamado.getQueueStatus()).isEqualTo(EQueueStatus.CHAMADO);
+
+            appointmentConfirmedConsumer.onAppointmentConfirmed(new AppointmentConfirmedEvent(
+                    UUID.randomUUID(), UUID.randomUUID(), chamado.getId(), patientId,
+                    java.time.LocalDateTime.now()));
+
+            QueueEntry confirmado = queueEntryRepository.findById(chamado.getId()).orElseThrow();
+            assertThat(confirmado.getQueueStatus()).isEqualTo(EQueueStatus.AGENDADO);
         }
     }
 
@@ -166,7 +195,9 @@ class RegulacaoAgendamentoConsumerIntegrationTest {
             UUID patientId = registerPatientId("44444444444", "Daniela");
             registerPatientInQueue.execute(new RegisterQueueRequestDTO(patientId, procedureId, ERiskColor.VERDE));
             QueueEntry chamado = callNextPatient.run();
-            assertThat(chamado.getQueueStatus()).isEqualTo(EQueueStatus.AGENDADO);
+            assertThat(chamado.getQueueStatus()).isEqualTo(EQueueStatus.CHAMADO);
+            // Simula a confirmação do agendamento-service (evento appointment.confirmed)
+            confirmAppointment.execute(chamado.getId());
 
             patientNoShowConsumer.onPatientNoShow(new PatientNoShowEvent(chamado.getId(), patientId));
 

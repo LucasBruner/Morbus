@@ -110,7 +110,7 @@ class QueuePatientFlowIT extends AbstractContainerIT {
     class FluxoFilaReguladaCompleto {
 
         @Test
-        @DisplayName("Cadastrar paciente → FILA_REGULADA → posição → callNext → AGENDADO")
+        @DisplayName("Cadastrar paciente → FILA_REGULADA → posição → callNext → CHAMADO")
         void fluxoCompleto_filaRegulada() {
             UUID patientId = registerPatient("111.444.777-35", "João", LocalDate.of(1990, 1, 1), EPriorityGroup.GERAL);
 
@@ -136,7 +136,7 @@ class QueuePatientFlowIT extends AbstractContainerIT {
                     new HttpEntity<>(bearerHeaders(jwtMedico())),
                     Map.class);
             assertThat(callResp.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(callResp.getBody().get("status")).isEqualTo("AGENDADO");
+            assertThat(callResp.getBody().get("status")).isEqualTo("CHAMADO");
             assertThat(callResp.getBody().get("id")).isEqualTo(entryId);
         }
     }
@@ -226,13 +226,13 @@ class QueuePatientFlowIT extends AbstractContainerIT {
         }
 
         @Test
-        @DisplayName("Reclassificação de entrada AGENDADO retorna 422")
-        void reclassificar_entradaAgendado_retorna422() {
+        @DisplayName("Reclassificação de entrada CHAMADO retorna 422")
+        void reclassificar_entradaChamado_retorna422() {
             UUID patientId = registerPatient("777.111.444-35", "Luís", LocalDate.of(1975, 9, 22), EPriorityGroup.GERAL);
             ResponseEntity<Map> enqResp = enqueue(patientId, ERiskColor.VERDE, EDestino.FILA_REGULADA);
             String entryId = (String) enqResp.getBody().get("id");
 
-            // Chamar o próximo (transiciona para AGENDADO)
+            // Chamar o próximo (transiciona para CHAMADO)
             rest.exchange("http://localhost:" + port + "/api/v1/queue/call-next",
                     HttpMethod.POST, new HttpEntity<>(bearerHeaders(jwtMedico())), Map.class);
 

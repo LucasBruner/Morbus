@@ -19,7 +19,7 @@ public record NewUserDTO(
         @NotBlank(message = "Senha é obrigatória")
         String password,
 
-        @NotNull(message = "Role é obrigatória. Valores aceitos: MEDICO, PACIENTE")
+        @NotNull(message = "Role é obrigatória. Valores aceitos: MEDICO, PACIENTE, SOLICITANTE, REGULADOR, EXECUTANTE")
         UserRole role
 
 ) {}

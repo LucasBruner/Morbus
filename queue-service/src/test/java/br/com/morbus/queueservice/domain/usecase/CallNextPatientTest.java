@@ -84,14 +84,14 @@ class CallNextPatientTest {
         }
 
         @Test
-        @DisplayName("deve alterar o status para AGENDADO")
-        void deveAlterarStatusParaAgendado() {
+        @DisplayName("deve alterar o status para CHAMADO")
+        void deveAlterarStatusParaChamado() {
             QueueEntry entry = buildEntry(EQueueStatus.AGUARDANDO, ERiskColor.AZUL);
             when(repository.findNextByPriority()).thenReturn(Optional.of(entry));
 
             useCase.run();
 
-            assertThat(entry.getQueueStatus()).isEqualTo(EQueueStatus.AGENDADO);
+            assertThat(entry.getQueueStatus()).isEqualTo(EQueueStatus.CHAMADO);
         }
 
         @Test

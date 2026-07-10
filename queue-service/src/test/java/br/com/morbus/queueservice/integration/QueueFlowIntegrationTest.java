@@ -124,13 +124,13 @@ class QueueFlowIntegrationTest {
         }
 
         @Test
-        @DisplayName("callNext deve alterar status para AGENDADO")
-        void callNext_alteraStatusParaAgendado() {
+        @DisplayName("callNext deve alterar status para CHAMADO")
+        void callNext_alteraStatusParaChamado() {
             enqueue("11111111111", "Ana", LocalDate.of(1955, 3, 20), EPriorityGroup.IDOSO, ERiskColor.VERMELHO);
 
             QueueEntry chamado = callNextPatient.run();
 
-            assertThat(chamado.getQueueStatus().name()).isEqualTo("AGENDADO");
+            assertThat(chamado.getQueueStatus().name()).isEqualTo("CHAMADO");
         }
     }
 

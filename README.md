@@ -58,7 +58,7 @@ O sistema é composto por cinco microsserviços independentes e se comunica inte
 
 - `auth-service` → todos: JWT — cada serviço valida o token localmente com a mesma `JWT_SECRET`.
 - `queue-service` ↔ `notification-service`: AMQP via RabbitMQ — exchange `sus.queue.exchange`.
-- `regulacao-service` → `queue-service` / `agendamento-service`: AMQP — exchange `sus.regula.exchange`.
+- `regulacao-service` → `queue-service` / `agendamento-service`: AMQP — exchange `sus.regulacao.exchange`.
 - `agendamento-service` → `queue-service` / `notification-service`: AMQP — exchange `sus.agenda.exchange`.
 
 ---

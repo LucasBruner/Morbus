@@ -58,7 +58,7 @@ public class RegisterPatientInQueue {
         ERiskColor riskColor = patientDTO.riskColor() == null ? ERiskColor.AZUL : patientDTO.riskColor();
         validateTipoFilaRiskColor(tipoFila, riskColor);
 
-        QueueEntry queueEntry = buildQueueEntry(patient, procedure, riskColor, tipoFila);
+        QueueEntry queueEntry = buildQueueEntry(patient, procedure, riskColor, tipoFila, patientDTO, priorityGroup);
 
         queueEntryRepository.save(queueEntry);
         eventPublisher.publishPatientRegistered(queueEntry);
@@ -94,7 +94,7 @@ public class RegisterPatientInQueue {
         boolean existsActiveEntry = queueEntryRepository.existsByPatientAndProcedureAndStatusIn(
                 patient,
                 procedure,
-                java.util.List.of(EQueueStatus.AGUARDANDO, EQueueStatus.AGENDADO)
+                java.util.List.of(EQueueStatus.AGUARDANDO, EQueueStatus.CHAMADO, EQueueStatus.AGENDADO)
         );
 
         if (existsActiveEntry) {
@@ -110,7 +110,8 @@ public class RegisterPatientInQueue {
         }
     }
 
-    private QueueEntry buildQueueEntry(Patient patient, Procedure procedure, ERiskColor riskColor, EDestino tipoFila) {
+    private QueueEntry buildQueueEntry(Patient patient, Procedure procedure, ERiskColor riskColor, EDestino tipoFila,
+                                       RegisterQueueRequestDTO patientDTO, EPriorityGroup priorityGroup) {
         return QueueEntry.builder()
                 .id(UUID.randomUUID())
                 .patient(patient)
@@ -120,6 +121,9 @@ public class RegisterPatientInQueue {
                 .queueStatus(EQueueStatus.AGUARDANDO)
                 .registeredAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
+                .solicitacaoId(patientDTO.solicitacaoId())
+                .preferredUnitId(patientDTO.preferredUnitId())
+                .priorityGroup(priorityGroup)
                 .build();
     }
 }

@@ -229,17 +229,21 @@ erDiagram
 
 ### QUEUE_ENTRIES *(queue-service)*
 
-> Implementado em: **V3** (`create_queue_entries_table`)
+> Implementado em: **V3** (`create_queue_entries_table`), **V7** (`add_tipo_fila_to_queue_entries`), **V8** (`add_solicitacao_fields_to_queue_entries`)
 
-| Coluna          | Tipo        | Restrições                     | Descrição                                                           |
-|-----------------|-------------|--------------------------------|---------------------------------------------------------------------|
-| `id`            | UUID        | PK, NOT NULL                   | Identificador único                                                 |
-| `patient_id`    | UUID        | FK → patients(id), NOT NULL    | Paciente na fila                                                    |
-| `procedure_id`  | UUID        | FK → procedures(id), NOT NULL  | Procedimento solicitado                                             |
-| `risk_color`    | SMALLINT    | NOT NULL, DEFAULT 3            | Ordinal do `ERiskColor`: 0=VERMELHO, 1=AMARELO, 2=VERDE, 3=AZUL    |
-| `status`        | VARCHAR(20) | NOT NULL, DEFAULT `AGUARDANDO` | Ver ciclo de vida abaixo                                            |
-| `registered_at` | TIMESTAMP   | NOT NULL, DEFAULT NOW()        | Timestamp de entrada — desempate final do algoritmo                 |
-| `updated_at`    | TIMESTAMP   | nullable                       | Última atualização                                                  |
+| Coluna              | Tipo        | Restrições                     | Descrição                                                           |
+|---------------------|-------------|--------------------------------|---------------------------------------------------------------------|
+| `id`                | UUID        | PK, NOT NULL                   | Identificador único                                                 |
+| `patient_id`        | UUID        | FK → patients(id), NOT NULL    | Paciente na fila                                                    |
+| `procedure_id`      | UUID        | FK → procedures(id), NOT NULL  | Procedimento solicitado                                             |
+| `risk_color`        | SMALLINT    | NOT NULL, DEFAULT 3            | Ordinal do `ERiskColor`: 0=VERMELHO, 1=AMARELO, 2=VERDE, 3=AZUL    |
+| `tipo_fila`         | VARCHAR(20) | NOT NULL, DEFAULT `FILA_REGULADA` | Nome do enum `EDestino`: `FILA_ESPERA` \| `FILA_REGULADA`       |
+| `status`            | VARCHAR(20) | NOT NULL, DEFAULT `AGUARDANDO` | Ver ciclo de vida abaixo                                            |
+| `registered_at`     | TIMESTAMP   | NOT NULL, DEFAULT NOW()        | Timestamp de entrada — desempate final do algoritmo                 |
+| `updated_at`        | TIMESTAMP   | nullable                       | Última atualização                                                  |
+| `solicitacao_id`    | UUID        | nullable, sem FK cross-schema  | Solicitação de origem (regulacao-service), null se cadastro manual  |
+| `preferred_unit_id` | UUID        | nullable, sem FK cross-schema  | Unidade executante preferencial definida na regulação               |
+| `priority_group`    | SMALLINT    | nullable                       | Ordinal do `EPriorityGroup` — snapshot calculado no registro (a ordenação da fila usa o cálculo dinâmico de `PriorityCalculator`, não esta coluna, para não perder o efeito de "virar idoso" durante a espera) |
 
 **Índice de prioridade:**
 ```sql
@@ -251,22 +255,23 @@ CREATE INDEX idx_queue_entries_priority
 **Ciclo de vida do status (implementado):**
 
 ```
-cadastro ──▶ AGUARDANDO ──call-next──▶ AGENDADO ──▶ ATENDIDO
-                                               └──▶ FALTOU
-                                               └──▶ CANCELADO
+cadastro ──▶ AGUARDANDO ──call-next──▶ CHAMADO ──appointment.confirmed──▶ AGENDADO ──▶ ATENDIDO
+                                                                                  └──▶ FALTOU
+                                                                                  └──▶ CANCELADO
              AGUARDANDO ◀── DEVOLVIDO (reinserção)
 ```
 
 | Status       | Descrição                                            |
 |--------------|------------------------------------------------------|
 | `AGUARDANDO` | Na fila, aguardando ser chamado                      |
-| `AGENDADO`   | Chamado — status atualizado pelo `CallNextPatient`   |
+| `CHAMADO`    | Chamado pelo `CallNextPatient`; aguardando confirmação de slot pelo agendamento-service |
+| `AGENDADO`   | Slot confirmado — status atualizado ao consumir `appointment.confirmed` |
 | `ATENDIDO`   | Compareceu e foi atendido                            |
 | `FALTOU`     | Não compareceu                                       |
 | `CANCELADO`  | Cancelado manualmente                                |
 | `DEVOLVIDO`  | Devolvido à fila (status intermediário para reinserção)|
 
-> **Planejado (integração com regulacao/agendamento):** adicionar colunas `tipo_fila`, `priority_group`, `solicitacao_id`, `preferred_unit_id` e ampliar o check de status para incluir `CHAMADO` e `AGUARDANDO_VAGA` via migration futura.
+> **Planejado (integração com agendamento):** o status `AGUARDANDO_VAGA` (chamado mas sem slot disponível, ao consumir `appointment.no_slot`) ainda não foi implementado.
 
 ---
 
@@ -522,29 +527,30 @@ CREATE TABLE patient_procedures (
 
 ---
 
-## Scripts de Criação — Novos Serviços (referência / planejado)
+## Scripts de Criação — auth-service e queue-service (implementado)
 
 ```sql
--- ── auth-service — novos valores de role ───────────────────────────────────
+-- ── auth-service — novos valores de role (V3__expand_user_roles.sql) ───────
 ALTER TABLE users
     DROP CONSTRAINT IF EXISTS users_role_check;
 ALTER TABLE users
     ADD CONSTRAINT users_role_check
     CHECK (role IN ('MEDICO','PACIENTE','SOLICITANTE','REGULADOR','EXECUTANTE'));
 
--- ── queue-service — integrações planejadas ─────────────────────────────────
+-- ── queue-service — V7__add_tipo_fila_to_queue_entries.sql ─────────────────
 ALTER TABLE queue_entries
-    ADD COLUMN tipo_fila         VARCHAR(20) NOT NULL DEFAULT 'FILA_REGULADA',
+    ADD COLUMN tipo_fila VARCHAR(20) NOT NULL DEFAULT 'FILA_REGULADA';
+
+-- ── queue-service — V8__add_solicitacao_fields_to_queue_entries.sql ────────
+ALTER TABLE queue_entries
     ADD COLUMN solicitacao_id    UUID,
-    ADD COLUMN preferred_unit_id UUID;
+    ADD COLUMN preferred_unit_id UUID,
+    ADD COLUMN priority_group   SMALLINT;
+```
 
-ALTER TABLE queue_entries
-    DROP CONSTRAINT IF EXISTS queue_entries_status_check;
-ALTER TABLE queue_entries
-    ADD CONSTRAINT queue_entries_status_check
-    CHECK (status IN ('AGUARDANDO','CHAMADO','AGENDADO','AGUARDANDO_VAGA',
-                      'ATENDIDO','FALTOU','CANCELADO','DEVOLVIDO'));
+## Scripts de Criação — Novos Serviços (referência / planejado)
 
+```sql
 CREATE TABLE unit_procedure_quotas (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     unit_id         UUID        NOT NULL,

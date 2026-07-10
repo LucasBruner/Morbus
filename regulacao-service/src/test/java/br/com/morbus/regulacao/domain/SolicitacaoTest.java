@@ -31,6 +31,10 @@ class SolicitacaoTest {
     }
 
     private Solicitacao buildExistente(EStatusSolicitacao status) {
+        return buildExistente(status, null);
+    }
+
+    private Solicitacao buildExistente(EStatusSolicitacao status, String justificativaNegacao) {
         return new Solicitacao(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
@@ -44,7 +48,7 @@ class SolicitacaoTest {
                 "Dr. Silva",
                 null,
                 EDestino.FILA_REGULADA,
-                null,
+                justificativaNegacao,
                 UUID.randomUUID(),
                 LocalDateTime.now().minusHours(2),
                 LocalDateTime.now().minusHours(1),
@@ -219,6 +223,35 @@ class SolicitacaoTest {
             s.reclassificarRisco(ERiscoSolicitado.VERMELHO);
 
             assertThat(s.getRiskColor()).isEqualTo(ERiscoSolicitado.VERMELHO);
+        }
+    }
+
+    @Nested
+    @DisplayName("ao complementar")
+    class AoComplementar {
+
+        @Test
+        @DisplayName("deve atualizar apenas os campos nao nulos e voltar para AGUARDANDO")
+        void deveComplementarCamposNaoNulos() {
+            Solicitacao s = buildExistente(EStatusSolicitacao.DEVOLVIDA, "documentacao incompleta");
+
+            s.complementar("I11.9", "justificativa complementada", null, "CRM/SP 12345");
+
+            assertThat(s.getCid()).isEqualTo("I11.9");
+            assertThat(s.getJustificativaClinica()).isEqualTo("justificativa complementada");
+            assertThat(s.getProfissionalSolicitante()).isEqualTo("Dr. Silva");
+            assertThat(s.getCrmProfissional()).isEqualTo("CRM/SP 12345");
+            assertThat(s.getStatus()).isEqualTo(EStatusSolicitacao.AGUARDANDO);
+        }
+
+        @Test
+        @DisplayName("deve limpar a justificativaNegacao")
+        void deveLimparJustificativaNegacao() {
+            Solicitacao s = buildExistente(EStatusSolicitacao.DEVOLVIDA, "documentacao incompleta");
+
+            s.complementar(null, null, null, null);
+
+            assertThat(s.getJustificativaNegacao()).isNull();
         }
     }
 }

@@ -6,7 +6,7 @@ O `PriorityCalculator` implementa o algoritmo de ordenação da fila ambulatoria
 
 ---
 
-## Tipos de Fila (ETipoFila)
+## Tipos de Fila (EDestino)
 
 | Tipo            | Descrição                                                        |
 |-----------------|------------------------------------------------------------------|
@@ -75,7 +75,7 @@ public static int compare(QueueEntry a, QueueEntry b) {
     if (tipoComp != 0) return tipoComp;
 
     // Critérios 2 e 3: apenas dentro de FILA_REGULADA
-    if (a.getTipoFila() == ETipoFila.FILA_REGULADA) {
+    if (a.getTipoFila() == EDestino.FILA_REGULADA) {
 
         // Critério 2: cor de risco
         int colorComp = a.getRiskColor().getNumericPriority()
@@ -131,7 +131,7 @@ fila.sort(PriorityCalculator::compare);
 
 ```java
 // ReclassifyPriority use case — bloqueio para FILA_ESPERA
-if (queueEntry.getTipoFila() == ETipoFila.FILA_ESPERA) {
+if (queueEntry.getTipoFila() == EDestino.FILA_ESPERA) {
     throw new QueueNotAllowedException(
         "Entradas em FILA_ESPERA não podem ter a cor de risco alterada (sempre AZUL)"
     );

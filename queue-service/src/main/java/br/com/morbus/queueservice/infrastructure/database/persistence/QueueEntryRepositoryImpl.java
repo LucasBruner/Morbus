@@ -61,6 +61,9 @@ public class QueueEntryRepositoryImpl implements IQueueEntryRepository {
                             .status(entry.getQueueStatus())
                             .registeredAt(entry.getRegisteredAt())
                             .updatedAt(entry.getUpdatedAt())
+                            .solicitacaoId(entry.getSolicitacaoId())
+                            .preferredUnitId(entry.getPreferredUnitId())
+                            .priorityGroup(entry.getPriorityGroup())
                             .build();
                     repository.save(entity);
                 }
@@ -75,7 +78,7 @@ public class QueueEntryRepositoryImpl implements IQueueEntryRepository {
 
     @Override
     public Optional<QueueEntry> findNextByPriority() {
-        List<QueueEntryEntity> entryList = repository.findByPriority(null, null);
+        List<QueueEntryEntity> entryList = repository.findByPriority(EQueueStatus.AGUARDANDO, null);
         return entryList.isEmpty()
                 ? Optional.empty()
                 : Optional.of(mapToDomainQueue(entryList.getFirst()));
@@ -139,6 +142,9 @@ public class QueueEntryRepositoryImpl implements IQueueEntryRepository {
                 .queueStatus(entity.getStatus())
                 .registeredAt(entity.getRegisteredAt())
                 .updatedAt(entity.getUpdatedAt())
+                .solicitacaoId(entity.getSolicitacaoId())
+                .preferredUnitId(entity.getPreferredUnitId())
+                .priorityGroup(entity.getPriorityGroup())
                 .build();
     }
 }

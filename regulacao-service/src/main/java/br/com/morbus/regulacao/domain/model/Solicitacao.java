@@ -143,4 +143,14 @@ public class Solicitacao {
         this.status = EStatusSolicitacao.FALTOU;
         this.updatedAt = LocalDateTime.now();
     }
+
+    public void complementar(String cid, String justificativaClinica, String profissionalSolicitante, String crmProfissional) {
+        if (cid != null) this.cid = cid;
+        if (justificativaClinica != null) this.justificativaClinica = justificativaClinica;
+        if (profissionalSolicitante != null) this.profissionalSolicitante = profissionalSolicitante;
+        if (crmProfissional != null) this.crmProfissional = crmProfissional;
+        this.status = EStatusSolicitacao.AGUARDANDO;
+        this.justificativaNegacao = null;
+        this.updatedAt = LocalDateTime.now();
+    }
 }

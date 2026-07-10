@@ -12,6 +12,7 @@ import br.com.morbus.regulacao.domain.exception.SolicitacaoNaoEncontradaExceptio
 import br.com.morbus.regulacao.domain.exception.SolicitacaoNaoPendenteException;
 import br.com.morbus.regulacao.domain.model.Solicitacao;
 import br.com.morbus.regulacao.ports.in.ICancelarSolicitacaoUseCase;
+import br.com.morbus.regulacao.ports.in.IComplementarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.in.IConsultarStatusSolicitacao;
 import br.com.morbus.regulacao.ports.in.ICriarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.in.IListarSolicitacoesUseCase;
@@ -54,6 +55,7 @@ class SolicitacaoControllerTest {
     @MockitoBean IListarSolicitacoesUseCase listarUseCase;
     @MockitoBean ICancelarSolicitacaoUseCase cancelarUseCase;
     @MockitoBean IConsultarStatusSolicitacao consultarUseCase;
+    @MockitoBean IComplementarSolicitacaoUseCase complementarUseCase;
     @MockitoBean JwtService jwtService;
     @MockitoBean JwtAuthenticationFilter jwtAuthFilter;
 
@@ -389,6 +391,96 @@ class SolicitacaoControllerTest {
                             .with(authentication(principalToken("ROLE_SOLICITANTE"))))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.status").value(404));
+        }
+    }
+
+    // ── POST /api/v1/solicitacoes/{id}/complementar ──────────────────────────
+
+    @Nested
+    @DisplayName("POST /api/v1/solicitacoes/{id}/complementar")
+    class Complementar {
+
+        private String complementarBody() {
+            return """
+                    {
+                      "cid": "I11.9",
+                      "justificativaClinica": "Complemento: paciente com HAS estagio 3, sem resposta a 3 anti-hipertensivos.",
+                      "crmProfissional": "CRM/SP 12345"
+                    }
+                    """;
+        }
+
+        @Test
+        @DisplayName("deve retornar 200 quando SOLICITANTE complementa solicitacao devolvida")
+        void deveRetornar200Solicitante() throws Exception {
+            when(complementarUseCase.execute(any())).thenReturn(buildSolicitacao());
+
+            mockMvc.perform(post(BASE_URL + "/" + UUID.randomUUID() + "/complementar")
+                            .with(authentication(principalToken("ROLE_SOLICITANTE")))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(complementarBody()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value("AGUARDANDO"));
+        }
+
+        @Test
+        @DisplayName("deve aceitar body vazio, pois todos os campos sao opcionais")
+        void deveAceitarBodyVazio() throws Exception {
+            when(complementarUseCase.execute(any())).thenReturn(buildSolicitacao());
+
+            mockMvc.perform(post(BASE_URL + "/" + UUID.randomUUID() + "/complementar")
+                            .with(authentication(principalToken("ROLE_SOLICITANTE")))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("deve retornar 403 quando MEDICO tenta complementar")
+        void deveRetornar403Medico() throws Exception {
+            mockMvc.perform(post(BASE_URL + "/" + UUID.randomUUID() + "/complementar")
+                            .with(authentication(principalToken("ROLE_MEDICO")))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(complementarBody()))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("deve retornar 403 quando REGULADOR tenta complementar")
+        void deveRetornar403Regulador() throws Exception {
+            mockMvc.perform(post(BASE_URL + "/" + UUID.randomUUID() + "/complementar")
+                            .with(authentication(principalToken("ROLE_REGULADOR")))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(complementarBody()))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("deve retornar 404 quando solicitacao nao existe")
+        void deveRetornar404() throws Exception {
+            when(complementarUseCase.execute(any()))
+                    .thenThrow(new SolicitacaoNaoEncontradaException("nao encontrada"));
+
+            mockMvc.perform(post(BASE_URL + "/" + UUID.randomUUID() + "/complementar")
+                            .with(authentication(principalToken("ROLE_SOLICITANTE")))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(complementarBody()))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.status").value(404));
+        }
+
+        @Test
+        @DisplayName("deve retornar 422 quando solicitacao nao esta DEVOLVIDA")
+        void deveRetornar422() throws Exception {
+            when(complementarUseCase.execute(any()))
+                    .thenThrow(new SolicitacaoNaoPendenteException("nao esta devolvida"));
+
+            mockMvc.perform(post(BASE_URL + "/" + UUID.randomUUID() + "/complementar")
+                            .with(authentication(principalToken("ROLE_SOLICITANTE")))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(complementarBody()))
+                    .andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.status").value(422));
         }
     }
 }

@@ -140,7 +140,7 @@ class QueueRabbitMQIT extends AbstractContainerIT {
     class PatientCalledEvent {
 
         @Test
-        @DisplayName("callNext publica patient.called com status AGENDADO")
+        @DisplayName("callNext publica patient.called com status CHAMADO")
         void callNext_publicaPatientCalled() throws Exception {
             registerAndEnqueue("444.777.111-35", "Chamado", ERiskColor.VERMELHO, EDestino.FILA_REGULADA);
             // Consome o patient.registered para limpar a fila de teste

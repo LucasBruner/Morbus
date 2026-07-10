@@ -16,6 +16,7 @@ public class SolicitationApprovedConsumer {
 
     @RabbitListener(queues = RabbitMQConfig.QUEUE_SOLICITATION_APPROVED)
     public void onSolicitationApproved(SolicitationApprovedEvent event) {
-        addToQueue.execute(event.patientId(), event.procedureId(), event.tipoFila(), event.riskColor());
+        addToQueue.execute(event.patientId(), event.procedureId(), event.tipoFila(), event.riskColor(),
+                event.solicitacaoId(), event.unitExecutanteId());
     }
 }

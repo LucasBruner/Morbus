@@ -9,6 +9,7 @@ import br.com.morbus.queueservice.domain.usecase.AddToQueue;
 import br.com.morbus.queueservice.domain.usecase.AssignProcedureToPatient;
 import br.com.morbus.queueservice.domain.usecase.CallNextPatient;
 import br.com.morbus.queueservice.domain.usecase.CancelQueueEntry;
+import br.com.morbus.queueservice.domain.usecase.ConfirmAppointment;
 import br.com.morbus.queueservice.domain.usecase.GetPatientByCpf;
 import br.com.morbus.queueservice.domain.usecase.GetPatientById;
 import br.com.morbus.queueservice.domain.usecase.GetProcedureByCodigo;
@@ -104,6 +105,11 @@ public class UseCaseConfig {
     public ReinstatePatientInQueue reinstatePatientInQueue(IQueueEntryRepository queueEntryRepository,
                                                             IQueueEventPublisher eventPublisher) {
         return ReinstatePatientInQueue.create(queueEntryRepository, eventPublisher);
+    }
+
+    @Bean
+    public ConfirmAppointment confirmAppointment(IQueueEntryRepository queueEntryRepository) {
+        return ConfirmAppointment.create(queueEntryRepository);
     }
 
     @Bean

@@ -159,7 +159,7 @@ public class QueueController {
     @PreAuthorize("hasRole('MEDICO')")
     @Operation(
             summary = "Chama próximo paciente",
-            description = "Retira o próximo paciente da fila (maior prioridade) para atendimento. Muda o status da entrada para AGENDADO e publica evento via RabbitMQ.")
+            description = "Retira o próximo paciente da fila (maior prioridade) para atendimento. Muda o status da entrada para CHAMADO e publica evento via RabbitMQ.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Paciente chamado",
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = QueueEntryResponseDTO.class))),

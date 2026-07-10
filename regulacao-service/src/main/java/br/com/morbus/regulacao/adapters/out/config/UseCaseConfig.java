@@ -3,6 +3,7 @@ package br.com.morbus.regulacao.adapters.out.config;
 import br.com.morbus.regulacao.domain.usecase.quota.ConsultarCotasUseCase;
 import br.com.morbus.regulacao.domain.usecase.quota.GerenciarCotaUseCase;
 import br.com.morbus.regulacao.domain.usecase.solicitacao.AvaliarSolicitacaoUseCase;
+import br.com.morbus.regulacao.domain.usecase.solicitacao.ComplementarSolicitacaoUseCase;
 import br.com.morbus.regulacao.domain.usecase.solicitacao.ConsultarStatusSolicitacaoUseCase;
 import br.com.morbus.regulacao.domain.usecase.solicitacao.CriarSolicitacaoUseCase;
 import br.com.morbus.regulacao.domain.usecase.solicitacao.CancelarSolicitacaoUseCase;
@@ -20,6 +21,7 @@ import br.com.morbus.regulacao.ports.in.IConsultarCotasUseCase;
 import br.com.morbus.regulacao.ports.in.IConsultarStatusSolicitacao;
 import br.com.morbus.regulacao.ports.in.ICriarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.in.ICancelarSolicitacaoUseCase;
+import br.com.morbus.regulacao.ports.in.IComplementarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.in.IGerenciarCotaUseCase;
 import br.com.morbus.regulacao.ports.in.IListarSolicitacoesUseCase;
 import br.com.morbus.regulacao.ports.in.IReclassificarRiscoUseCase;
@@ -70,6 +72,11 @@ public class UseCaseConfig {
     public IReclassificarRiscoUseCase reclassificarRiscoUseCase(ISolicitacaoRepository solicitacaoRepository,
                                                                   IRegulacaoEventPublisher eventPublisher) {
         return new ReclassificarRiscoUseCase(solicitacaoRepository, eventPublisher);
+    }
+
+    @Bean
+    public IComplementarSolicitacaoUseCase complementarSolicitacaoUseCase(ISolicitacaoRepository solicitacaoRepository) {
+        return new ComplementarSolicitacaoUseCase(solicitacaoRepository);
     }
 
     @Bean

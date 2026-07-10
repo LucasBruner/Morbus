@@ -56,7 +56,7 @@ class AddToQueueTest {
         QueueEntry expected = buildQueueEntry();
         when(registerPatientInQueue.execute(any(RegisterQueueRequestDTO.class))).thenReturn(expected);
 
-        QueueEntry result = useCase.execute(patientId, procedureId, EDestino.FILA_REGULADA, ERiskColor.VERMELHO);
+        QueueEntry result = useCase.execute(patientId, procedureId, EDestino.FILA_REGULADA, ERiskColor.VERMELHO, null, null);
 
         ArgumentCaptor<RegisterQueueRequestDTO> captor = ArgumentCaptor.forClass(RegisterQueueRequestDTO.class);
         verify(registerPatientInQueue).execute(captor.capture());
@@ -72,7 +72,7 @@ class AddToQueueTest {
         QueueEntry expected = buildQueueEntry();
         when(registerPatientInQueue.execute(any(RegisterQueueRequestDTO.class))).thenReturn(expected);
 
-        useCase.execute(patientId, procedureId, EDestino.FILA_ESPERA, ERiskColor.VERMELHO);
+        useCase.execute(patientId, procedureId, EDestino.FILA_ESPERA, ERiskColor.VERMELHO, null, null);
 
         ArgumentCaptor<RegisterQueueRequestDTO> captor = ArgumentCaptor.forClass(RegisterQueueRequestDTO.class);
         verify(registerPatientInQueue).execute(captor.capture());

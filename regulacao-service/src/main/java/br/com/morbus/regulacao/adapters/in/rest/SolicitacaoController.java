@@ -1,5 +1,6 @@
 package br.com.morbus.regulacao.adapters.in.rest;
 
+import br.com.morbus.regulacao.adapters.in.rest.dto.ComplementarSolicitacaoRequestDTO;
 import br.com.morbus.regulacao.adapters.in.rest.dto.SolicitacaoCreatedResponseDTO;
 import br.com.morbus.regulacao.adapters.in.rest.dto.SolicitacaoRequestDTO;
 import br.com.morbus.regulacao.adapters.in.rest.dto.SolicitacaoStatusResponseDTO;
@@ -10,6 +11,7 @@ import br.com.morbus.regulacao.domain.dto.UsuarioContexto;
 import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
 import br.com.morbus.regulacao.domain.model.Solicitacao;
 import br.com.morbus.regulacao.ports.in.ICancelarSolicitacaoUseCase;
+import br.com.morbus.regulacao.ports.in.IComplementarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.in.IConsultarStatusSolicitacao;
 import br.com.morbus.regulacao.ports.in.ICriarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.in.IListarSolicitacoesUseCase;
@@ -43,15 +45,18 @@ public class SolicitacaoController {
     private final IListarSolicitacoesUseCase listarSolicitacoesUseCase;
     private final ICancelarSolicitacaoUseCase deletarSolicitacaoUseCase;
     private final IConsultarStatusSolicitacao statusSolicitacao;
+    private final IComplementarSolicitacaoUseCase complementarSolicitacaoUseCase;
 
     public SolicitacaoController(ICriarSolicitacaoUseCase criarSolicitacaoUseCase,
                                  IListarSolicitacoesUseCase listarSolicitacoesUseCase,
                                  ICancelarSolicitacaoUseCase deletarSolicitacaoUseCase,
-                                 IConsultarStatusSolicitacao statusSolicitacao) {
+                                 IConsultarStatusSolicitacao statusSolicitacao,
+                                 IComplementarSolicitacaoUseCase complementarSolicitacaoUseCase) {
         this.criarSolicitacaoUseCase = criarSolicitacaoUseCase;
         this.listarSolicitacoesUseCase = listarSolicitacoesUseCase;
         this.deletarSolicitacaoUseCase = deletarSolicitacaoUseCase;
         this.statusSolicitacao = statusSolicitacao;
+        this.complementarSolicitacaoUseCase = complementarSolicitacaoUseCase;
     }
 
     @PostMapping
@@ -177,5 +182,39 @@ public class SolicitacaoController {
         SolicitacaoStatusResponseDTO solicitacao = SolicitacaoStatusResponseDTO
                 .fromDomain(statusSolicitacao.execute(id, new UsuarioContexto(principal.role(), principal.userId())));
         return ResponseEntity.ok(solicitacao);
+    }
+
+    @PostMapping("/{id}/complementar")
+    @PreAuthorize("hasRole('SOLICITANTE')")
+    @Operation(
+            summary = "Complementa solicitação devolvida",
+            description = "Complementa uma solicitação devolvida pelo regulador com informações faltantes. Apenas campos enviados (não nulos) são atualizados. Após a complementação o status volta para AGUARDANDO.",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ComplementarSolicitacaoRequestDTO.class),
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "cid": "I11.9",
+                                      "justificativaClinica": "Complemento: paciente com HAS estagio 3, sem resposta a 3 anti-hipertensivos.",
+                                      "crmProfissional": "CRM/SP 12345"
+                                    }""")
+                    )
+            )
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Solicitação complementada com sucesso",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = SolicitacaoStatusResponseDTO.class))),
+            @ApiResponse(responseCode = "401", description = "Token ausente ou inválido", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Perfil sem permissão (requer ROLE_SOLICITANTE)", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Solicitação não encontrada", content = @Content),
+            @ApiResponse(responseCode = "422", description = "Status da solicitação não permite complementação — apenas DEVOLVIDA", content = @Content)
+    })
+    public ResponseEntity<SolicitacaoStatusResponseDTO> complementar(
+            @PathVariable UUID id,
+            @Valid @RequestBody ComplementarSolicitacaoRequestDTO request) {
+        Solicitacao solicitacao = complementarSolicitacaoUseCase.execute(request.toCommand(id));
+        return ResponseEntity.ok(SolicitacaoStatusResponseDTO.fromDomain(solicitacao));
     }
 }
