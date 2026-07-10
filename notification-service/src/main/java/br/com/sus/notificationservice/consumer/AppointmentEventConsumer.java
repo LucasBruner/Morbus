@@ -2,6 +2,7 @@ package br.com.sus.notificationservice.consumer;
 
 import br.com.sus.notificationservice.model.dto.AppointmentConfirmedEventDTO;
 import br.com.sus.notificationservice.model.dto.AppointmentNoSlotEventDTO;
+import br.com.sus.notificationservice.model.dto.AppointmentRescheduledEventDTO;
 import br.com.sus.notificationservice.service.NotificationService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -34,6 +35,16 @@ public class AppointmentEventConsumer {
             notificationService.processAppointmentNoSlot(event);
         } catch (Exception e) {
             log.error("[CONSUMER] Erro ao processar appointment.no_slot", e);
+        }
+    }
+
+    @Incoming("appointment-rescheduled-events")
+    public void consumeRescheduled(AppointmentRescheduledEventDTO event) {
+        try {
+            log.info("[CONSUMER] appointment.rescheduled recebido: {}", event);
+            notificationService.processAppointmentRescheduled(event);
+        } catch (Exception e) {
+            log.error("[CONSUMER] Erro ao processar appointment.rescheduled", e);
         }
     }
 }

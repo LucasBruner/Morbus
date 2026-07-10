@@ -3,6 +3,7 @@ package br.com.sus.notificationservice.service;
 import br.com.sus.notificationservice.model.Notification;
 import br.com.sus.notificationservice.model.dto.AppointmentConfirmedEventDTO;
 import br.com.sus.notificationservice.model.dto.AppointmentNoSlotEventDTO;
+import br.com.sus.notificationservice.model.dto.AppointmentRescheduledEventDTO;
 import br.com.sus.notificationservice.model.dto.QueueEventDTO;
 import br.com.sus.notificationservice.model.dto.SolicitacaoDevolvidaEventDTO;
 import br.com.sus.notificationservice.model.dto.SolicitacaoNegadaEventDTO;
@@ -58,6 +59,12 @@ public class NotificationService {
         persist(ENotificationType.APPOINTMENT_NO_SLOT.name(), null, null, message, LocalDateTime.now());
     }
 
+    @Transactional
+    public void processAppointmentRescheduled(AppointmentRescheduledEventDTO event) {
+        String message = "Seu agendamento foi reagendado para %s.".formatted(event.reagendadoEm());
+        persist(ENotificationType.APPOINTMENT_RESCHEDULED.name(), null, null, message, event.reagendadoEm());
+    }
+
     private void persist(String eventType, String recipientName, String recipientContact, String message, LocalDateTime sentAt) {
         Notification notification = new Notification();
         notification.eventType = eventType;
@@ -92,7 +99,8 @@ public class NotificationService {
                     .formatted(eventDTO.riskColor());
             case PATIENT_CANCELLED -> "Seu agendamento para %s foi cancelado."
                     .formatted(eventDTO.procedureName());
-            case SOLICITATION_DENIED, SOLICITATION_DEVOLVED, APPOINTMENT_CONFIRMED, APPOINTMENT_NO_SLOT -> {
+            case SOLICITATION_DENIED, SOLICITATION_DEVOLVED, APPOINTMENT_CONFIRMED, APPOINTMENT_NO_SLOT,
+                 APPOINTMENT_RESCHEDULED -> {
                 LOG.warning("Tipo de evento nao esperado no canal queue-events: " + type);
                 yield null;
             }

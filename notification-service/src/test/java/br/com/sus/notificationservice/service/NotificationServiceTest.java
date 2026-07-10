@@ -3,6 +3,7 @@ package br.com.sus.notificationservice.service;
 import br.com.sus.notificationservice.model.Notification;
 import br.com.sus.notificationservice.model.dto.AppointmentConfirmedEventDTO;
 import br.com.sus.notificationservice.model.dto.AppointmentNoSlotEventDTO;
+import br.com.sus.notificationservice.model.dto.AppointmentRescheduledEventDTO;
 import br.com.sus.notificationservice.model.dto.QueueEventDTO;
 import br.com.sus.notificationservice.model.dto.SolicitacaoDevolvidaEventDTO;
 import br.com.sus.notificationservice.model.dto.SolicitacaoNegadaEventDTO;
@@ -265,6 +266,31 @@ class NotificationServiceTest {
             Notification saved = captor.getValue();
 
             assertThat(saved.eventType).isEqualTo("APPOINTMENT_NO_SLOT");
+            assertThat(saved.status).isEqualTo("ENVIADO");
+        }
+    }
+
+    // ── processAppointmentRescheduled() ─────────────────────────────────────────
+
+    @Nested
+    @DisplayName("processAppointmentRescheduled()")
+    class ProcessAppointmentRescheduled {
+
+        @Test
+        @DisplayName("deve persistir notificação com a nova data do agendamento")
+        void devePersistirNotificacao() {
+            LocalDateTime reagendadoEm = LocalDateTime.of(2026, 7, 12, 9, 0);
+            AppointmentRescheduledEventDTO event = new AppointmentRescheduledEventDTO(
+                    UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), reagendadoEm);
+
+            notificationService.processAppointmentRescheduled(event);
+
+            ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+            verify(notificationRepository).persist(captor.capture());
+            Notification saved = captor.getValue();
+
+            assertThat(saved.eventType).isEqualTo("APPOINTMENT_RESCHEDULED");
+            assertThat(saved.sentAt).isEqualTo(reagendadoEm);
             assertThat(saved.status).isEqualTo("ENVIADO");
         }
     }
