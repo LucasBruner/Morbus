@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -93,6 +94,7 @@ public interface QueueEntryJpaRepository extends JpaRepository<QueueEntryEntity,
         AND q.status = :status
         AND (:riskColor IS NULL OR q.riskColor = :riskColor)
         ORDER BY
+            CASE q.tipoFila WHEN br.com.morbus.queueservice.domain.enums.EDestino.FILA_REGULADA THEN 0 ELSE 1 END ASC,
             q.riskColor ASC,
             q.patient.grupoLegal ASC,
             q.registeredAt ASC
@@ -101,5 +103,22 @@ public interface QueueEntryJpaRepository extends JpaRepository<QueueEntryEntity,
             @Param("procedureId") UUID procedureId,
             @Param("status") EQueueStatus status,
             @Param("riskColor") ERiskColor riskColor
+    );
+
+    @Query("""
+        SELECT COUNT(q)
+        FROM QueueEntryEntity q
+        WHERE q.preferredUnitId = :unitId
+        AND q.procedure.id = :procedureId
+        AND q.tipoFila = br.com.morbus.queueservice.domain.enums.EDestino.FILA_ESPERA
+        AND q.status = 'AGUARDANDO'
+        AND q.registeredAt >= :from
+        AND q.registeredAt < :to
+    """)
+    int countActiveFilaEsperaEntries(
+            @Param("unitId") UUID unitId,
+            @Param("procedureId") UUID procedureId,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to
     );
 }

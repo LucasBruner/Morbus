@@ -11,7 +11,6 @@ import br.com.morbus.regulacao.ports.in.ICriarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.out.IQuotaRepository;
 import br.com.morbus.regulacao.ports.out.ISolicitacaoRepository;
 import br.com.morbus.regulacao.ports.out.IUnidadeSolicitanteRepository;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 
@@ -30,7 +29,6 @@ public class CriarSolicitacaoUseCase implements ICriarSolicitacaoUseCase {
     }
 
     @Override
-    @Transactional
     public Solicitacao execute(CriarSolicitacaoCommand command) {
         if (!unidadeSolicitanteRepository.existsById(command.unidadeSolicitanteId())) {
             throw new UnidadeSolicitanteNaoEncontradaException(

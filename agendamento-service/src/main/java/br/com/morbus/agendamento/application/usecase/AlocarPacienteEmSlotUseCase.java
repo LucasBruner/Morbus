@@ -19,13 +19,16 @@ public class AlocarPacienteEmSlotUseCase implements IAlocarPacienteEmSlotUseCase
     private final IAgendamentoRepository agendamentoRepository;
     private final ISlotRepository slotRepository;
     private final IAgendamentoEventPublisher eventPublisher;
+    private final long expiracaoHoras;
 
     public AlocarPacienteEmSlotUseCase(IAgendamentoRepository agendamentoRepository,
                                        ISlotRepository slotRepository,
-                                       IAgendamentoEventPublisher eventPublisher) {
+                                       IAgendamentoEventPublisher eventPublisher,
+                                       long expiracaoHoras) {
         this.agendamentoRepository = agendamentoRepository;
         this.slotRepository = slotRepository;
         this.eventPublisher = eventPublisher;
+        this.expiracaoHoras = expiracaoHoras;
     }
 
     @Override
@@ -54,7 +57,7 @@ public class AlocarPacienteEmSlotUseCase implements IAlocarPacienteEmSlotUseCase
                 event.queueEntryId(),
                 savedSlot.getId(),
                 event.pacienteId(),
-                LocalDateTime.now(ZoneId.systemDefault()).plusHours(72)
+                LocalDateTime.now(ZoneId.systemDefault()).plusHours(expiracaoHoras)
         );
 
         Agendamento savedAgendamento = agendamentoRepository.save(agendamento);

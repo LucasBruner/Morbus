@@ -25,16 +25,18 @@ public class RegisterPatientInQueue {
     private final IProcedureRepository procedureRepository;
     private final IQueueEntryRepository queueEntryRepository;
     private final IQueueEventPublisher eventPublisher;
+    private final CheckAndEnforceQuota checkAndEnforceQuota;
 
-    private RegisterPatientInQueue(IPatientRepository patientRepository, IProcedureRepository procedureRepository, IQueueEntryRepository queueEntryRepository, IQueueEventPublisher eventPublisher) {
+    private RegisterPatientInQueue(IPatientRepository patientRepository, IProcedureRepository procedureRepository, IQueueEntryRepository queueEntryRepository, IQueueEventPublisher eventPublisher, CheckAndEnforceQuota checkAndEnforceQuota) {
         this.patientRepository = patientRepository;
         this.procedureRepository = procedureRepository;
         this.queueEntryRepository = queueEntryRepository;
         this.eventPublisher = eventPublisher;
+        this.checkAndEnforceQuota = checkAndEnforceQuota;
     }
 
-    public static RegisterPatientInQueue create(IPatientRepository patientRepository, IProcedureRepository procedureRepository, IQueueEntryRepository queueEntryRepository, IQueueEventPublisher eventPublisher) {
-        return new RegisterPatientInQueue(patientRepository, procedureRepository, queueEntryRepository, eventPublisher);
+    public static RegisterPatientInQueue create(IPatientRepository patientRepository, IProcedureRepository procedureRepository, IQueueEntryRepository queueEntryRepository, IQueueEventPublisher eventPublisher, CheckAndEnforceQuota checkAndEnforceQuota) {
+        return new RegisterPatientInQueue(patientRepository, procedureRepository, queueEntryRepository, eventPublisher, checkAndEnforceQuota);
     }
 
     public QueueEntry execute(RegisterQueueRequestDTO patientDTO) {
@@ -57,6 +59,10 @@ public class RegisterPatientInQueue {
         EDestino tipoFila = patientDTO.tipoFila() == null ? EDestino.FILA_REGULADA : patientDTO.tipoFila();
         ERiskColor riskColor = patientDTO.riskColor() == null ? ERiskColor.AZUL : patientDTO.riskColor();
         validateTipoFilaRiskColor(tipoFila, riskColor);
+
+        if (tipoFila == EDestino.FILA_ESPERA) {
+            checkAndEnforceQuota.execute(patientDTO.preferredUnitId(), procedure.getId());
+        }
 
         QueueEntry queueEntry = buildQueueEntry(patient, procedure, riskColor, tipoFila, patientDTO, priorityGroup);
 

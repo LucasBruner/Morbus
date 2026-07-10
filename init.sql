@@ -27,6 +27,12 @@ GRANT ALL ON SCHEMA auth TO sus_user;
 ALTER DEFAULT PRIVILEGES IN SCHEMA auth GRANT ALL ON TABLES TO sus_user;
 ALTER DEFAULT PRIVILEGES IN SCHEMA auth GRANT ALL ON SEQUENCES TO sus_user;
 
+-- Schema do notification-service
+CREATE SCHEMA IF NOT EXISTS notification AUTHORIZATION sus_user;
+GRANT ALL ON SCHEMA notification TO sus_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA notification GRANT ALL ON TABLES TO sus_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA notification GRANT ALL ON SEQUENCES TO sus_user;
+
 -- ─────────────────────────────────────────────
 -- regulacao_db  →  regulacao-service
 -- ─────────────────────────────────────────────

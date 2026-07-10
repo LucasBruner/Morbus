@@ -1,7 +1,9 @@
 package br.com.sus.notificationservice.service;
 
 import br.com.sus.notificationservice.model.Notification;
+import br.com.sus.notificationservice.model.dto.AppointmentCancelledEventDTO;
 import br.com.sus.notificationservice.model.dto.AppointmentConfirmedEventDTO;
+import br.com.sus.notificationservice.model.dto.AppointmentExpiredEventDTO;
 import br.com.sus.notificationservice.model.dto.AppointmentNoSlotEventDTO;
 import br.com.sus.notificationservice.model.dto.AppointmentRescheduledEventDTO;
 import br.com.sus.notificationservice.model.dto.QueueEventDTO;
@@ -65,6 +67,18 @@ public class NotificationService {
         persist(ENotificationType.APPOINTMENT_RESCHEDULED.name(), null, null, message, event.reagendadoEm());
     }
 
+    @Transactional
+    public void processAppointmentCancelled(AppointmentCancelledEventDTO event) {
+        String message = "Seu agendamento foi cancelado. Motivo: %s".formatted(event.motivo());
+        persist(ENotificationType.APPOINTMENT_CANCELLED.name(), null, null, message, event.canceladoEm());
+    }
+
+    @Transactional
+    public void processAppointmentExpired(AppointmentExpiredEventDTO event) {
+        String message = "Seu agendamento expirou por falta de confirmação em %s.".formatted(event.expirouEm());
+        persist(ENotificationType.APPOINTMENT_EXPIRED.name(), null, null, message, event.expirouEm());
+    }
+
     private void persist(String eventType, String recipientName, String recipientContact, String message, LocalDateTime sentAt) {
         Notification notification = new Notification();
         notification.eventType = eventType;
@@ -99,8 +113,10 @@ public class NotificationService {
                     .formatted(eventDTO.riskColor());
             case PATIENT_CANCELLED -> "Seu agendamento para %s foi cancelado."
                     .formatted(eventDTO.procedureName());
+            case PATIENT_REINSTATED -> "Você foi reincluído na fila para %s."
+                    .formatted(eventDTO.procedureName());
             case SOLICITATION_DENIED, SOLICITATION_DEVOLVED, APPOINTMENT_CONFIRMED, APPOINTMENT_NO_SLOT,
-                 APPOINTMENT_RESCHEDULED -> {
+                 APPOINTMENT_RESCHEDULED, APPOINTMENT_CANCELLED, APPOINTMENT_EXPIRED -> {
                 LOG.warning("Tipo de evento nao esperado no canal queue-events: " + type);
                 yield null;
             }

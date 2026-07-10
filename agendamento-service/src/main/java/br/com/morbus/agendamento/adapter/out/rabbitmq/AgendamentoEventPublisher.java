@@ -120,4 +120,24 @@ public class AgendamentoEventPublisher implements IAgendamentoEventPublisher {
                 event
         );
     }
+
+    @Override
+    public void publishAppointmentCancelled(UUID appointmentId,
+                                            UUID queueEntryId,
+                                            UUID patientId,
+                                            String motivo,
+                                            LocalDateTime canceladoEm) {
+        AppointmentCancelledEvent event = new AppointmentCancelledEvent(
+                appointmentId,
+                queueEntryId,
+                patientId,
+                motivo,
+                canceladoEm
+        );
+        rabbitTemplate.convertAndSend(
+                RabbitMQConfig.AGENDAMENTO_EXCHANGE,
+                RabbitMQConfig.RK_APPOINTMENT_CANCELLED,
+                event
+        );
+    }
 }

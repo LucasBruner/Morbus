@@ -30,6 +30,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -106,6 +107,7 @@ public class SolicitacaoController {
             @ApiResponse(responseCode = "409", description = "Já existe solicitação equivalente em aberto para o paciente/procedimento", content = @Content),
             @ApiResponse(responseCode = "422", description = "Cota do procedimento esgotada para a unidade/período", content = @Content)
     })
+    @Transactional
     public ResponseEntity<SolicitacaoCreatedResponseDTO> criar(
             @Valid @RequestBody SolicitacaoRequestDTO request,
             @AuthenticationPrincipal UserPrincipal principal) {
@@ -143,8 +145,8 @@ public class SolicitacaoController {
                 : unidadeId;
 
         var query = new ListarSolicitacoesQuery(unidadeFiltro, status, destino, procedureId, page, size);
-        Page<SolicitacaoSummaryDTO> result = listarSolicitacoesUseCase.execute(query)
-                .map(SolicitacaoSummaryDTO::fromDomain);
+        Page<SolicitacaoSummaryDTO> result = PageMapper.toSpringPage(
+                listarSolicitacoesUseCase.execute(query).map(SolicitacaoSummaryDTO::fromDomain));
 
         return ResponseEntity.ok(result);
     }
@@ -213,6 +215,7 @@ public class SolicitacaoController {
             @ApiResponse(responseCode = "404", description = "Solicitação não encontrada", content = @Content),
             @ApiResponse(responseCode = "422", description = "Status da solicitação não permite complementação — apenas DEVOLVIDA", content = @Content)
     })
+    @Transactional
     public ResponseEntity<SolicitacaoStatusResponseDTO> complementar(
             @PathVariable UUID id,
             @Valid @RequestBody ComplementarSolicitacaoRequestDTO request) {

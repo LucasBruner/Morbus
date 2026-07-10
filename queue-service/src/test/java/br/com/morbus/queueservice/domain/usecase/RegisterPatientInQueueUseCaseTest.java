@@ -18,6 +18,7 @@ import br.com.morbus.queueservice.domain.exception.QueueNotAllowedException;
 import br.com.morbus.queueservice.domain.repository.IPatientRepository;
 import br.com.morbus.queueservice.domain.repository.IProcedureRepository;
 import br.com.morbus.queueservice.domain.repository.IQueueEntryRepository;
+import br.com.morbus.queueservice.domain.repository.IUnitProcedureQuotaRepository;
 import br.com.morbus.queueservice.domain.usecase.dto.RegisterQueueRequestDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -51,6 +52,9 @@ class RegisterPatientInQueueUseCaseTest {
     @Mock
     private IQueueEventPublisher eventPublisher;
 
+    @Mock
+    private IUnitProcedureQuotaRepository quotaRepository;
+
     private RegisterPatientInQueue useCase;
     private UUID patientId;
     private UUID procedureId;
@@ -59,7 +63,8 @@ class RegisterPatientInQueueUseCaseTest {
 
     @BeforeEach
     void setUp() {
-        useCase = RegisterPatientInQueue.create(patientRepository, procedureRepository, queueEntryRepository, eventPublisher);
+        CheckAndEnforceQuota checkAndEnforceQuota = CheckAndEnforceQuota.create(quotaRepository, queueEntryRepository);
+        useCase = RegisterPatientInQueue.create(patientRepository, procedureRepository, queueEntryRepository, eventPublisher, checkAndEnforceQuota);
         patientId = UUID.randomUUID();
         procedureId = UUID.randomUUID();
 

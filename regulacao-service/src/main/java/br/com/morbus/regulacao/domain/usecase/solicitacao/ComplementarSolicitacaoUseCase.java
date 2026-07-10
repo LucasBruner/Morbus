@@ -6,7 +6,6 @@ import br.com.morbus.regulacao.domain.model.Solicitacao;
 import br.com.morbus.regulacao.ports.in.IComplementarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.in.dto.ComplementarSolicitacaoCommand;
 import br.com.morbus.regulacao.ports.out.ISolicitacaoRepository;
-import org.springframework.transaction.annotation.Transactional;
 
 public class ComplementarSolicitacaoUseCase implements IComplementarSolicitacaoUseCase {
 
@@ -17,7 +16,6 @@ public class ComplementarSolicitacaoUseCase implements IComplementarSolicitacaoU
     }
 
     @Override
-    @Transactional
     public Solicitacao execute(ComplementarSolicitacaoCommand command) {
         Solicitacao solicitacao = solicitacaoRepository.findById(command.solicitacaoId());
 

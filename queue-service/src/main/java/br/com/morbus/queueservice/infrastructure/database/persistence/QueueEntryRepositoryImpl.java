@@ -15,6 +15,7 @@ import br.com.morbus.queueservice.infrastructure.database.repository.ProcedureJp
 import br.com.morbus.queueservice.infrastructure.database.repository.QueueEntryJpaRepository;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -137,6 +138,11 @@ public class QueueEntryRepositoryImpl implements IQueueEntryRepository {
         return entryList.stream()
                 .map(this::mapToDomainQueue)
                 .toList();
+    }
+
+    @Override
+    public int countActiveFilaEsperaEntries(UUID unitId, UUID procedureId, LocalDateTime from, LocalDateTime to) {
+        return repository.countActiveFilaEsperaEntries(unitId, procedureId, from, to);
     }
 
     private QueueEntry mapToDomainQueue(QueueEntryEntity entity){

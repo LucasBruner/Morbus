@@ -13,7 +13,6 @@ import br.com.morbus.regulacao.ports.out.IParecerRepository;
 import br.com.morbus.regulacao.ports.out.IRegulacaoEventPublisher;
 import br.com.morbus.regulacao.ports.out.ISolicitacaoRepository;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Set;
 
@@ -36,7 +35,6 @@ public class AvaliarSolicitacaoUseCase implements IAvaliarSolicitacaoUseCase {
     }
 
     @Override
-    @Transactional
     public AvaliarSolicitacaoResult execute(AvaliarSolicitacaoCommand command) {
         Solicitacao solicitacao = solicitacaoRepository.findById(command.solicitacaoId());
 

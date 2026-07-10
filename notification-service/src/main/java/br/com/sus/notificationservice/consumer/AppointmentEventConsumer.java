@@ -1,6 +1,8 @@
 package br.com.sus.notificationservice.consumer;
 
+import br.com.sus.notificationservice.model.dto.AppointmentCancelledEventDTO;
 import br.com.sus.notificationservice.model.dto.AppointmentConfirmedEventDTO;
+import br.com.sus.notificationservice.model.dto.AppointmentExpiredEventDTO;
 import br.com.sus.notificationservice.model.dto.AppointmentNoSlotEventDTO;
 import br.com.sus.notificationservice.model.dto.AppointmentRescheduledEventDTO;
 import br.com.sus.notificationservice.service.NotificationService;
@@ -45,6 +47,26 @@ public class AppointmentEventConsumer {
             notificationService.processAppointmentRescheduled(event);
         } catch (Exception e) {
             log.error("[CONSUMER] Erro ao processar appointment.rescheduled", e);
+        }
+    }
+
+    @Incoming("appointment-cancelled-events")
+    public void consumeCancelled(AppointmentCancelledEventDTO event) {
+        try {
+            log.info("[CONSUMER] appointment.cancelled recebido: {}", event);
+            notificationService.processAppointmentCancelled(event);
+        } catch (Exception e) {
+            log.error("[CONSUMER] Erro ao processar appointment.cancelled", e);
+        }
+    }
+
+    @Incoming("appointment-expired-events")
+    public void consumeExpired(AppointmentExpiredEventDTO event) {
+        try {
+            log.info("[CONSUMER] appointment.expired recebido: {}", event);
+            notificationService.processAppointmentExpired(event);
+        } catch (Exception e) {
+            log.error("[CONSUMER] Erro ao processar appointment.expired", e);
         }
     }
 }

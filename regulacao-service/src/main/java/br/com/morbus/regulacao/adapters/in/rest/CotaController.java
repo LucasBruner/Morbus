@@ -107,6 +107,6 @@ public class CotaController {
                                                         @RequestParam (defaultValue = "20") @Min(1) @Max(100) int size) {
         LocalDate periodStart = mes != null ? YearMonth.parse(mes).atDay(1) : null;
         var query = new ConsultarCotasQuery(unitId, procedureId, periodStart, page, size);
-        return ResponseEntity.ok(consultarCotasUseCase.execute(query).map(CotaResponseDTO::fromResult));
+        return ResponseEntity.ok(PageMapper.toSpringPage(consultarCotasUseCase.execute(query).map(CotaResponseDTO::fromResult)));
     }
 }

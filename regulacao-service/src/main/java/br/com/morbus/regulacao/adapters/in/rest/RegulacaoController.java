@@ -6,6 +6,7 @@ import br.com.morbus.regulacao.adapters.in.rest.dto.ReclassificarRiscoRequestDTO
 import br.com.morbus.regulacao.adapters.in.rest.dto.SolicitacaoStatusResponseDTO;
 import br.com.morbus.regulacao.adapters.in.rest.dto.SolicitacaoSummaryDTO;
 import br.com.morbus.regulacao.adapters.security.UserPrincipal;
+import br.com.morbus.regulacao.domain.dto.ESortDirection;
 import br.com.morbus.regulacao.domain.dto.ListarSolicitacoesQuery;
 import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
 import br.com.morbus.regulacao.domain.model.Solicitacao;
@@ -23,10 +24,10 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -126,6 +127,7 @@ public class RegulacaoController {
             @ApiResponse(responseCode = "404", description = "Solicitação não encontrada", content = @Content),
             @ApiResponse(responseCode = "422", description = "Status atual da solicitação não permite a decisão informada", content = @Content)
     })
+    @Transactional
     public ResponseEntity<AvaliarSolicitacaoResponseDTO> avaliar(
             @PathVariable UUID id,
             @Valid @RequestBody AvaliarSolicitacaoRequestDTO request,
@@ -158,6 +160,7 @@ public class RegulacaoController {
             @ApiResponse(responseCode = "404", description = "Solicitação não encontrada", content = @Content),
             @ApiResponse(responseCode = "422", description = "Status atual da solicitação não permite reclassificação", content = @Content)
     })
+    @Transactional
     public ResponseEntity<SolicitacaoStatusResponseDTO> reclassificarRisco(
             @PathVariable UUID id,
             @Valid @RequestBody ReclassificarRiscoRequestDTO request) {
@@ -166,7 +169,7 @@ public class RegulacaoController {
     }
 
     private Page<SolicitacaoSummaryDTO> listarPorStatus(EStatusSolicitacao status, UUID procedureId, int page, int size) {
-        var query = new ListarSolicitacoesQuery(null, status, procedureId, page, size, Sort.Direction.ASC);
-        return listarSolicitacoesUseCase.execute(query).map(SolicitacaoSummaryDTO::fromDomain);
+        var query = new ListarSolicitacoesQuery(null, status, procedureId, page, size, ESortDirection.ASC);
+        return PageMapper.toSpringPage(listarSolicitacoesUseCase.execute(query).map(SolicitacaoSummaryDTO::fromDomain));
     }
 }

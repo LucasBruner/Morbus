@@ -19,15 +19,18 @@ public class ExpirarAgendamentosUseCase {
     private final ISlotRepository slotRepository;
     private final IScheduleRepository scheduleRepository;
     private final IAgendamentoEventPublisher eventPublisher;
+    private final long expiracaoHoras;
 
     public ExpirarAgendamentosUseCase(IAgendamentoRepository agendamentoRepository,
                                       ISlotRepository slotRepository,
                                       IScheduleRepository scheduleRepository,
-                                      IAgendamentoEventPublisher eventPublisher) {
+                                      IAgendamentoEventPublisher eventPublisher,
+                                      long expiracaoHoras) {
         this.agendamentoRepository = agendamentoRepository;
         this.slotRepository = slotRepository;
         this.scheduleRepository = scheduleRepository;
         this.eventPublisher = eventPublisher;
+        this.expiracaoHoras = expiracaoHoras;
     }
 
     public List<Agendamento> findExpiredAppointments() {
@@ -43,7 +46,7 @@ public class ExpirarAgendamentosUseCase {
         scheduleRepository.findById(slot.getScheduleId())
                 .orElseThrow(() -> new ScheduleNotFoundException("Schedule nao encontrado para o slot"));
 
-        agendamento.cancel("EXPIRACAO_72H");
+        agendamento.cancel("EXPIRACAO_" + expiracaoHoras + "H");
         slot.releaseOne();
 
         slotRepository.save(slot);

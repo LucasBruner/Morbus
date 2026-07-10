@@ -5,16 +5,20 @@ import br.com.morbus.queueservice.domain.repository.IPatientProcedureRepository;
 import br.com.morbus.queueservice.domain.repository.IPatientRepository;
 import br.com.morbus.queueservice.domain.repository.IProcedureRepository;
 import br.com.morbus.queueservice.domain.repository.IQueueEntryRepository;
+import br.com.morbus.queueservice.domain.repository.IUnitProcedureQuotaRepository;
 import br.com.morbus.queueservice.domain.usecase.AddToQueue;
 import br.com.morbus.queueservice.domain.usecase.AssignProcedureToPatient;
 import br.com.morbus.queueservice.domain.usecase.CallNextPatient;
 import br.com.morbus.queueservice.domain.usecase.CancelQueueEntry;
+import br.com.morbus.queueservice.domain.usecase.CheckAndEnforceQuota;
 import br.com.morbus.queueservice.domain.usecase.ConfirmAppointment;
+import br.com.morbus.queueservice.domain.usecase.CreateOrUpdateQuota;
 import br.com.morbus.queueservice.domain.usecase.GetPatientByCpf;
 import br.com.morbus.queueservice.domain.usecase.GetPatientById;
 import br.com.morbus.queueservice.domain.usecase.GetProcedureByCodigo;
 import br.com.morbus.queueservice.domain.usecase.GetProcedureById;
 import br.com.morbus.queueservice.domain.usecase.GetQueuePosition;
+import br.com.morbus.queueservice.domain.usecase.GetQuota;
 import br.com.morbus.queueservice.domain.usecase.InactivatePatient;
 import br.com.morbus.queueservice.domain.usecase.ListProcedures;
 import br.com.morbus.queueservice.domain.usecase.ListQueueByPriority;
@@ -88,12 +92,29 @@ public class UseCaseConfig {
     }
 
     @Bean
+    public CheckAndEnforceQuota checkAndEnforceQuota(IUnitProcedureQuotaRepository quotaRepository,
+                                                       IQueueEntryRepository queueEntryRepository) {
+        return CheckAndEnforceQuota.create(quotaRepository, queueEntryRepository);
+    }
+
+    @Bean
+    public CreateOrUpdateQuota createOrUpdateQuota(IUnitProcedureQuotaRepository quotaRepository) {
+        return CreateOrUpdateQuota.create(quotaRepository);
+    }
+
+    @Bean
+    public GetQuota getQuota(IUnitProcedureQuotaRepository quotaRepository) {
+        return GetQuota.create(quotaRepository);
+    }
+
+    @Bean
     public RegisterPatientInQueue registerPatientInQueue(IPatientRepository patientRepository,
                                                          IProcedureRepository procedureRepository,
                                                          IQueueEntryRepository queueEntryRepository,
-                                                         IQueueEventPublisher eventPublisher) {
+                                                         IQueueEventPublisher eventPublisher,
+                                                         CheckAndEnforceQuota checkAndEnforceQuota) {
         return RegisterPatientInQueue.create(patientRepository, procedureRepository,
-                queueEntryRepository, eventPublisher);
+                queueEntryRepository, eventPublisher, checkAndEnforceQuota);
     }
 
     @Bean

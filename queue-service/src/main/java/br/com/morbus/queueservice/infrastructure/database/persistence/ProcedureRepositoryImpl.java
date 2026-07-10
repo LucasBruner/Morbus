@@ -41,12 +41,12 @@ public class ProcedureRepositoryImpl implements IProcedureRepository {
     }
 
     @Override
-    public ProcedurePageResult findAll(PageRequest pageRequest) {
-        Page<ProcedureEntity> page = repository.findAll(pageRequest);
-        List<Procedure> content = page.getContent().stream()
+    public ProcedurePageResult findAll(int page, int size) {
+        Page<ProcedureEntity> pageResult = repository.findAll(PageRequest.of(page, size));
+        List<Procedure> content = pageResult.getContent().stream()
                 .map(this::mapToDomainProcedure)
                 .toList();
-        return new ProcedurePageResult(content, page.getTotalElements());
+        return new ProcedurePageResult(content, pageResult.getTotalElements());
     }
 
     Procedure mapToDomainProcedure(ProcedureEntity procedure) {

@@ -15,6 +15,8 @@ import br.com.morbus.queueservice.domain.exception.ProcedureNotFoundException;
 import br.com.morbus.queueservice.domain.exception.QueueEmptyException;
 import br.com.morbus.queueservice.domain.exception.QueueNotAllowedException;
 import br.com.morbus.queueservice.domain.exception.QueueNotExistException;
+import br.com.morbus.queueservice.domain.exception.QuotaExceededException;
+import br.com.morbus.queueservice.domain.exception.QuotaNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -125,6 +127,18 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<ProblemDetail> handleProcedureNotAssigned(
             ProcedureNotAssignedException ex, HttpServletRequest request) {
         return unprocessable("procedure-not-assigned", "Procedimento não atribuído ao paciente", ex, request);
+    }
+
+    @ExceptionHandler(QuotaExceededException.class)
+    public ResponseEntity<ProblemDetail> handleQuotaExceeded(
+            QuotaExceededException ex, HttpServletRequest request) {
+        return conflict("quota-exceeded", ex, request);
+    }
+
+    @ExceptionHandler(QuotaNotFoundException.class)
+    public ResponseEntity<ProblemDetail> handleQuotaNotFound(
+            QuotaNotFoundException ex, HttpServletRequest request) {
+        return notFound("quota-not-found", "Cota não encontrada", ex, request);
     }
 
     @Override

@@ -6,6 +6,7 @@ import br.com.morbus.queueservice.domain.entity.QueueEntry;
 import br.com.morbus.queueservice.domain.enums.EQueueStatus;
 import br.com.morbus.queueservice.domain.enums.ERiskColor;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -20,4 +21,6 @@ public interface IQueueEntryRepository {
     boolean existsByPatientAndProcedureAndStatusIn(Patient patient, Procedure procedure, List<EQueueStatus> statuses);
     List<QueueEntry> findByPatientAndStatusIn(Patient patient, List<EQueueStatus> statuses);
     List<QueueEntry> findByProcedureIdAndFilters(UUID procedureId, EQueueStatus status, ERiskColor riskColor);
+    // Conta entradas AGUARDANDO em FILA_ESPERA para uma unidade+procedimento dentro de uma janela de tempo (usado pelo controle de cota)
+    int countActiveFilaEsperaEntries(UUID unitId, UUID procedureId, LocalDateTime from, LocalDateTime to);
 }

@@ -35,4 +35,10 @@ public interface IAgendamentoEventPublisher {
                                        UUID queueEntryId,
                                        UUID patientId,
                                        LocalDateTime reagendadoEm);
+
+    void publishAppointmentCancelled(UUID appointmentId,
+                                     UUID queueEntryId,
+                                     UUID patientId,
+                                     String motivo,
+                                     LocalDateTime canceladoEm);
 }
