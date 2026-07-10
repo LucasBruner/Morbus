@@ -9,6 +9,8 @@ public record ConfirmarAgendamentoResult(
         UUID id,
         EStatusAgendamento status,
         LocalDateTime confirmedAt,
-        LocalDateTime slotDate
+        LocalDateTime slotDate,
+        String unitName,
+        String unitAddress
 ) {
 }

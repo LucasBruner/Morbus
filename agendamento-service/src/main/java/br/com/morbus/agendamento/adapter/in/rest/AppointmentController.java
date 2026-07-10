@@ -56,7 +56,7 @@ public class AppointmentController {
     public ResponseEntity<ConfirmarAgendamentoResponseDTO> confirmar(@PathVariable("id") UUID id,
                                                                      @AuthenticationPrincipal UserPrincipal principal) {
         ConfirmarAgendamentoResult result = confirmarAgendamentoUseCase.execute(id, principal.userId());
-        return ResponseEntity.status(HttpStatus.CREATED)
+        return ResponseEntity.status(HttpStatus.OK)
                 .body(ConfirmarAgendamentoResponseDTO.fromResult(result));
     }
 

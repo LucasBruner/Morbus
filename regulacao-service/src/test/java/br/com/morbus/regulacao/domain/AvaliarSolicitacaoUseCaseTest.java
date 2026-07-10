@@ -271,6 +271,18 @@ class AvaliarSolicitacaoUseCaseTest {
             assertThat(solicitacao.getStatus()).isEqualTo(EStatusSolicitacao.DEVOLVIDA);
             verify(eventPublisher).publishSolicitacaoDevolvida(solicitacao);
         }
+
+        @Test
+        @DisplayName("deve lancar CampoObrigatorioException quando justificativa esta ausente")
+        void deveLancarCampoObrigatorioSemJustificativa() {
+            Solicitacao solicitacao = buildSolicitacao(EStatusSolicitacao.AGUARDANDO, EDestino.FILA_REGULADA);
+            when(solicitacaoRepository.findById(solicitacao.getId())).thenReturn(solicitacao);
+
+            assertThatThrownBy(() -> useCase.execute(buildCommand(solicitacao.getId(), EDecisaoRegulador.DEVOLVER, null, null)))
+                    .isInstanceOf(CampoObrigatorioException.class);
+
+            verify(solicitacaoRepository, never()).save(any());
+        }
     }
 
     @Nested

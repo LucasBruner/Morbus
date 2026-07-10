@@ -1,12 +1,12 @@
 package br.com.morbus.queueservice.domain.usecase;
 
-import br.com.morbus.queueservice.domain.entity.Procedure;
 import br.com.morbus.queueservice.domain.repository.IProcedureRepository;
+import br.com.morbus.queueservice.domain.repository.ProcedurePageResult;
 import org.springframework.data.domain.PageRequest;
 
-import java.util.List;
-
 public class ListProcedures {
+
+    public static final int MAX_SIZE = 100;
 
     private final IProcedureRepository procedureRepository;
 
@@ -18,8 +18,9 @@ public class ListProcedures {
         return new ListProcedures(procedureRepository);
     }
 
-    public List<Procedure> run(int page, int size) {
-        // page é 1-based na API; PageRequest é 0-based
-        return procedureRepository.findAll(PageRequest.of(page - 1, size));
+    public ProcedurePageResult run(int page, int size) {
+        // page é 0-based, conforme o contrato de API
+        int effectiveSize = Math.min(size, MAX_SIZE);
+        return procedureRepository.findAll(PageRequest.of(page, effectiveSize));
     }
 }

@@ -10,7 +10,9 @@ public record ConfirmarAgendamentoResponseDTO(
         UUID id,
         EStatusAgendamento status,
         LocalDateTime confirmedAt,
-        LocalDateTime slotDate
+        LocalDateTime slotDateTime,
+        String unitName,
+        String unitAddress
 ) {
 
     public static ConfirmarAgendamentoResponseDTO fromResult(ConfirmarAgendamentoResult result) {
@@ -18,7 +20,9 @@ public record ConfirmarAgendamentoResponseDTO(
                 result.id(),
                 result.status(),
                 result.confirmedAt(),
-                result.slotDate()
+                result.slotDate(),
+                result.unitName(),
+                result.unitAddress()
         );
     }
 }

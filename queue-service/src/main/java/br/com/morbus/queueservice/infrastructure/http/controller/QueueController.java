@@ -1,6 +1,7 @@
 package br.com.morbus.queueservice.infrastructure.http.controller;
 
 import br.com.morbus.queueservice.domain.entity.QueueEntry;
+import br.com.morbus.queueservice.domain.enums.EDestino;
 import br.com.morbus.queueservice.domain.enums.EQueueStatus;
 import br.com.morbus.queueservice.domain.enums.ERiskColor;
 import br.com.morbus.queueservice.domain.usecase.CallNextPatient;
@@ -11,6 +12,7 @@ import br.com.morbus.queueservice.domain.usecase.ReclassifyPriority;
 import br.com.morbus.queueservice.domain.usecase.RegisterPatientInQueue;
 import br.com.morbus.queueservice.domain.usecase.dto.CancelQueueRequestDTO;
 import br.com.morbus.queueservice.domain.usecase.dto.ListQueueByPriorityDTO;
+import br.com.morbus.queueservice.domain.usecase.dto.PatientQueueEntryRequestDTO;
 import br.com.morbus.queueservice.domain.usecase.dto.QueueCancelDTO;
 import br.com.morbus.queueservice.domain.usecase.dto.QueueEntryResponseDTO;
 import br.com.morbus.queueservice.domain.usecase.dto.QueueEntryRiskQueuePosition;
@@ -72,19 +74,20 @@ public class QueueController {
     @PreAuthorize("hasRole('MEDICO')")
     @Operation(
             summary = "Registra paciente na fila",
-            description = "Adiciona um paciente a uma fila específica com uma cor de risco.",
+            description = "Adiciona um paciente a uma fila específica. A cor de entrada é sempre AZUL e o grupo legal é detectado automaticamente.",
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     required = true,
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = RegisterQueueRequestDTO.class),
+                            schema = @Schema(implementation = PatientQueueEntryRequestDTO.class),
                             examples = @ExampleObject(
                                     name = "Exemplo",
                                     value = """
                                             {
                                               "patientId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
                                               "procedureId": "7b3c1a2d-9e4f-4a8b-b6d1-1f2e3a4b5c6d",
-                                              "riskColor": "AMARELO"
+                                              "tipoFila": "FILA_REGULADA",
+                                              "preferredUnitId": null
                                             }"""
                             )
                     )
@@ -99,8 +102,9 @@ public class QueueController {
                                       "id": "a1b2c3d4-e5f6-7890-ab12-cd34ef567890",
                                       "patient": { "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "nome": "Maria", "sobrenome": "Silva" },
                                       "procedure": { "id": "7b3c1a2d-9e4f-4a8b-b6d1-1f2e3a4b5c6d", "codigo": "0301010064" },
-                                      "riskColor": "AMARELO",
+                                      "riskColor": "AZUL",
                                       "status": "AGUARDANDO",
+                                      "position": 7,
                                       "registeredAt": "2025-01-15T10:30:00"
                                     }"""))),
             @ApiResponse(responseCode = "400", description = "Dados de entrada inválidos", content = @Content),
@@ -108,9 +112,18 @@ public class QueueController {
             @ApiResponse(responseCode = "403", description = "Perfil sem permissão (requer ROLE_MEDICO)", content = @Content),
             @ApiResponse(responseCode = "422", description = "Regra de negócio violada (paciente inativo, procedimento não elegível, etc.)", content = @Content)
     })
-    public ResponseEntity<QueueEntryResponseDTO> registerQueue(@RequestBody @Valid RegisterQueueRequestDTO request) {
-        QueueEntry entry = registerPatientInQueue.execute(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(QueueEntryResponseDTO.fromEntity(entry));
+    public ResponseEntity<QueueEntryResponseDTO> registerQueue(@RequestBody @Valid PatientQueueEntryRequestDTO request) {
+        RegisterQueueRequestDTO command = new RegisterQueueRequestDTO(
+                request.patientId(),
+                request.procedureId(),
+                ERiskColor.AZUL,
+                request.tipoFila() == null ? EDestino.FILA_REGULADA : request.tipoFila(),
+                null,
+                request.preferredUnitId()
+        );
+        QueueEntry entry = registerPatientInQueue.execute(command);
+        int totalAhead = getQueuePosition.run(entry.getId()).totalAhead();
+        return ResponseEntity.status(HttpStatus.CREATED).body(QueueEntryResponseDTO.fromEntity(entry, totalAhead + 1));
     }
 
     @GetMapping
@@ -150,9 +163,7 @@ public class QueueController {
     })
     public ResponseEntity<QueuePositionResponseDTO> getQueuePosition(@PathVariable UUID id) {
         QueueEntryRiskQueuePosition result = getQueuePosition.run(id);
-        return ResponseEntity.ok(new QueuePositionResponseDTO(
-                result.posicaoCalculada(),
-                QueueEntryResponseDTO.fromEntity(result.queueEntry())));
+        return ResponseEntity.ok(QueuePositionResponseDTO.from(result.queueEntry(), result.totalAhead()));
     }
 
     @PostMapping("/call-next")
@@ -169,7 +180,7 @@ public class QueueController {
     })
     public ResponseEntity<QueueEntryResponseDTO> callNext() {
         QueueEntry entry = callNextPatient.run();
-        return ResponseEntity.ok(QueueEntryResponseDTO.fromEntity(entry));
+        return ResponseEntity.ok(QueueEntryResponseDTO.forCallNext(entry));
     }
 
     @PatchMapping("/{id}/priority")
@@ -200,8 +211,9 @@ public class QueueController {
             @PathVariable UUID id,
             @RequestBody @Valid ReclassifyPriorityRequestDTO request) {
         QueueUpdateRiskColorDTO updateRiskColorDTO = new QueueUpdateRiskColorDTO(id, request.riskColor());
-        QueueEntry entry = reclassifyPriority.run(updateRiskColorDTO).queueEntry();
-        return ResponseEntity.ok(QueueEntryResponseDTO.fromEntity(entry));
+        QueueEntryRiskQueuePosition result = reclassifyPriority.run(updateRiskColorDTO);
+        int newPosition = result.totalAhead() + 1;
+        return ResponseEntity.ok(QueueEntryResponseDTO.forPriorityUpdate(result.queueEntry(), newPosition));
     }
 
     @DeleteMapping("/{id}")

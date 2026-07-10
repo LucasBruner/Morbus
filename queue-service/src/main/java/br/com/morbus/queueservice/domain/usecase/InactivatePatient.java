@@ -4,6 +4,7 @@ import br.com.morbus.queueservice.domain.entity.Patient;
 import br.com.morbus.queueservice.domain.entity.QueueEntry;
 import br.com.morbus.queueservice.domain.enums.EQueueStatus;
 import br.com.morbus.queueservice.domain.exception.PatientAlreadyInactiveException;
+import br.com.morbus.queueservice.domain.exception.PatientHasActiveQueueEntriesException;
 import br.com.morbus.queueservice.domain.exception.PatientNotFoundException;
 import br.com.morbus.queueservice.domain.repository.IPatientRepository;
 import br.com.morbus.queueservice.domain.repository.IQueueEntryRepository;
@@ -33,19 +34,17 @@ public class InactivatePatient {
             throw new PatientAlreadyInactiveException("Paciente já está inativado");
         }
 
-        patient.inactivate();
-
         List<EQueueStatus> pendingStatuses = List.of(EQueueStatus.AGUARDANDO, EQueueStatus.AGENDADO);
         List<QueueEntry> pendingQueueEntries = queueEntryRepository.findByPatientAndStatusIn(patient, pendingStatuses);
 
-        for (QueueEntry entry : pendingQueueEntries) {
-            entry.cancelQueue();
-            queueEntryRepository.save(entry);
+        if (!pendingQueueEntries.isEmpty()) {
+            throw new PatientHasActiveQueueEntriesException(
+                    "Paciente possui entradas ativas na fila e não pode ser inativado");
         }
 
+        patient.inactivate();
         patientRepository.save(patient);
 
         return patient;
     }
 }
-

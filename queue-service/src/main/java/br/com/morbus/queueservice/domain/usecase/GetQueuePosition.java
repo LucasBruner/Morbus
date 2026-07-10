@@ -21,7 +21,7 @@ public class GetQueuePosition {
         QueueEntry queueEntryById = queueEntryRepository
                 .findById(id)
                 .orElseThrow(() -> new QueueNotExistException("Não existe fila com esse ID"));
-        int posicaoCalculada = queueEntryRepository.countEntriesWithHigherPriority(queueEntryById);
-        return new QueueEntryRiskQueuePosition(queueEntryById, posicaoCalculada);
+        int totalAhead = queueEntryRepository.countEntriesWithHigherPriority(queueEntryById);
+        return new QueueEntryRiskQueuePosition(queueEntryById, totalAhead);
     }
 }

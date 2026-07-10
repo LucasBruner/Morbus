@@ -33,7 +33,12 @@ public class AuthController {
         User user = authService.createNewUser(newUserDTO);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(new UserPresenterDTO(user.getId().toString(), user.getUsername(), user.getRole().toString()));
+                .body(new UserPresenterDTO(
+                        user.getId().toString(),
+                        user.getUsername(),
+                        user.getEmail(),
+                        user.getRole().toString(),
+                        user.getCreatedAt()));
     }
 
     @PostMapping("/login")

@@ -1,13 +1,16 @@
 package br.com.sus.notificationservice.controller;
 
 import br.com.sus.notificationservice.model.Notification;
+import io.quarkus.panache.common.Page;
 import io.quarkus.panache.mock.PanacheMock;
+import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import io.quarkus.panache.common.Sort;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -44,6 +47,16 @@ class NotificationControllerTest {
         return n;
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private PanacheQuery mockQuery(List<Notification> content) {
+        PanacheQuery query = Mockito.mock(PanacheQuery.class);
+        when(query.page(any(Page.class))).thenReturn(query);
+        when(query.list()).thenReturn(content);
+        when(query.count()).thenReturn((long) content.size());
+        when(query.pageCount()).thenReturn(content.isEmpty() ? 0 : 1);
+        return query;
+    }
+
     // ── GET /api/v1/notifications ─────────────────────────────────────────────
 
     @Nested
@@ -51,62 +64,67 @@ class NotificationControllerTest {
     class GetAll {
 
         @Test
-        @DisplayName("deve retornar 200 com lista de notificações")
+        @DisplayName("deve retornar 200 com página de notificações")
         void retorna200ComListaDeNotificacoes() {
             Notification n1 = buildNotification(1L, "PATIENT_CALLED", "João Silva");
             Notification n2 = buildNotification(2L, "PATIENT_REGISTERED", "Maria Souza");
-            when(Notification.listAll(any(Sort.class))).thenReturn(List.of(n1, n2));
+            when(Notification.findAll(any(Sort.class))).thenReturn(mockQuery(List.of(n1, n2)));
 
             given()
                     .when().get(PATH)
                     .then()
                     .statusCode(200)
-                    .body("$", hasSize(2))
-                    .body("[0].recipientName", equalTo("João Silva"))
-                    .body("[0].eventType", equalTo("PATIENT_CALLED"))
-                    .body("[1].recipientName", equalTo("Maria Souza"));
+                    .body("content", hasSize(2))
+                    .body("page", equalTo(0))
+                    .body("size", equalTo(20))
+                    .body("totalElements", equalTo(2))
+                    .body("content[0].recipientName", equalTo("João Silva"))
+                    .body("content[0].eventType", equalTo("PATIENT_CALLED"))
+                    .body("content[1].recipientName", equalTo("Maria Souza"));
         }
 
         @Test
-        @DisplayName("deve retornar 200 com lista vazia quando não há notificações")
+        @DisplayName("deve retornar 200 com página vazia quando não há notificações")
         void retorna200ComListaVazia() {
-            when(Notification.listAll(any(Sort.class))).thenReturn(List.of());
+            when(Notification.findAll(any(Sort.class))).thenReturn(mockQuery(List.of()));
 
             given()
                     .when().get(PATH)
                     .then()
                     .statusCode(200)
-                    .body("$", hasSize(0));
+                    .body("content", hasSize(0));
         }
 
         @Test
         @DisplayName("deve retornar notificações filtradas por eventType")
         void retornaNotificacoesFiltradas() {
             Notification n = buildNotification(1L, "PATIENT_CALLED", "Carlos Lima");
-            when(Notification.list(anyString(), any(Sort.class), any(Object[].class)))
-                    .thenReturn(List.of(n));
+            when(Notification.find(anyString(), any(Sort.class), any(Object[].class)))
+                    .thenReturn(mockQuery(List.of(n)));
 
             given()
                     .queryParam("eventType", "PATIENT_CALLED")
                     .when().get(PATH)
                     .then()
                     .statusCode(200)
-                    .body("$", hasSize(1))
-                    .body("[0].eventType", equalTo("PATIENT_CALLED"));
+                    .body("content", hasSize(1))
+                    .body("content[0].eventType", equalTo("PATIENT_CALLED"));
         }
 
         @Test
-        @DisplayName("deve retornar lista vazia quando filtro não encontra resultados")
-        void retornaListaVaziaFiltroSemResultado() {
-            // PanacheMock retorna lista vazia por padrão para chamadas não-stubadas
-            // Não configuramos stub para evitar conflito de arity causado por estado do Mockito entre testes
+        @DisplayName("deve respeitar page e size informados")
+        void respeitaPageESizeInformados() {
+            Notification n = buildNotification(1L, "PATIENT_CALLED", "Carlos Lima");
+            when(Notification.findAll(any(Sort.class))).thenReturn(mockQuery(List.of(n)));
 
             given()
-                    .queryParam("eventType", "PATIENT_CANCELLED")
+                    .queryParam("page", 2)
+                    .queryParam("size", 5)
                     .when().get(PATH)
                     .then()
                     .statusCode(200)
-                    .body("$", hasSize(0));
+                    .body("page", equalTo(2))
+                    .body("size", equalTo(5));
         }
     }
 
@@ -140,7 +158,10 @@ class NotificationControllerTest {
             given()
                     .when().get(PATH + "/99999")
                     .then()
-                    .statusCode(404);
+                    .statusCode(404)
+                    .contentType("application/problem+json")
+                    .body("type", equalTo("https://morbus.sus.gov.br/problems/notification-not-found"))
+                    .body("status", equalTo(404));
         }
     }
 }

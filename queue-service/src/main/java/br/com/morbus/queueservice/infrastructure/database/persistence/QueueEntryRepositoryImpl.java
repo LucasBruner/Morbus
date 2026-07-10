@@ -101,7 +101,17 @@ public class QueueEntryRepositoryImpl implements IQueueEntryRepository {
 
     @Override
     public int countEntriesWithHigherPriority(QueueEntry entry) {
-        return repository.countEntriesWithHigherPriority(entry.getId());
+        List<QueueEntryEntity> orderedEntries = repository.findByProcedureIdAndFilters(
+                entry.getProcedure().getId(), entry.getQueueStatus(), null);
+
+        int count = 0;
+        for (QueueEntryEntity candidate : orderedEntries) {
+            if (candidate.getId().equals(entry.getId())) {
+                break;
+            }
+            count++;
+        }
+        return count;
     }
 
     @Override

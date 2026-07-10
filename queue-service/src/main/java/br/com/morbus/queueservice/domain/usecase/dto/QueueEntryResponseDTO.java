@@ -19,9 +19,17 @@ public record QueueEntryResponseDTO(
         EDestino tipoFila,
         EPriorityGroup priorityGroup,
         UUID solicitacaoId,
-        UUID preferredUnitId
+        UUID preferredUnitId,
+        Integer position,
+        LocalDateTime updatedAt,
+        LocalDateTime calledAt,
+        Integer newPosition
 ) {
     public static QueueEntryResponseDTO fromEntity(QueueEntry entry) {
+        return fromEntity(entry, null);
+    }
+
+    public static QueueEntryResponseDTO fromEntity(QueueEntry entry, Integer position) {
         if (entry == null) return null;
         return new QueueEntryResponseDTO(
                 entry.getId(),
@@ -33,7 +41,29 @@ public record QueueEntryResponseDTO(
                 entry.getTipoFila(),
                 entry.getPriorityGroup(),
                 entry.getSolicitacaoId(),
-                entry.getPreferredUnitId()
+                entry.getPreferredUnitId(),
+                position,
+                entry.getUpdatedAt(),
+                null,
+                null
+        );
+    }
+
+    public static QueueEntryResponseDTO forCallNext(QueueEntry entry) {
+        QueueEntryResponseDTO base = fromEntity(entry);
+        return new QueueEntryResponseDTO(
+                base.id(), base.patient(), base.procedure(), base.riskColor(), base.status(),
+                base.registeredAt(), base.tipoFila(), base.priorityGroup(), base.solicitacaoId(),
+                base.preferredUnitId(), base.position(), base.updatedAt(), entry.getUpdatedAt(), null
+        );
+    }
+
+    public static QueueEntryResponseDTO forPriorityUpdate(QueueEntry entry, int newPosition) {
+        QueueEntryResponseDTO base = fromEntity(entry);
+        return new QueueEntryResponseDTO(
+                base.id(), base.patient(), base.procedure(), base.riskColor(), base.status(),
+                base.registeredAt(), base.tipoFila(), base.priorityGroup(), base.solicitacaoId(),
+                base.preferredUnitId(), base.position(), base.updatedAt(), null, newPosition
         );
     }
 }

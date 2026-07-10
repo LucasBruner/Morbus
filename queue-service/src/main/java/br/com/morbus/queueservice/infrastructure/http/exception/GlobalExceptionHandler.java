@@ -5,6 +5,7 @@ import br.com.morbus.queueservice.domain.exception.PatientAgeNotEligibleExceptio
 import br.com.morbus.queueservice.domain.exception.PatientAlreadyExistsException;
 import br.com.morbus.queueservice.domain.exception.PatientAlreadyInactiveException;
 import br.com.morbus.queueservice.domain.exception.PatientAlreadyRegisteredException;
+import br.com.morbus.queueservice.domain.exception.PatientHasActiveQueueEntriesException;
 import br.com.morbus.queueservice.domain.exception.PatientInactiveException;
 import br.com.morbus.queueservice.domain.exception.PatientNotEligibleForProcedureException;
 import br.com.morbus.queueservice.domain.exception.PatientNotFoundException;
@@ -51,7 +52,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(QueueNotExistException.class)
     public ResponseEntity<ProblemDetail> handleQueueNotExist(
             QueueNotExistException ex, HttpServletRequest request) {
-        return notFound("queue-entry-not-found", "Entrada de fila não encontrada", ex, request);
+        return notFound("queue-not-found", "Entrada de fila não encontrada", ex, request);
     }
 
     @ExceptionHandler(QueueEmptyException.class)
@@ -87,25 +88,31 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(QueueNotAllowedException.class)
     public ResponseEntity<ProblemDetail> handleQueueNotAllowed(
             QueueNotAllowedException ex, HttpServletRequest request) {
-        return unprocessable("queue-operation-not-allowed", "Operação não permitida na fila", ex, request);
+        return unprocessable("queue-not-allowed", "Operação não permitida na fila", ex, request);
     }
 
     @ExceptionHandler(PatientAgeNotEligibleException.class)
     public ResponseEntity<ProblemDetail> handlePatientAgeNotEligible(
             PatientAgeNotEligibleException ex, HttpServletRequest request) {
-        return unprocessable("patient-age-not-eligible", "Paciente fora da faixa etária permitida", ex, request);
+        return unprocessable("age-not-eligible", "Paciente fora da faixa etária permitida", ex, request);
     }
 
     @ExceptionHandler(PatientNotEligibleForProcedureException.class)
     public ResponseEntity<ProblemDetail> handlePatientNotEligibleForProcedure(
             PatientNotEligibleForProcedureException ex, HttpServletRequest request) {
-        return unprocessable("patient-not-eligible-for-procedure", "Paciente não elegível para o procedimento", ex, request);
+        return unprocessable("patient-not-eligible", "Paciente não elegível para o procedimento", ex, request);
     }
 
     @ExceptionHandler(PatientAlreadyInactiveException.class)
     public ResponseEntity<ProblemDetail> handlePatientAlreadyInactive(
             PatientAlreadyInactiveException ex, HttpServletRequest request) {
         return unprocessable("patient-already-inactive", "Paciente já está inativo", ex, request);
+    }
+
+    @ExceptionHandler(PatientHasActiveQueueEntriesException.class)
+    public ResponseEntity<ProblemDetail> handlePatientHasActiveQueueEntries(
+            PatientHasActiveQueueEntriesException ex, HttpServletRequest request) {
+        return unprocessable("patient-has-active-queue-entries", "Paciente possui entradas ativas na fila", ex, request);
     }
 
     @ExceptionHandler(PatientInactiveException.class)

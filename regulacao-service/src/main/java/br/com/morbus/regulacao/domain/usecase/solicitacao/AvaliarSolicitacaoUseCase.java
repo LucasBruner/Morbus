@@ -102,9 +102,12 @@ public class AvaliarSolicitacaoUseCase implements IAvaliarSolicitacaoUseCase {
                     "riskColorDefinido e obrigatorio quando decisao = " + command.decisao() + ".");
         }
 
-        if (command.decisao() == EDecisaoRegulador.NEGAR
-                && (command.justificativa() == null || command.justificativa().isBlank())) {
-            throw new CampoObrigatorioException("justificativa e obrigatoria quando decisao = NEGAR.");
+        boolean exigeJustificativa = command.decisao() == EDecisaoRegulador.NEGAR
+                || command.decisao() == EDecisaoRegulador.DEVOLVER;
+
+        if (exigeJustificativa && (command.justificativa() == null || command.justificativa().isBlank())) {
+            throw new CampoObrigatorioException(
+                    "justificativa e obrigatoria quando decisao = " + command.decisao() + ".");
         }
     }
 }

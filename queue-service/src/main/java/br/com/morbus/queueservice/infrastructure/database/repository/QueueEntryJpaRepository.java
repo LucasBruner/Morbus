@@ -76,13 +76,6 @@ public interface QueueEntryJpaRepository extends JpaRepository<QueueEntryEntity,
     @Query("""
         SELECT count(q)
         FROM QueueEntryEntity q
-        WHERE q.id = :queueId
-    """)
-    Integer countEntriesWithHigherPriority(@Param("queueId") UUID queueId);
-
-    @Query("""
-        SELECT count(q)
-        FROM QueueEntryEntity q
         WHERE q.patient.id = :patientId
         AND q.procedure.id = :procedureId
         AND q.status IN :statuses

@@ -7,7 +7,7 @@
 
 - Todos os endpoints retornam `Content-Type: application/json`
 - Datas e timestamps seguem o formato **ISO 8601**: `yyyy-MM-dd` / `yyyy-MM-ddTHH:mm:ssZ`
-- IDs são **UUID v4**
+- IDs são **UUID v4**, exceto no notification-service, que usa identificador numérico sequencial (`Long`) — serviço interno de auditoria/observabilidade sem consumidores externos que dependam do formato UUID
 - Endpoints protegidos exigem o header: `Authorization: Bearer <jwt_token>`
 - Erros seguem um envelope padrão (ver seção [Respostas de Erro](#respostas-de-erro))
 
@@ -43,7 +43,9 @@
   - [GET /api/v1/solicitacoes](#get-apiv1solicitacoes)
   - [GET /api/v1/solicitacoes/{id}](#get-apiv1solicitacoesid)
   - [POST /api/v1/solicitacoes/{id}/complementar](#post-apiv1solicitacoesidcomplementar)
+  - [DELETE /api/v1/solicitacoes/{id}](#delete-apiv1solicitacoesid)
   - [POST /api/v1/regulacao/{id}/avaliar](#post-apiv1regulacaoiavaliar)
+  - [PATCH /api/v1/regulacao/solicitacoes/{id}/risco](#patch-apiv1regulacaosolicitacoesidrisco)
   - [GET /api/v1/regulacao/pendentes](#get-apiv1regulacaopendentes)
   - [GET /api/v1/regulacao/pendentes-vaga](#get-apiv1regulacaopendentes-vaga)
 - [agendamento-service `:8084`](#agendamento-service-8084)
@@ -76,7 +78,7 @@ Cria um novo usuário com a role desejada.
 |------------|--------|-------------|----------------------------------------------------------------------------|
 | `username` | string | ✅          | 3–100 caracteres, único                                                    |
 | `email`    | string | ✅          | Formato e-mail válido, único                                               |
-| `password` | string | ✅          | Mínimo 8 caracteres                                                        |
+| `password` | string | ✅          | Mínimo 9 caracteres, contendo ao menos 1 letra maiúscula, 1 minúscula, 1 dígito e 1 caractere especial |
 | `role`     | enum   | ✅          | `MEDICO` \| `PACIENTE` \| `SOLICITANTE` \| `REGULADOR` \| `EXECUTANTE`    |
 
 **Response `201 Created`:**
@@ -94,8 +96,9 @@ Cria um novo usuário com a role desejada.
 
 | Status | Motivo                           |
 |--------|----------------------------------|
-| `400`  | Campos inválidos ou ausentes     |
-| `409`  | Username ou e-mail já cadastrado |
+| `400`  | Campos inválidos ou ausentes (`type`: `.../problems/validation-error`)    |
+| `409`  | Username ou e-mail já cadastrado (`type`: `.../problems/user-already-exists`) |
+| `422`  | Senha não atende aos requisitos mínimos (`type`: `.../problems/invalid-password`) |
 
 ---
 
@@ -121,10 +124,10 @@ Autentica o usuário e retorna o token JWT.
 **Response `200 OK`:**
 ```json
 {
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkci5zaWx2YSIsInJvbGUiOiJST0xFX01FRElDTyIsImlhdCI6MTc0ODMzNjAwMCwiZXhwIjoxNzQ4NDIyNDAwfQ.assinatura",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkci5zaWx2YSIsInJvbGUiOiJNRURJQ08iLCJpYXQiOjE3NDgzMzYwMDAsImV4cCI6MTc0ODQyMjQwMH0.assinatura",
   "type": "Bearer",
   "expiresIn": 86400000,
-  "role": "ROLE_MEDICO"
+  "role": "MEDICO"
 }
 ```
 
@@ -133,13 +136,13 @@ Autentica o usuário e retorna o token JWT.
 | `token`     | string | JWT assinado com HMAC-SHA256                 |
 | `type`      | string | Sempre `"Bearer"`                            |
 | `expiresIn` | number | Validade em milissegundos (padrão: 24h)      |
-| `role`      | string | `ROLE_MEDICO` \| `ROLE_PACIENTE`             |
+| `role`      | string | Nome puro do enum `UserRole` (sem prefixo `ROLE_`) — ex: `MEDICO` \| `PACIENTE`. Os demais serviços normalizam para `ROLE_<valor>` ao construir a authority Spring Security a partir do claim JWT. |
 
 **JWT Payload (decodificado):**
 ```json
 {
   "sub": "dr.silva",
-  "role": "ROLE_MEDICO",
+  "role": "MEDICO",
   "iat": 1748336000,
   "exp": 1748422400
 }
@@ -759,7 +762,7 @@ Lista o histórico de notificações enviadas, ordenadas por `sentAt` decrescent
 {
   "content": [
     {
-      "id": "b2c3d4e5-f6a7-8901-bcde-f01234567890",
+      "id": 42,
       "eventType": "PATIENT_CALLED",
       "recipientName": "Maria Oliveira",
       "recipientContact": "maria@email.com",
@@ -795,7 +798,7 @@ Busca uma notificação específica pelo ID.
 
 | Parâmetro | Tipo | Descrição          |
 |-----------|------|--------------------|
-| `id`      | UUID | ID da notificação  |
+| `id`      | Long | ID numérico da notificação (não é UUID — ver Convenções) |
 
 **Response `200 OK`:** mesmo schema do item individual acima
 
@@ -881,6 +884,7 @@ Lista solicitações com filtros opcionais.
 
 | Parâmetro    | Tipo    | Obrigatório | Descrição                           |
 |--------------|---------|-------------|-------------------------------------|
+| `unidadeId`  | UUID    | ❌          | Filtra por unidade solicitante. Para `ROLE_SOLICITANTE` é sempre sobrescrito pela unidade do próprio usuário (extraída do JWT); para `ROLE_REGULADOR` é opcional e livre |
 | `status`     | enum    | ❌          | `AGUARDANDO`, `APROVADA`, etc.      |
 | `destino`    | enum    | ❌          | `FILA_ESPERA` \| `FILA_REGULADA`    |
 | `procedureId`| UUID    | ❌          | Filtrar por procedimento            |
@@ -945,6 +949,13 @@ Complementa uma solicitação devolvida pelo regulador com informações faltant
 }
 ```
 
+| Campo                     | Tipo   | Obrigatório | Descrição                                        |
+|---------------------------|--------|-------------|---------------------------------------------------|
+| `cid`                     | string | ❌          | Novo código CID-10                                |
+| `justificativaClinica`    | string | ❌          | Nova justificativa clínica                        |
+| `crmProfissional`         | string | ❌          | Novo CRM do profissional                           |
+| `profissionalSolicitante` | string | ❌          | Novo nome do médico solicitante                    |
+
 > Apenas campos nullable podem ser atualizados. Após a complementação o status volta para `AGUARDANDO`.
 
 **Response `200 OK`:** schema completo da solicitação atualizada.
@@ -955,6 +966,29 @@ Complementa uma solicitação devolvida pelo regulador com informações faltant
 |--------|----------------------------------------------------------------|
 | `404`  | Solicitação não encontrada                                     |
 | `422`  | Status da solicitação não permite complementação — apenas `DEVOLVIDA` |
+
+---
+
+### DELETE /api/v1/solicitacoes/{id}
+
+Cancela uma solicitação.
+
+**Auth:** `ROLE_MEDICO` ou `ROLE_SOLICITANTE`
+
+**Path Parameters:**
+
+| Parâmetro | Tipo | Descrição            |
+|-----------|------|----------------------|
+| `id`      | UUID | ID da solicitação    |
+
+**Response `204 No Content`**
+
+**Erros:**
+
+| Status | Motivo                                                   |
+|--------|-----------------------------------------------------------|
+| `404`  | Solicitação não encontrada                                 |
+| `422`  | Status não permite cancelamento — apenas `AGUARDANDO`      |
 
 ---
 
@@ -969,15 +1003,17 @@ Emite um parecer sobre uma solicitação. Disponível apenas para o médico regu
 {
   "decisao": "AUTORIZAR",
   "riskColorDefinido": "AMARELO",
+  "unidadeExecutanteId": "bb22cc33-dd44-ee55-ff66-007788990011",
   "justificativa": null
 }
 ```
 
-| Campo              | Tipo   | Obrigatório | Descrição                                                         |
-|--------------------|--------|-------------|-------------------------------------------------------------------|
-| `decisao`          | enum   | ✅          | `AUTORIZAR` \| `NEGAR` \| `DEVOLVER` \| `PENDENTE` \| `FILA_ESPERA` |
-| `riskColorDefinido`| enum   | ✅          | Cor de risco atribuída                                            |
-| `justificativa`    | string | condicional | Obrigatório se `decisao` for `NEGAR` ou `DEVOLVER`               |
+| Campo                 | Tipo   | Obrigatório | Descrição                                                         |
+|-----------------------|--------|-------------|-------------------------------------------------------------------|
+| `decisao`             | enum   | ✅          | `AUTORIZAR` \| `NEGAR` \| `DEVOLVER` \| `PENDENTE` \| `FILA_ESPERA` |
+| `riskColorDefinido`   | enum   | condicional | Obrigatório apenas se `decisao` for `AUTORIZAR` ou `FILA_ESPERA` |
+| `unidadeExecutanteId` | UUID   | condicional | Obrigatório apenas se `decisao` for `AUTORIZAR` ou `FILA_ESPERA` — unidade que executará o procedimento |
+| `justificativa`       | string | condicional | Obrigatório se `decisao` for `NEGAR` ou `DEVOLVER`               |
 
 **Efeitos por decisão:**
 
@@ -1008,8 +1044,39 @@ Emite um parecer sobre uma solicitação. Disponível apenas para o médico regu
 | Status | Motivo                                                              |
 |--------|---------------------------------------------------------------------|
 | `404`  | Solicitação não encontrada                                          |
-| `422`  | Status não permite avaliação — somente `AGUARDANDO` e `PENDENTE`   |
+| `422`  | Status não permite avaliação — `AUTORIZAR`/`FILA_ESPERA` exigem `AGUARDANDO` ou `PENDENTE`; `NEGAR`/`DEVOLVER`/`PENDENTE` exigem `AGUARDANDO` |
 | `422`  | Justificativa obrigatória para decisão `NEGAR` ou `DEVOLVER`       |
+| `422`  | `riskColorDefinido`/`unidadeExecutanteId` obrigatórios para decisão `AUTORIZAR` ou `FILA_ESPERA` |
+
+---
+
+### PATCH /api/v1/regulacao/solicitacoes/{id}/risco
+
+Reclassifica a cor de risco de uma solicitação ainda não avaliada pelo regulador.
+
+**Auth:** `ROLE_REGULADOR`
+
+**Path Parameters:**
+
+| Parâmetro | Tipo | Descrição            |
+|-----------|------|----------------------|
+| `id`      | UUID | ID da solicitação    |
+
+**Request Body:**
+```json
+{
+  "riskColor": "VERMELHO"
+}
+```
+
+**Response `200 OK`:** schema completo da solicitação atualizada.
+
+**Erros:**
+
+| Status | Motivo                                                   |
+|--------|-----------------------------------------------------------|
+| `404`  | Solicitação não encontrada                                 |
+| `422`  | Status não permite reclassificação                         |
 
 ---
 
@@ -1066,6 +1133,8 @@ Confirma a presença do paciente no agendamento dentro do prazo de 72 horas.
   "unitAddress": "Rua das Flores, 100"
 }
 ```
+
+> `unitAddress` vem da coluna `endereco` de `HealthUnit` (adicionada para viabilizar este campo) — pode retornar `null` até que o cadastro de unidades seja atualizado com esse dado.
 
 **Erros:**
 
@@ -1523,6 +1592,10 @@ enum AppointmentStatus {
 | `NEGADA`    | Negada pelo regulador — UBS notificada           |
 | `DEVOLVIDA` | Devolvida para complementação — UBS deve reenviar|
 | `PENDENTE`  | Aprovada mas sem vaga — aguarda cota             |
+| `CANCELADA` | Cancelada via `DELETE /api/v1/solicitacoes/{id}` |
+| `AGENDADA`  | Agendamento confirmado pelo agendamento-service (evento `APPOINTMENT_CONFIRMED`) |
+| `ATENDIDA`  | Atendimento realizado (evento `APPOINTMENT_ATTENDED`) |
+| `FALTOU`    | Paciente faltou ao agendamento (evento `PATIENT_NO_SHOW`) |
 
 ### DecisaoRegulador *(regulacao-service)*
 
@@ -1700,6 +1773,7 @@ Todos os serviços seguem o padrão **RFC 7807 — Problem Details for HTTP APIs
 | `.../problems/invalid-request-body`                             | 400    | todos               |
 | `.../problems/invalid-credentials`                              | 401    | auth                |
 | `.../problems/invalid-password`                                 | 422    | auth                |
+| `.../problems/user-already-exists`                              | 409    | auth                |
 | `.../problems/access-denied`                                    | 403    | todos               |
 | `.../problems/patient-not-found`                                | 404    | queue               |
 | `.../problems/procedure-not-found`                              | 404    | queue               |
@@ -1709,18 +1783,35 @@ Todos os serviços seguem o padrão **RFC 7807 — Problem Details for HTTP APIs
 | `.../problems/patient-already-exists`                           | 409    | queue               |
 | `.../problems/age-not-eligible`                                 | 422    | queue               |
 | `.../problems/patient-not-eligible`                             | 422    | queue               |
+| `.../problems/patient-already-registered`                       | 409    | queue               |
+| `.../problems/patient-has-active-queue-entries`                 | 422    | queue               |
+| `.../problems/active-queue-entries-exist`                       | 409    | queue               |
+| `.../problems/procedure-already-assigned`                       | 409    | queue               |
+| `.../problems/procedure-not-assigned`                           | 422    | queue               |
+| `.../problems/patient-already-inactive`                         | 422    | queue               |
+| `.../problems/patient-inactive`                                 | 422    | queue               |
 | `.../problems/solicitation-not-found`                           | 404    | regulacao           |
 | `.../problems/solicitation-already-exists`                      | 409    | regulacao           |
 | `.../problems/regulacao-not-allowed`                            | 422    | regulacao           |
 | `.../problems/quota-exceeded`                                   | 422    | regulacao / queue   |
+| `.../problems/unit-not-found`                                   | 404    | regulacao           |
+| `.../problems/unit-already-exists`                               | 409    | regulacao           |
+| `.../problems/id-paciente-incorreto`                             | 403    | regulacao           |
 | `.../problems/slot-not-found`                                   | 404    | agendamento         |
 | `.../problems/slot-unavailable`                                 | 422    | agendamento         |
 | `.../problems/appointment-not-found`                            | 404    | agendamento         |
 | `.../problems/expired-confirmation`                             | 422    | agendamento         |
+| `.../problems/appointment-already-exists`                       | 409    | agendamento         |
+| `.../problems/schedule-already-exists`                          | 409    | agendamento         |
+| `.../problems/schedule-not-found`                                | 404    | agendamento         |
+| `.../problems/invalid-schedule-period`                           | 422    | agendamento         |
+| `.../problems/appointment-not-allowed`                           | 422    | agendamento         |
+| `.../problems/cancel-not-allowed`                                | 422    | agendamento         |
+| `.../problems/notification-not-found`                            | 404    | notification        |
 | `.../problems/internal-error`                                   | 500    | todos               |
 
 > Base URL: `https://morbus.sus.gov.br`
 
 ---
 
-*Documento atualizado em: junho/2026*
+*Documento atualizado em: julho/2026*

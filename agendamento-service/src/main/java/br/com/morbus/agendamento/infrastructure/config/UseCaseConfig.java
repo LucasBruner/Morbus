@@ -60,8 +60,10 @@ public class UseCaseConfig {
 
     @Bean
     public IConfirmarAgendamentoUseCase confirmarAgendamentoUseCase(IAgendamentoRepository agendamentoRepository,
-                                                                    ISlotRepository slotRepository) {
-        return new ConfirmarAgendamentoUseCase(agendamentoRepository, slotRepository);
+                                                                    ISlotRepository slotRepository,
+                                                                    IScheduleRepository scheduleRepository,
+                                                                    IHealthUnitRepository healthUnitRepository) {
+        return new ConfirmarAgendamentoUseCase(agendamentoRepository, slotRepository, scheduleRepository, healthUnitRepository);
     }
 
     @Bean

@@ -56,6 +56,10 @@ public class SolicitacaoJpaAdapter implements ISolicitacaoRepository {
             spec = spec.and((r, cq, cb) -> cb.equal(r.get("status"), query.status()));
         }
 
+        if (query.destino() != null) {
+            spec = spec.and((r, cq, cb) -> cb.equal(r.get("destino"), query.destino()));
+        }
+
         if (query.procedureId() != null) {
             spec = spec.and((r, cq, cb) -> cb.equal(r.get("procedureId"), query.procedureId()));
         }

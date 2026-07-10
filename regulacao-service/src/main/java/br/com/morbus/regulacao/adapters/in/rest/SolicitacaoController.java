@@ -8,6 +8,7 @@ import br.com.morbus.regulacao.adapters.in.rest.dto.SolicitacaoSummaryDTO;
 import br.com.morbus.regulacao.adapters.security.UserPrincipal;
 import br.com.morbus.regulacao.domain.dto.ListarSolicitacoesQuery;
 import br.com.morbus.regulacao.domain.dto.UsuarioContexto;
+import br.com.morbus.regulacao.domain.enums.EDestino;
 import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
 import br.com.morbus.regulacao.domain.model.Solicitacao;
 import br.com.morbus.regulacao.ports.in.ICancelarSolicitacaoUseCase;
@@ -132,6 +133,7 @@ public class SolicitacaoController {
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(required = false) UUID unidadeId,
             @RequestParam(required = false) EStatusSolicitacao status,
+            @RequestParam(required = false) EDestino destino,
             @RequestParam(required = false) UUID procedureId,
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
@@ -140,7 +142,7 @@ public class SolicitacaoController {
                 ? principal.unitId()
                 : unidadeId;
 
-        var query = new ListarSolicitacoesQuery(unidadeFiltro, status, procedureId, page, size);
+        var query = new ListarSolicitacoesQuery(unidadeFiltro, status, destino, procedureId, page, size);
         Page<SolicitacaoSummaryDTO> result = listarSolicitacoesUseCase.execute(query)
                 .map(SolicitacaoSummaryDTO::fromDomain);
 

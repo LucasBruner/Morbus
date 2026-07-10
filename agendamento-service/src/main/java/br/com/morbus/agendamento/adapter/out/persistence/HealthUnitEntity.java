@@ -33,6 +33,9 @@ public class HealthUnitEntity {
     @Column(name = "uf", nullable = false)
     private String uf;
 
+    @Column(name = "endereco")
+    private String endereco;
+
     @Column(name = "ativo", nullable = false)
     private boolean ativo;
 }
