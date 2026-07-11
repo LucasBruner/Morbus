@@ -11,7 +11,9 @@ import br.com.morbus.queueservice.domain.usecase.RegisterPatient;
 import br.com.morbus.queueservice.domain.usecase.RegisterPatientInQueue;
 import br.com.morbus.queueservice.domain.usecase.dto.RegisterPatientDTO;
 import br.com.morbus.queueservice.domain.usecase.dto.RegisterQueueRequestDTO;
+import br.com.morbus.queueservice.infrastructure.database.entity.PatientEntity;
 import br.com.morbus.queueservice.infrastructure.database.entity.ProcedureEntity;
+import br.com.morbus.queueservice.infrastructure.database.repository.PatientJpaRepository;
 import br.com.morbus.queueservice.infrastructure.database.repository.ProcedureJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -64,6 +66,7 @@ class QueueFlowIntegrationTest {
     @Autowired CallNextPatient callNextPatient;
     @Autowired IQueueEntryRepository queueEntryRepository;
     @Autowired ProcedureJpaRepository procedureJpaRepository;
+    @Autowired PatientJpaRepository patientJpaRepository;
 
     /** ID do procedimento compartilhado entre os testes de cada método. */
     java.util.UUID procedureId;
@@ -195,6 +198,67 @@ class QueueFlowIntegrationTest {
 
             assertThat(ordered.get(0).getPatient().getNome()).isEqualTo("Antônio");
             assertThat(ordered.get(0).getPatient().getGrupoLegal()).isEqualTo(EPriorityGroup.IDOSO);
+        }
+    }
+
+    // ── Ordenação dinâmica: paciente "envelhece" para IDOSO enquanto já está na fila ──
+
+    @Nested
+    @DisplayName("Ordenação dinâmica — paciente completa 60 anos com grupo_legal desatualizado (stale)")
+    class OrdenacaoDinamicaPorIdade {
+
+        /**
+         * Simula a passagem do tempo: depois que o paciente já está na fila com
+         * {@code grupo_legal = GERAL} (calculado corretamente quando ele tinha
+         * menos de 60 anos), avança a data de nascimento via JPA direto — sem
+         * passar por RegisterPatient/UpdatePatient/RegisterPatientInQueue, que
+         * recalculariam e corrigiriam o snapshot. É exatamente o cenário real:
+         * ninguém faz PATCH /patients/{id} nem re-registra o paciente em outra
+         * fila só porque ele fez aniversário.
+         */
+        private void envelhecerSemAtualizarSnapshot(java.util.UUID patientId, LocalDate novaDataNascimento) {
+            PatientEntity entity = patientJpaRepository.findById(patientId).orElseThrow();
+            entity.setDataNascimento(novaDataNascimento);
+            patientJpaRepository.save(entity); // grupoLegal não é tocado — continua GERAL
+        }
+
+        @Test
+        @DisplayName("Paciente que completou 60 anos na fila é ordenado como IDOSO mesmo com grupo_legal=GERAL no banco")
+        void completaSessentaAnosNaFila_aindaAssimOrdenaComoIdoso() throws InterruptedException {
+            // Beatriz: GESTANTE de verdade, cadastro em dia
+            enqueue("22222222222", "Beatriz", LocalDate.of(1995, 6, 1), EPriorityGroup.GESTANTE, ERiskColor.AMARELO);
+            Thread.sleep(20);
+
+            // Roberto: registrado com 59 anos (GERAL corretamente calculado e salvo)
+            QueueEntry robertoEntry = enqueue("11111111111", "Roberto",
+                    LocalDate.now().minusYears(59), EPriorityGroup.GERAL, ERiskColor.AMARELO);
+            assertThat(robertoEntry.getPatient().getGrupoLegal()).isEqualTo(EPriorityGroup.GERAL);
+
+            // Tempo passa, Roberto completa 60+ anos — ninguém atualiza o cadastro dele
+            envelhecerSemAtualizarSnapshot(robertoEntry.getPatient().getId(), LocalDate.now().minusYears(65));
+
+            List<QueueEntry> ordered = queueEntryRepository.findAllOrderedByPriority();
+
+            // A ordenação deve tratar Roberto como IDOSO (idade recalculada ao vivo), à frente de
+            // GESTANTE, mesmo com patients.grupo_legal ainda gravado como GERAL no banco.
+            assertThat(ordered.get(0).getPatient().getNome()).isEqualTo("Roberto");
+            assertThat(ordered.get(0).getPatient().getGrupoLegal()).isEqualTo(EPriorityGroup.GERAL); // snapshot intacto, propositalmente stale
+            assertThat(ordered.get(1).getPatient().getNome()).isEqualTo("Beatriz");
+        }
+
+        @Test
+        @DisplayName("callNext chama o paciente que envelheceu na fila como se fosse IDOSO")
+        void callNext_respeitaIdadeDinamica_apesarDoSnapshotDesatualizado() throws InterruptedException {
+            enqueue("22222222222", "Beatriz", LocalDate.of(1995, 6, 1), EPriorityGroup.GESTANTE, ERiskColor.AMARELO);
+            Thread.sleep(20);
+
+            QueueEntry robertoEntry = enqueue("11111111111", "Roberto",
+                    LocalDate.now().minusYears(59), EPriorityGroup.GERAL, ERiskColor.AMARELO);
+            envelhecerSemAtualizarSnapshot(robertoEntry.getPatient().getId(), LocalDate.now().minusYears(70));
+
+            QueueEntry chamado = callNextPatient.run();
+
+            assertThat(chamado.getPatient().getNome()).isEqualTo("Roberto");
         }
     }
 

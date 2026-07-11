@@ -46,9 +46,9 @@ public class AgendamentoGraphqlController {
 	@PreAuthorize("hasAnyAuthority('ROLE_REGULADOR','ROLE_MEDICO','ROLE_PACIENTE','ROLE_EXECUTANTE')")
 	public List<SlotsAvailableResponseDTO> disponibilidade(@Argument @NotNull UUID procedureId,
                                                                 @Argument UUID unitId,
-                                                                @Argument @NotNull String dateFrom,
-                                                                @Argument @NotNull String dateTo) {
-		return consultarDisponibilidadeUseCase.execute(procedureId, unitId, dateFrom, dateTo)
+                                                                @Argument("dataInicio") @NotNull String dataInicio,
+                                                                @Argument("dataFim") @NotNull String dataFim) {
+		return consultarDisponibilidadeUseCase.execute(procedureId, unitId, dataInicio, dataFim)
 				.stream()
 				.map(SlotsAvailableResponseDTO::fromEntity)
 				.toList();
@@ -56,14 +56,14 @@ public class AgendamentoGraphqlController {
 
     @QueryMapping(name = "agendamentos")
     @PreAuthorize("hasAnyAuthority('ROLE_REGULADOR','ROLE_MEDICO','ROLE_PACIENTE','ROLE_EXECUTANTE')")
-    public List<AgendamentosPacienteResponseDTO> agendamentos(@Argument UUID patientId,
+    public List<AgendamentosPacienteResponseDTO> agendamentos(@Argument("pacienteId") UUID pacienteId,
                                                                       @Argument UUID unitId,
                                                                       @Argument EStatusAgendamento status,
                                                                       @Argument @NotNull String dateFrom,
                                                                       @Argument @NotNull String dateTo) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        return agendamentosPacienteUseCase.execute(patientId, unitId, status, dateFrom, dateTo,
+        return agendamentosPacienteUseCase.execute(pacienteId, unitId, status, dateFrom, dateTo,
                         resolveRequesterId(authentication), resolveRequesterRole(authentication))
                 .stream()
                 .map(AgendamentosPacienteResponseDTO::fromDetalhe)

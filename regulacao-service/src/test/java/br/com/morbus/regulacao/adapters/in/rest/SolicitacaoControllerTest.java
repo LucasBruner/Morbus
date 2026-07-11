@@ -4,6 +4,7 @@ import br.com.morbus.regulacao.adapters.out.security.JwtAuthenticationFilter;
 import br.com.morbus.regulacao.adapters.out.security.JwtService;
 import br.com.morbus.regulacao.adapters.out.security.SecurityConfig;
 import br.com.morbus.regulacao.adapters.security.UserPrincipal;
+import br.com.morbus.regulacao.domain.dto.PageResult;
 import br.com.morbus.regulacao.domain.enums.EDestino;
 import br.com.morbus.regulacao.domain.enums.ERiscoSolicitado;
 import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
@@ -24,7 +25,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.data.domain.Page;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -235,7 +235,7 @@ class SolicitacaoControllerTest {
         @Test
         @DisplayName("deve retornar 200 quando SOLICITANTE lista")
         void deveRetornar200Solicitante() throws Exception {
-            when(listarUseCase.execute(any())).thenReturn(Page.empty());
+            when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
 
             mockMvc.perform(get(BASE_URL)
                             .with(authentication(principalToken("ROLE_SOLICITANTE"))))
@@ -245,7 +245,7 @@ class SolicitacaoControllerTest {
         @Test
         @DisplayName("deve retornar 200 quando REGULADOR lista")
         void deveRetornar200Regulador() throws Exception {
-            when(listarUseCase.execute(any())).thenReturn(Page.empty());
+            when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
 
             mockMvc.perform(get(BASE_URL)
                             .with(authentication(principalToken("ROLE_REGULADOR"))))
@@ -273,7 +273,7 @@ class SolicitacaoControllerTest {
         void solicitanteDeveUsarUnitIdDoJwt() throws Exception {
             UUID unitId = UUID.randomUUID();
             UUID userId = UUID.randomUUID();
-            when(listarUseCase.execute(any())).thenReturn(Page.empty());
+            when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
 
             mockMvc.perform(get(BASE_URL)
                             .with(authentication(principalToken("ROLE_SOLICITANTE", userId, unitId))))

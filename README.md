@@ -276,7 +276,7 @@ A fila é ordenada por **4 critérios em cascata**. Na prática, quem aplica ess
 
 ### Critério 3 — Grupo de prioridade legal (somente `FILA_REGULADA`, mesmo cor)
 
-Baseado na Lei 10.048/2000 e no Estatuto do Idoso. Pacientes com **60 anos ou mais recebem o grupo `IDOSO` automaticamente** no momento do cadastro/atualização (`RegisterPatient`/`UpdatePatient`), sobrescrevendo o campo `grupoLegal` informado. Essa checagem **não** é refeita a cada ordenação da fila — a fila lê o `grupoLegal` já salvo no paciente, então um paciente que completa 60 anos enquanto já está na fila só passa a contar como `IDOSO` depois de um novo `PATCH /api/v1/patients/{id}`.
+Baseado na Lei 10.048/2000 e no Estatuto do Idoso. Pacientes com **60 anos ou mais recebem o grupo `IDOSO` automaticamente**, tanto no momento do cadastro/atualização (`RegisterPatient`/`UpdatePatient`, que gravam o snapshot em `patients.grupo_legal`) quanto **dinamicamente na ordenação da fila** — a query de ordenação recalcula a idade a cada consulta, então um paciente que completa 60 anos enquanto já está na fila é promovido a `IDOSO` na próxima consulta, sem precisar de um novo `PATCH /api/v1/patients/{id}`.
 
 | Grupo        | Prioridade |
 |--------------|-----------|

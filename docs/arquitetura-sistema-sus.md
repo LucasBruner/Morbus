@@ -417,7 +417,7 @@ type Query {
 }
 ```
 
-> ⚠️ **Bug de binding conhecido, não apenas documentação:** `AgendamentoGraphqlController` usa `@Argument` sem nome explícito, então o Spring GraphQL casa o argumento pelo **nome do parâmetro Java**. Isso diverge do schema em dois pontos: `disponibilidade` declara `dataInicio`/`dataFim` no schema mas o método Java recebe `dateFrom`/`dateTo`; `agendamentos` declara `pacienteId` no schema mas o método Java recebe `patientId`. Na prática, esses filtros provavelmente ficam sempre `null` em runtime — vale conferir/corrigir no código, isso não é só uma divergência de doc.
+> `AgendamentoGraphqlController` usa `@Argument` com nome explícito (`@Argument("dataInicio")`, `@Argument("pacienteId")`) nos dois pontos onde o schema usa um nome em português diferente do parâmetro Java interno — sem isso, o binding por nome de parâmetro divergia do schema e os filtros de data/paciente ficavam silenciosamente `null`.
 >
 > `HealthUnit.address`/`HealthUnit.phone` também não são o que parecem: no resolver da query `grade`, `address` é montado como `"{municipio} - {uf}"` (não a coluna real `endereco`) e `phone` é sempre `null` (não existe coluna de telefone em `health_units`). Ver `erd.md`.
 

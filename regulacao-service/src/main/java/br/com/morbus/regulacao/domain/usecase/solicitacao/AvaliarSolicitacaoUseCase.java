@@ -100,6 +100,11 @@ public class AvaliarSolicitacaoUseCase implements IAvaliarSolicitacaoUseCase {
                     "riskColorDefinido e obrigatorio quando decisao = " + command.decisao() + ".");
         }
 
+        if (exigeRiskColor && command.unidadeExecutanteId() == null) {
+            throw new CampoObrigatorioException(
+                    "unidadeExecutanteId e obrigatorio quando decisao = " + command.decisao() + ".");
+        }
+
         boolean exigeJustificativa = command.decisao() == EDecisaoRegulador.NEGAR
                 || command.decisao() == EDecisaoRegulador.DEVOLVER;
 

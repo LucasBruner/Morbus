@@ -88,9 +88,11 @@ Cria um novo usuário com a role desejada.
   "username": "dr.silva",
   "email": "silva@sus.gov.br",
   "role": "MEDICO",
-  "createdAt": "2026-05-27T10:00:00Z"
+  "createdAt": "2026-05-27T10:00:00"
 }
 ```
+
+> `createdAt` é um `LocalDateTime` (`model/User.java`), sem timezone e sem configuração Jackson forçando UTC/offset — a resposta real **não tem o sufixo `Z`**, ao contrário do formato geral definido em [Convenções](#convenções).
 
 **Erros:**
 
@@ -197,8 +199,15 @@ Cadastra um paciente em uma fila de procedimento. A cor de entrada é sempre **A
   "id": "e5f6a7b8-c9d0-1234-ef56-789012345678",
   "patient": {
     "id": "f1e2d3c4-b5a6-7890-fedc-ba0987654321",
-    "nomeCompleto": "João da Silva",
-    "cpf": "123.456.789-00"
+    "cpf": "123.456.789-00",
+    "cns": "123456789012345",
+    "nome": "João",
+    "sobrenome": "da Silva",
+    "dataNascimento": "1960-03-15",
+    "gender": "MASCULINO",
+    "contato": "joao@email.com",
+    "ativo": true,
+    "grupoLegal": "GERAL"
   },
   "procedure": {
     "id": "c0d1e2f3-a4b5-6789-cdef-012345678901",
@@ -208,10 +217,17 @@ Cadastra um paciente em uma fila de procedimento. A cor de entrada é sempre **A
   "riskColor": "AZUL",
   "priorityGroup": "GERAL",
   "status": "AGUARDANDO",
+  "tipoFila": "FILA_REGULADA",
+  "solicitacaoId": null,
+  "preferredUnitId": null,
   "position": 7,
-  "registeredAt": "2026-05-27T10:15:00Z"
+  "registeredAt": "2026-05-27T10:15:00Z",
+  "calledAt": null,
+  "newPosition": null
 }
 ```
+
+> `patient` é serializado com `PatientResponseDTO` — **não existe campo `nomeCompleto`** aqui (apenas `nome`/`sobrenome` separados, mais os demais campos do cadastro). `nomeCompleto` só existe no schema de `GET /api/v1/queue/{id}/position`, que usa um DTO diferente (`QueuePositionPatientDTO`). `QueueEntryResponseDTO` é um schema plano único reaproveitado por vários endpoints deste recurso, por isso sempre inclui `tipoFila`, `solicitacaoId`, `preferredUnitId`, `calledAt` e `newPosition`, mesmo quando não fazem sentido para a operação (ficam `null`).
 
 **Erros:**
 
@@ -329,9 +345,15 @@ Chama o próximo paciente da fila (maior prioridade com status `AGUARDANDO`). Al
   "id": "e5f6a7b8-c9d0-1234-ef56-789012345678",
   "patient": {
     "id": "f1e2d3c4-b5a6-7890-fedc-ba0987654321",
-    "nomeCompleto": "Maria Oliveira",
     "cpf": "987.654.321-00",
-    "contato": "maria@email.com"
+    "cns": "123456789012345",
+    "nome": "Maria",
+    "sobrenome": "Oliveira",
+    "dataNascimento": "1960-03-15",
+    "gender": "FEMININO",
+    "contato": "maria@email.com",
+    "ativo": true,
+    "grupoLegal": "IDOSO"
   },
   "procedure": {
     "coProcedimento": "0301010072",
@@ -344,6 +366,8 @@ Chama o próximo paciente da fila (maior prioridade com status `AGUARDANDO`). Al
   "calledAt": "2026-05-27T14:00:00Z"
 }
 ```
+
+> Assim como em `POST /api/v1/queue`, `patient` usa `PatientResponseDTO` — sem campo `nomeCompleto`.
 
 **Erros:**
 
@@ -460,8 +484,8 @@ Cadastra um novo paciente no sistema.
 | `sobrenome`      | string | ✅          | Sobrenome do paciente                                   |
 | `dataNascimento` | date   | ✅          | Formato `yyyy-MM-dd`, não pode ser no futuro            |
 | `gender`         | enum   | ❌          | `MASCULINO` \| `FEMININO` \| `OUTROS`                  |
-| `contato`        | string | ❌          | E-mail ou telefone para notificações                    |
-| `grupoLegal`     | enum   | ✅          | `IDOSO` \| `GESTANTE` \| `DEFICIENTE` \| `LACTANTE` \| `OBESO` \| `GERAL` |
+| `contato`        | string | ❌          | Apenas e-mail — `RegisterPatientDTO` valida com `@Email`, um telefone é **rejeitado** apesar do nome do campo sugerir "e-mail ou telefone" |
+| `grupoLegal`     | enum   | ❌          | `IDOSO` \| `GESTANTE` \| `DEFICIENTE` \| `LACTANTE` \| `OBESO` \| `GERAL` — sem `@NotNull` em `RegisterPatientDTO`; se omitido, assume `GERAL` como padrão |
 
 > **Detecção automática de IDOSO:** paciente com 60+ anos recebe `grupoLegal = IDOSO` automaticamente via `PriorityCalculator.getPriorityGroup()`, sobrescrevendo o valor informado.
 
@@ -768,7 +792,7 @@ Lista o histórico de notificações enviadas, ordenadas por `sentAt` decrescent
       "recipientContact": "maria@email.com",
       "message": "É a sua vez! Compareça ao guichê para CONSULTA MEDICA EM ATENCAO ESPECIALIZADA.",
       "sentAt": "2026-05-27T14:00:05Z",
-      "status": "SENT"
+      "status": "ENVIADO"
     }
   ],
   "page": 0,
@@ -784,7 +808,7 @@ Lista o histórico de notificações enviadas, ordenadas por `sentAt` decrescent
 | `recipientName`    | string | Nome do paciente notificado               |
 | `recipientContact` | string | E-mail ou telefone                        |
 | `message`          | string | Mensagem enviada ao paciente              |
-| `status`           | enum   | `SENT` \| `FAILED`                       |
+| `status`           | string | `ENVIADO` \| `FALHA` — valores em português; `NotificationService.java` grava a string diretamente (não é enum Java), não `SENT`/`FAILED` |
 
 ---
 
@@ -870,9 +894,11 @@ Cria uma nova solicitação de inclusão de paciente em fila ambulatorial.
 
 | Status | Motivo                                                               |
 |--------|----------------------------------------------------------------------|
-| `404`  | Paciente, procedimento ou unidade não encontrados                    |
+| `404`  | Unidade solicitante não encontrada                                   |
 | `409`  | Solicitação duplicada — paciente já possui solicitação ativa para este procedimento |
 | `422`  | Cota da UBS esgotada para FILA_ESPERA neste procedimento             |
+
+> **`patientId`/`procedureId` não são validados contra o queue-service.** `CriarSolicitacaoUseCase.java` só verifica a existência de `unitSolicitanteId` (via `unit-not-found`) — um `patientId` ou `procedureId` inexistente é aceito sem erro na criação da solicitação. O 404 documentado anteriormente para "paciente ou procedimento não encontrados" não corresponde ao comportamento atual.
 
 ---
 
@@ -1043,14 +1069,15 @@ Emite um parecer sobre uma solicitação. Disponível apenas para o médico regu
 |--------|---------------------------------------------------------------------|
 | `404`  | Solicitação não encontrada                                          |
 | `422`  | Status não permite avaliação — `AUTORIZAR`/`FILA_ESPERA` exigem `AGUARDANDO` ou `PENDENTE`; `NEGAR`/`DEVOLVER`/`PENDENTE` exigem `AGUARDANDO` |
-| `422`  | Justificativa obrigatória para decisão `NEGAR` ou `DEVOLVER`       |
-| `422`  | `riskColorDefinido`/`unidadeExecutanteId` obrigatórios para decisão `AUTORIZAR` ou `FILA_ESPERA` |
+| `422`  | Campo obrigatório ausente (`type`: `.../problems/missing-required-field`) — `justificativa` para `NEGAR`/`DEVOLVER`, ou `riskColorDefinido`/`unidadeExecutanteId` para `AUTORIZAR`/`FILA_ESPERA` |
 
 ---
 
 ### PATCH /api/v1/regulacao/solicitacoes/{id}/risco
 
-Reclassifica a cor de risco de uma solicitação ainda não avaliada pelo regulador.
+Reclassifica a cor de risco de uma solicitação **já aprovada** (`status == APROVADA`) e com `destino == FILA_REGULADA`. Solicitações em `FILA_ESPERA` não podem ser reclassificadas (permanecem sempre `AZUL`).
+
+> `ReclassificarRiscoUseCase.java` exige `status == APROVADA` — ao contrário do que uma versão anterior deste documento descrevia ("solicitação ainda não avaliada"). A reclassificação acontece **depois** do parecer do regulador (`POST /api/v1/regulacao/{id}/avaliar`), não antes.
 
 **Auth:** `ROLE_REGULADOR`
 
@@ -1074,7 +1101,7 @@ Reclassifica a cor de risco de uma solicitação ainda não avaliada pelo regula
 | Status | Motivo                                                   |
 |--------|-----------------------------------------------------------|
 | `404`  | Solicitação não encontrada                                 |
-| `422`  | Status não permite reclassificação                         |
+| `422`  | Status não permite reclassificação — exige `APROVADA`; solicitações em `FILA_ESPERA` nunca podem ser reclassificadas |
 
 ---
 
@@ -1382,7 +1409,7 @@ query {
 
 #### Query: agendamentos
 
-Retorna agendamentos com filtros flexíveis. PACIENTE vê apenas os próprios (pacienteId extraído do JWT).
+Retorna agendamentos com filtros flexíveis. PACIENTE vê apenas os próprios (pacienteId extraído do JWT). `dateFrom`/`dateTo` são obrigatórios (mesmo padrão de `disponibilidade.dataInicio`/`dataFim`).
 
 ```graphql
 query {
@@ -1466,8 +1493,8 @@ type Query {
     pacienteId: ID
     unitId: ID
     status: AppointmentStatus
-    dateFrom: String
-    dateTo: String
+    dateFrom: String!
+    dateTo: String!
   ): [Appointment!]!
 
   agendamento(id: ID!): Appointment
@@ -1792,10 +1819,13 @@ Todos os serviços seguem o padrão **RFC 7807 — Problem Details for HTTP APIs
 | `.../problems/solicitation-not-found`                           | 404    | regulacao           |
 | `.../problems/solicitation-already-exists`                      | 409    | regulacao           |
 | `.../problems/regulacao-not-allowed`                            | 422    | regulacao           |
-| `.../problems/quota-exceeded`                                   | 422    | regulacao / queue   |
+| `.../problems/quota-exceeded`                                   | 422    | regulacao           |
+| `.../problems/quota-exceeded`                                   | 409    | queue — `QuotaExceededException` é mapeada para `409 Conflict` em `queue-service`, diferente do 422 usado em regulacao |
+| `.../problems/quota-not-found`                                  | 404    | queue — não documentado anteriormente |
 | `.../problems/unit-not-found`                                   | 404    | regulacao           |
 | `.../problems/unit-already-exists`                               | 409    | regulacao           |
 | `.../problems/id-paciente-incorreto`                             | 403    | regulacao           |
+| `.../problems/missing-required-field`                            | 422    | regulacao           |
 | `.../problems/slot-not-found`                                   | 404    | agendamento         |
 | `.../problems/slot-unavailable`                                 | 422    | agendamento         |
 | `.../problems/appointment-not-found`                            | 404    | agendamento         |

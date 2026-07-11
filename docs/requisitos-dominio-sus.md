@@ -55,7 +55,7 @@ if (Period.between(patient.getDataNascimento(), LocalDate.now()).getYears() >= 6
 return patient.getGrupoLegal() != null ? patient.getGrupoLegal() : EPriorityGroup.GERAL;
 ```
 
-> **Este método só é chamado em `RegisterPatient` e `UpdatePatient`** (cadastro/atualização de paciente) — o resultado é gravado em `patients.grupo_legal`. A ordenação da fila **não** chama este método; ela lê o `grupoLegal` já armazenado (ver `docs/logica_priorizacao_sus.md`, seção 0). Ou seja: um paciente que completa 60 anos **enquanto já está na fila** não é promovido a `IDOSO` automaticamente "na próxima ordenação" — só passa a contar como `IDOSO` depois que seu cadastro for atualizado via `PATCH /api/v1/patients/{id}`.
+> Este método Java é chamado em `RegisterPatient`, `UpdatePatient` e `RegisterPatientInQueue`, gravando um snapshot em `patients.grupo_legal`. A ordenação da fila espelha a mesma regra **diretamente em SQL** (`QueueEntryJpaRepository.EFFECTIVE_PRIORITY_GROUP`, ver `docs/logica_priorizacao_sus.md` seção 0), recalculando a idade a cada consulta — não depende apenas do snapshot. Um paciente que completa 60 anos **enquanto já está na fila** é promovido a `IDOSO` automaticamente na próxima consulta, sem precisar de um `PATCH /api/v1/patients/{id}`.
 
 ---
 

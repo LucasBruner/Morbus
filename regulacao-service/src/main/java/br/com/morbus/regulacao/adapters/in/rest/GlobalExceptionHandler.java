@@ -102,9 +102,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(CampoObrigatorioException.class)
     public ProblemDetail handleCampoObrigatorio(CampoObrigatorioException e, HttpServletRequest request) {
-        ProblemDetail problem = ProblemDetail.forStatus(400);
-        problem.setType(URI.create(TYPE_BASE + "validation-error"));
-        problem.setTitle("Dados inválidos");
+        ProblemDetail problem = ProblemDetail.forStatus(422);
+        problem.setType(URI.create(TYPE_BASE + "missing-required-field"));
+        problem.setTitle("Campo obrigatório ausente");
         problem.setDetail(e.getMessage());
         problem.setInstance(URI.create(request.getRequestURI()));
         return problem;

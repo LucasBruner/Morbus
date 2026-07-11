@@ -2,7 +2,7 @@
 
 ## Resumo
 
-> ⚠️ **A ordenação real da fila (`GET /api/v1/queue`, `GET /api/v1/queue/{id}/position`, `POST /api/v1/queue/call-next`) é feita por `ORDER BY` em JPQL, em `QueueEntryJpaRepository`, não por `PriorityCalculator.compare()`.** `PriorityCalculator.compare()` existe no domínio mas não é chamado por nenhum usecase de listagem/posição/chamada — hoje só `getPriorityGroup()`/`isPriorityGroup()` são usados em produção, e apenas em `RegisterPatient`/`UpdatePatient` (cadastro/atualização de paciente), não na ordenação da fila. As duas implementações divergem entre si (ver seção 0 abaixo).
+> ⚠️ **A ordenação real da fila (`GET /api/v1/queue`, `GET /api/v1/queue/{id}/position`, `POST /api/v1/queue/call-next`) é feita por `ORDER BY` em JPQL, em `QueueEntryJpaRepository`, não por `PriorityCalculator.compare()`.** `PriorityCalculator.compare()` existe no domínio mas não é chamado por nenhum usecase de listagem/posição/chamada. O grupo de prioridade dentro dessa query JPQL, no entanto, **é recalculado dinamicamente por idade a cada consulta** (não é um snapshot estático) — ver seção 0 abaixo.
 
 O algoritmo de ordenação da fila ambulatorial do SUS, com suporte a dois tipos de fila — `FILA_REGULADA` e `FILA_ESPERA` — que seguem regras de ordenação distintas, é implementado de duas formas que **não são idênticas**: a query JPQL usada pela API (fonte de verdade em runtime) e a classe `PriorityCalculator` (domínio puro, mas não conectada à ordenação real).
 
@@ -16,14 +16,30 @@ O algoritmo de ordenação da fila ambulatorial do SUS, com suporte a dois tipos
 ORDER BY
     CASE q.tipoFila WHEN FILA_REGULADA THEN 0 ELSE 1 END ASC,
     q.riskColor ASC,
-    q.patient.grupoLegal ASC,
+    <EFFECTIVE_PRIORITY_GROUP> ASC,
     q.registeredAt ASC
 ```
 
-Isso cobre os 4 critérios documentados (tipoFila → cor → grupo → chegada), mas com uma diferença importante em relação ao que as seções abaixo descrevem para `PriorityCalculator`:
+Isso cobre os 4 critérios documentados (tipoFila → cor → grupo → chegada). `<EFFECTIVE_PRIORITY_GROUP>` é uma constante JPQL (`QueueEntryJpaRepository.EFFECTIVE_PRIORITY_GROUP`) que **recalcula a idade do paciente a cada consulta** — não lê `patients.grupo_legal` diretamente para decidir `IDOSO`:
 
-- **`q.patient.grupoLegal` é o valor armazenado em `patients.grupo_legal`**, não um recálculo dinâmico. Esse valor só é recalculado (via `PriorityCalculator.getPriorityGroup()`) quando o paciente é **cadastrado** (`RegisterPatient`) ou **atualizado** (`UpdatePatient`) — nunca no momento da consulta/ordenação da fila. Um paciente que completa 60 anos **enquanto já está na fila** não é promovido a `IDOSO` "na próxima ordenação" como versões anteriores deste documento afirmavam — ele só é promovido se/quando seu cadastro for atualizado novamente.
-- `PriorityCalculator.compare()`, por outro lado, **não implementa o Critério 1** (tipoFila) — ele compara apenas riskColor → priorityGroup → registeredAt, e o `groupScore` usado ali vem de `getPriorityGroup(patient)` (dinâmico), diferente da query JPQL acima. Como esse método não é chamado por nenhum usecase, essa diferença hoje não afeta o comportamento da API, mas o texto do método é enganoso se lido como "o algoritmo que roda em produção".
+```jpql
+CASE WHEN (
+    YEAR(CURRENT_DATE) - YEAR(q.patient.dataNascimento) -
+    CASE WHEN (MONTH(CURRENT_DATE) < MONTH(q.patient.dataNascimento))
+           OR (MONTH(CURRENT_DATE) = MONTH(q.patient.dataNascimento) AND DAY(CURRENT_DATE) < DAY(q.patient.dataNascimento))
+         THEN 1 ELSE 0 END
+) >= 60 THEN 0 ELSE
+    CASE q.patient.grupoLegal
+        WHEN EPriorityGroup.IDOSO THEN 0 WHEN EPriorityGroup.GESTANTE THEN 1
+        WHEN EPriorityGroup.DEFICIENTE THEN 2 WHEN EPriorityGroup.LACTANTE THEN 3
+        WHEN EPriorityGroup.OBESO THEN 4 ELSE 5
+    END
+END
+```
+
+- Se a idade calculada em SQL (`CURRENT_DATE` vs `patients.data_nascimento`) já é ≥ 60, a entrada conta como `IDOSO` (ordinal 0) **mesmo que `patients.grupo_legal` ainda esteja gravado como outro grupo** — não depende de um `PATCH /api/v1/patients/{id}` prévio. `patients.grupo_legal` só é usado como fallback para os grupos que não são detectáveis por idade (`GESTANTE`/`DEFICIENTE`/`LACTANTE`/`OBESO`).
+- `PriorityCalculator.compare()`, por outro lado, **não implementa o Critério 1** (tipoFila) — ele compara apenas riskColor → priorityGroup → registeredAt. Como esse método não é chamado por nenhum usecase, essa diferença hoje não afeta o comportamento da API, mas o texto do método é enganoso se lido como "o algoritmo que roda em produção".
+- Coberto por testes de integração em `QueueFlowIntegrationTest.OrdenacaoDinamicaPorIdade` (H2) — um paciente registrado com menos de 60 anos, cujo cadastro nunca é atualizado, é corretamente promovido a `IDOSO` na ordenação assim que sua idade real cruza os 60 anos.
 
 ---
 
@@ -119,7 +135,7 @@ public static int compare(QueueEntry a, QueueEntry b) {
 
 Retorna o grupo de prioridade efetivo do paciente. Idosos (≥ 60 anos) recebem `IDOSO` automaticamente.
 
-> **Chamado apenas em `RegisterPatient` e `UpdatePatient`** — o resultado é gravado em `patients.grupo_legal` no momento do cadastro/atualização. A ordenação da fila (seção 0) lê esse valor já armazenado; não recalcula a idade a cada consulta. Ou seja: um paciente cadastrado aos 58 anos com `grupoLegal = GERAL` só passa a ser tratado como `IDOSO` na fila depois que seu cadastro for atualizado (`PATCH /api/v1/patients/{id}`) após completar 60 — não automaticamente "na próxima ordenação" enquanto ele aguarda.
+> Chamado em `RegisterPatient`, `UpdatePatient` e `RegisterPatientInQueue` para gravar um *snapshot* em `patients.grupo_legal`. A ordenação da fila (seção 0), porém, **não depende apenas desse snapshot** para o grupo `IDOSO`: a query JPQL recalcula a idade a cada consulta via `EFFECTIVE_PRIORITY_GROUP`, espelhando esta mesma lógica em SQL. Um paciente cadastrado aos 58 anos com `grupoLegal = GERAL` é automaticamente tratado como `IDOSO` na fila assim que sua idade real atinge 60 — sem precisar de um novo `PATCH /api/v1/patients/{id}`.
 
 ```java
 public static EPriorityGroup getPriorityGroup(Patient patient) {
@@ -216,7 +232,7 @@ Após a ordenação real da API (query JPQL da seção 0 — não `PriorityCalcu
 
 > Carlos tem 72 anos mas está em `FILA_ESPERA`, onde somente o timestamp importa. Ele não ocupa posição 1 apenas por ser idoso — toda `FILA_REGULADA` precede `FILA_ESPERA`.
 >
-> Nesta tabela, `grupoLegal = IDOSO` para Pedro e Carlos assume que seus cadastros de paciente já refletem essa condição (setada em `RegisterPatient`/`UpdatePatient`). Se um paciente completa 60 anos **depois** de cadastrado, ele só passa a contar como `IDOSO` na fila após uma atualização de cadastro — a ordenação em si não recalcula a idade.
+> `IDOSO` para Pedro e Carlos vale independentemente de quando seus cadastros foram feitos: a ordenação recalcula a idade a cada consulta, então mesmo que `patients.grupo_legal` estivesse desatualizado (ex: gravado como `GERAL` antes de completarem 60 anos), a query já os trataria como `IDOSO` hoje.
 
 ---
 

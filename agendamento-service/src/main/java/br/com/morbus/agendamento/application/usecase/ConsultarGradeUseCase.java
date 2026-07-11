@@ -30,7 +30,7 @@ public class ConsultarGradeUseCase implements IConsultarGradeUseCase {
 
     @Override
     public List<GradeItem> execute(UUID unitId, String week) {
-        parseWeek(week);
+        LocalDate parsedWeek = parseWeek(week);
 
         HealthUnit unit = healthUnitRepository.findById(unitId).orElseThrow(
                 () -> new IllegalArgumentException("Unidade nao encontrada: " + unitId));
@@ -38,6 +38,7 @@ public class ConsultarGradeUseCase implements IConsultarGradeUseCase {
         List<Schedule> schedule = scheduleRepository.findByUnitId(unitId)
                 .stream()
                 .filter(Schedule::isAtivo)
+                .filter(s -> s.getDiaDaSemana().toDayOfWeek() == parsedWeek.getDayOfWeek())
                 .sorted(Comparator
                         .comparing(Schedule::getDiaDaSemana)
                         .thenComparing(Schedule::getHorarioInicio))
@@ -56,9 +57,9 @@ public class ConsultarGradeUseCase implements IConsultarGradeUseCase {
                 .toList();
     }
 
-    private void parseWeek(String week) {
+    private LocalDate parseWeek(String week) {
         try {
-            LocalDate.parse(week);
+            return LocalDate.parse(week);
         } catch (DateTimeParseException ex) {
             throw new IllegalArgumentException(
                     "Formato de data invalido para 'week'. Use yyyy-MM-dd.", ex);

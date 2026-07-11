@@ -152,7 +152,7 @@ class CotaControllerTest {
         @Test
         @DisplayName("deve retornar 200 quando REGULADOR consulta sem filtros")
         void deveRetornar200SemFiltros() throws Exception {
-            when(consultarCotasUseCase.execute(any())).thenReturn(Page.empty());
+            when(consultarCotasUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
 
             mockMvc.perform(get(BASE_URL)
                             .with(authentication(principalToken("ROLE_REGULADOR"))))
@@ -170,7 +170,7 @@ class CotaControllerTest {
         @Test
         @DisplayName("deve aceitar filtros unitId, procedureId e mes")
         void deveAceitarFiltros() throws Exception {
-            when(consultarCotasUseCase.execute(any())).thenReturn(Page.empty());
+            when(consultarCotasUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
 
             mockMvc.perform(get(BASE_URL)
                             .param("unitId", UUID.randomUUID().toString())
@@ -193,7 +193,7 @@ class CotaControllerTest {
         @DisplayName("deve retornar a lista de cotas devolvida pelo use case")
         void deveRetornarListaDeCotas() throws Exception {
             Quota quota = buildQuota(10, 4);
-            when(consultarCotasUseCase.execute(any())).thenReturn(new PageImpl<>(List.of(quota)));
+            when(consultarCotasUseCase.execute(any())).thenReturn(new PageResult<>(List.of(quota), 0, 20, 1, 1));
 
             mockMvc.perform(get(BASE_URL)
                             .with(authentication(principalToken("ROLE_REGULADOR"))))
