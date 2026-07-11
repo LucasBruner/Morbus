@@ -71,13 +71,13 @@ sequenceDiagram
         alt senha incorreta
             AuthService-->>Cliente: 401 Unauthorized<br/>{ error: "Credenciais inválidas" }
         else senha correta
-            AuthService->>AuthService: JWT.sign({ sub: username, role: ROLE_<ROLE_DO_USUARIO> },<br/>JWT_SECRET, { expiresIn: 24h })
+            AuthService->>AuthService: JWT.sign({ sub: username, role: <ROLE_DO_USUARIO> },<br/>JWT_SECRET, { expiresIn: 24h })
             AuthService-->>Cliente: 200 OK<br/>{ token, type: "Bearer", expiresIn, role }
         end
     end
 ```
 
-> O token gerado contém a **role** do usuário no payload e é **validado localmente** pelo queue-service a cada request, sem round-trip ao auth-service.
+> O token gerado contém a **role** do usuário no payload **sem o prefixo `ROLE_`** (ex: `"role": "MEDICO"`, não `"ROLE_MEDICO"`) — é validado localmente pelo queue-service/regulacao-service/agendamento-service a cada request, sem round-trip ao auth-service. Cada serviço consumidor normaliza para `ROLE_<valor>` ao construir a authority do Spring Security a partir do claim.
 
 ---
 
@@ -552,14 +552,14 @@ Quando o paciente não confirma presença em 72 horas, o job de expiração canc
 
 ```mermaid
 sequenceDiagram
-    participant Job as @Scheduled (a cada hora)
+    participant Job as @Scheduled (a cada 15 min)
     participant AS as agendamento-service :8084
     participant MQ as RabbitMQ
     participant QS as queue-service :8080
     participant NS as notification-service :8081
     actor Paciente
 
-    Note over Job,AS: Job de verificação periódica (a cada hora)
+    Note over Job,AS: Job de verificação periódica (AppointmentExpirationJob, a cada 15 min — cron "0 */15 * * * *")
 
     Job->>AS: verifyExpiredAppointments()
     AS->>AS: SELECT appointments WHERE status = AGUARDANDO_CONFIRMACAO AND expires_at < NOW()

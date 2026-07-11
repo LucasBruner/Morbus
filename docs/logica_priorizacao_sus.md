@@ -2,7 +2,28 @@
 
 ## Resumo
 
-O `PriorityCalculator` implementa o algoritmo de ordenação da fila ambulatorial do SUS, com suporte a dois tipos de fila — `FILA_REGULADA` e `FILA_ESPERA` — que seguem regras de ordenação distintas.
+> ⚠️ **A ordenação real da fila (`GET /api/v1/queue`, `GET /api/v1/queue/{id}/position`, `POST /api/v1/queue/call-next`) é feita por `ORDER BY` em JPQL, em `QueueEntryJpaRepository`, não por `PriorityCalculator.compare()`.** `PriorityCalculator.compare()` existe no domínio mas não é chamado por nenhum usecase de listagem/posição/chamada — hoje só `getPriorityGroup()`/`isPriorityGroup()` são usados em produção, e apenas em `RegisterPatient`/`UpdatePatient` (cadastro/atualização de paciente), não na ordenação da fila. As duas implementações divergem entre si (ver seção 0 abaixo).
+
+O algoritmo de ordenação da fila ambulatorial do SUS, com suporte a dois tipos de fila — `FILA_REGULADA` e `FILA_ESPERA` — que seguem regras de ordenação distintas, é implementado de duas formas que **não são idênticas**: a query JPQL usada pela API (fonte de verdade em runtime) e a classe `PriorityCalculator` (domínio puro, mas não conectada à ordenação real).
+
+---
+
+## 0. Onde a ordenação realmente acontece
+
+`QueueEntryJpaRepository` (`findByPriority`, `findAllOrderedByPriority`, `findByProcedureIdAndFilters`) define a ordenação com uma query JPQL:
+
+```jpql
+ORDER BY
+    CASE q.tipoFila WHEN FILA_REGULADA THEN 0 ELSE 1 END ASC,
+    q.riskColor ASC,
+    q.patient.grupoLegal ASC,
+    q.registeredAt ASC
+```
+
+Isso cobre os 4 critérios documentados (tipoFila → cor → grupo → chegada), mas com uma diferença importante em relação ao que as seções abaixo descrevem para `PriorityCalculator`:
+
+- **`q.patient.grupoLegal` é o valor armazenado em `patients.grupo_legal`**, não um recálculo dinâmico. Esse valor só é recalculado (via `PriorityCalculator.getPriorityGroup()`) quando o paciente é **cadastrado** (`RegisterPatient`) ou **atualizado** (`UpdatePatient`) — nunca no momento da consulta/ordenação da fila. Um paciente que completa 60 anos **enquanto já está na fila** não é promovido a `IDOSO` "na próxima ordenação" como versões anteriores deste documento afirmavam — ele só é promovido se/quando seu cadastro for atualizado novamente.
+- `PriorityCalculator.compare()`, por outro lado, **não implementa o Critério 1** (tipoFila) — ele compara apenas riskColor → priorityGroup → registeredAt, e o `groupScore` usado ali vem de `getPriorityGroup(patient)` (dinâmico), diferente da query JPQL acima. Como esse método não é chamado por nenhum usecase, essa diferença hoje não afeta o comportamento da API, mas o texto do método é enganoso se lido como "o algoritmo que roda em produção".
 
 ---
 
@@ -67,28 +88,29 @@ Aplicado em qualquer situação onde os critérios anteriores empatam. Quem entr
 
 ### compare(QueueEntry a, QueueEntry b)
 
+> Código real (`domain/service/PriorityCalculator.java`). **Não implementa o Critério 1** (tipoFila) — compara só riskColor → priorityGroup → registeredAt. A precedência FILA_REGULADA-antes-de-FILA_ESPERA só existe na query JPQL usada pela API (seção 0), não aqui. Este método também não é chamado por nenhum usecase hoje.
+
 ```java
 public static int compare(QueueEntry a, QueueEntry b) {
+    if (a == null && b == null) return 0;
+    if (a == null) return 1;
+    if (b == null) return -1;
 
-    // Critério 1: FILA_REGULADA (0) precede FILA_ESPERA (1)
-    int tipoComp = a.getTipoFila().ordinal() - b.getTipoFila().ordinal();
-    if (tipoComp != 0) return tipoComp;
+    // Cor de risco
+    int riskComparison = Integer.compare(
+        a.getRiskColor().getNumericPriority(),
+        b.getRiskColor().getNumericPriority()
+    );
+    if (riskComparison != 0) return riskComparison;
 
-    // Critérios 2 e 3: apenas dentro de FILA_REGULADA
-    if (a.getTipoFila() == EDestino.FILA_REGULADA) {
+    // Grupo de prioridade (dinâmico — recalcula idade a cada chamada)
+    int priorityGroupComparison = Integer.compare(
+        getPriorityGroup(a.getPatient()).getNumericPriority(),
+        getPriorityGroup(b.getPatient()).getNumericPriority()
+    );
+    if (priorityGroupComparison != 0) return priorityGroupComparison;
 
-        // Critério 2: cor de risco
-        int colorComp = a.getRiskColor().getNumericPriority()
-                      - b.getRiskColor().getNumericPriority();
-        if (colorComp != 0) return colorComp;
-
-        // Critério 3: grupo de prioridade
-        int groupComp = getPriorityGroup(a.getPatient()).getNumericPriority()
-                      - getPriorityGroup(b.getPatient()).getNumericPriority();
-        if (groupComp != 0) return groupComp;
-    }
-
-    // Critério 4: timestamp de chegada (desempate final — válido para ambos os tipos)
+    // Desempate: timestamp de chegada
     return a.getRegisteredAt().compareTo(b.getRegisteredAt());
 }
 ```
@@ -96,6 +118,8 @@ public static int compare(QueueEntry a, QueueEntry b) {
 ### getPriorityGroup(Patient patient)
 
 Retorna o grupo de prioridade efetivo do paciente. Idosos (≥ 60 anos) recebem `IDOSO` automaticamente.
+
+> **Chamado apenas em `RegisterPatient` e `UpdatePatient`** — o resultado é gravado em `patients.grupo_legal` no momento do cadastro/atualização. A ordenação da fila (seção 0) lê esse valor já armazenado; não recalcula a idade a cada consulta. Ou seja: um paciente cadastrado aos 58 anos com `grupoLegal = GERAL` só passa a ser tratado como `IDOSO` na fila depois que seu cadastro for atualizado (`PATCH /api/v1/patients/{id}`) após completar 60 — não automaticamente "na próxima ordenação" enquanto ele aguarda.
 
 ```java
 public static EPriorityGroup getPriorityGroup(Patient patient) {
@@ -120,11 +144,12 @@ public static boolean isPriorityGroup(Patient patient) {
 
 ### Ordenar a fila completa
 
+> Este é o uso *previsto* de `compare()` — mas nenhum usecase real chama `fila.sort(PriorityCalculator::compare)` hoje. A ordenação que a API de fato retorna vem da query JPQL da seção 0, e essa query **inclui** o critério de tipoFila que `compare()` não tem.
+
 ```java
 List<QueueEntry> fila = repository.findAll();
 fila.sort(PriorityCalculator::compare);
-// Resultado: FILA_REGULADA primeiro, depois FILA_ESPERA
-// Dentro de cada tipo: regras específicas se aplicam
+// Não reflete o comportamento real da API — ver seção 0.
 ```
 
 ### Verificar tipo de fila antes de reclassificar
@@ -179,7 +204,7 @@ Dada a fila abaixo (antes da ordenação):
 | Joana            | FILA_REGULADA   | AMARELO   | GERAL      | 2026-01-02 07:00 |
 | Marcos           | FILA_ESPERA     | AZUL      | GERAL      | 2026-01-04 11:00 |
 
-Após `fila.sort(PriorityCalculator::compare)`:
+Após a ordenação real da API (query JPQL da seção 0 — não `PriorityCalculator.compare()`, que não teria aplicado o critério de tipoFila):
 
 | Pos. | Paciente         | Motivo                                                      |
 |------|------------------|-------------------------------------------------------------|
@@ -190,6 +215,8 @@ Após `fila.sort(PriorityCalculator::compare)`:
 | 5    | Marcos           | FILA_ESPERA + chegou depois (04/01)                         |
 
 > Carlos tem 72 anos mas está em `FILA_ESPERA`, onde somente o timestamp importa. Ele não ocupa posição 1 apenas por ser idoso — toda `FILA_REGULADA` precede `FILA_ESPERA`.
+>
+> Nesta tabela, `grupoLegal = IDOSO` para Pedro e Carlos assume que seus cadastros de paciente já refletem essa condição (setada em `RegisterPatient`/`UpdatePatient`). Se um paciente completa 60 anos **depois** de cadastrado, ele só passa a contar como `IDOSO` na fila após uma atualização de cadastro — a ordenação em si não recalcula a idade.
 
 ---
 
@@ -209,4 +236,4 @@ Após `fila.sort(PriorityCalculator::compare)`:
 
 ---
 
-*Documento atualizado em: junho/2026*
+*Documento atualizado em: julho/2026 — revisado contra `PriorityCalculator.java` e `QueueEntryJpaRepository.java` reais.*

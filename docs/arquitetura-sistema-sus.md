@@ -124,7 +124,7 @@ queue-service/
     │   ├── enums/        # ERiskColor, EPriorityGroup, EQueueStatus, EGender, EDestino
     │   ├── event/        # IQueueEventPublisher (contrato de saída)
     │   ├── exception/    # QueueNotExistException, QueueNotAllowedException,
-    │   │                 # QueueEmptyException, QuotaExceededException, QuotaNotFoundException (13 no total)
+    │   │                 # QueueEmptyException, QuotaExceededException, QuotaNotFoundException (17 no total)
     │   ├── repository/   # IQueueEntryRepository, IPatientRepository, IProcedureRepository,
     │   │                 # IUnitProcedureQuotaRepository, IPatientProcedureRepository
     │   ├── service/      # PriorityCalculator
@@ -281,11 +281,13 @@ regulacao-service/
         ├── in/
         │   ├── rest/     # SolicitacaoController, RegulacaoController, CotaController,
         │   │             # UnidadeSolicitanteController, GlobalExceptionHandler, PageMapper, DTOs
-        │   ├── AppointmentCreatedConsumer, AppointmentAttendedConsumer, AppointmentNoShowConsumer
-        │   └── security/ # JwtAuthenticationFilter, JwtService
-        └── out/
-            ├── jpa/      # entidades JPA, Spring Data repositories, adapters de ISolicitacaoRepository etc.
-            └── rabbitmq/ # RabbitMQConfig, RabbitMqRegulacaoEventPublisher, DTOs de payload
+        │   └── AppointmentCreatedConsumer, AppointmentAttendedConsumer, AppointmentNoShowConsumer
+        ├── out/
+        │   ├── jpa/      # entidades JPA, Spring Data repositories, adapters de ISolicitacaoRepository etc.
+        │   ├── rabbitmq/ # RabbitMQConfig, RabbitMqRegulacaoEventPublisher, DTOs de payload
+        │   ├── config/   # OpenApiConfig, UseCaseConfig
+        │   └── security/ # JwtAuthenticationFilter, JwtService — apesar do nome "out", faz a validação de entrada
+        └── security/     # UserPrincipal — pacote irmão de in/out, não aninhado em nenhum dos dois
 ```
 > A fronteira transacional (`@Transactional`) vive nos adapters de entrada (controllers REST e consumers RabbitMQ), não no domínio.
 
@@ -323,7 +325,7 @@ O domínio não conhece Spring, JPA, RabbitMQ nem os adapters — inclusive a pa
 | POST   | /api/v1/unidades-solicitantes               | REGULADOR               | Cadastra unidade solicitante (UBS)          |
 | GET    | /api/v1/unidades-solicitantes/{id}          | REGULADOR / SOLICITANTE | Busca unidade solicitante por ID            |
 
-**Eventos consumidos:** `AppointmentCreatedConsumer`, `AppointmentAttendedConsumer` e `AppointmentNoShowConsumer` consomem `appointment.created`, `appointment.attended` e `appointment.no_show` de `sus.agendamento.exchange` (com DLX dedicada) — o regulacao-service não é apenas publicador, também reage ao ciclo de vida do agendamento (ex.: para estatísticas/replanejamento futuro).
+**Eventos consumidos:** `AppointmentCreatedConsumer`, `AppointmentAttendedConsumer` e `AppointmentNoShowConsumer` consomem `appointment.created`, `appointment.attended` e `appointment.no_show` de `sus.agendamento.exchange` (com DLX dedicada) — o regulacao-service não é apenas publicador, também reage ao ciclo de vida do agendamento. Esses consumers **não são apenas estatísticos**: chamam `ITransicionarParaAgendadaUseCase`/`ITransicionarParaAtendidaUseCase`/`ITransicionarParaFaltouUseCase`, que efetivamente movem a `Solicitacao` por `APROVADA → AGENDADA → ATENDIDA`/`FALTOU` (ver `requisitos-dominio-sus.md` §6 e `erd.md`).
 
 **Eventos publicados em `sus.regulacao.exchange`:** além de `solicitation.approved`/`denied`/`devolved`, também publica `solicitation.reclassified` quando a cor de risco de uma solicitação já aprovada é alterada.
 
@@ -353,7 +355,7 @@ agendamento-service/
     ├── domain/
     │   ├── model/        # Schedule, Slot, Agendamento, HealthUnit, Provider, AgendamentoComDetalhes
     │   ├── enums/        # EDiaSemana, EStatusSlots, EStatusAgendamento
-    │   ├── exception/    # 9 exceções (DuplicateScheduleException, InvalidSchedulePeriodException,
+    │   ├── exception/    # 10 exceções (DuplicateScheduleException, InvalidSchedulePeriodException,
     │   │                 # DuplicateAgendamentoException, CancelamentoNaoPermitidoException, ...)
     │   └── port/
     │       ├── in/       # ~13 use case ports — ex.: IDetalharAgendamentoUseCase, IAgendamentosPacienteUseCase
@@ -414,6 +416,10 @@ type Query {
   agendamento(id: ID!): Appointment
 }
 ```
+
+> ⚠️ **Bug de binding conhecido, não apenas documentação:** `AgendamentoGraphqlController` usa `@Argument` sem nome explícito, então o Spring GraphQL casa o argumento pelo **nome do parâmetro Java**. Isso diverge do schema em dois pontos: `disponibilidade` declara `dataInicio`/`dataFim` no schema mas o método Java recebe `dateFrom`/`dateTo`; `agendamentos` declara `pacienteId` no schema mas o método Java recebe `patientId`. Na prática, esses filtros provavelmente ficam sempre `null` em runtime — vale conferir/corrigir no código, isso não é só uma divergência de doc.
+>
+> `HealthUnit.address`/`HealthUnit.phone` também não são o que parecem: no resolver da query `grade`, `address` é montado como `"{municipio} - {uf}"` (não a coluna real `endereco`) e `phone` é sempre `null` (não existe coluna de telefone em `health_units`). Ver `erd.md`.
 
 **Endpoints REST (commands):**
 
@@ -554,7 +560,7 @@ auth-service   queue-service   regulacao-service   agendamento-service
 
 **Healthchecks:** todos os serviços Spring Boot (`auth`, `queue`, `regulacao`, `agendamento`) expõem `/actuator/health` (permitido sem autenticação no `SecurityConfig` de cada um) via `spring-boot-starter-actuator`, e o `docker-compose.yml` usa esse endpoint — não `/v3/api-docs`, que fica desabilitado no profile `docker` (`springdoc.api-docs.enabled=false`) e portanto nunca respondeu. O `notification-service` (Quarkus) expõe `/q/health` via `quarkus-smallrye-health`.
 
-> ⚠️ `regulacao-service` precisa estar declarado no `docker-compose.yml` e ter um `docker/Dockerfile` (mesmo padrão multi-stage dos demais serviços Spring Boot) para ser incluído no `docker-compose up` — sem isso, o quinto microsserviço documentado nunca sobe junto com os outros.
+> `regulacao-service` e `agendamento-service` já estão declarados no `docker-compose.yml`, cada um com seu `docker/Dockerfile` multi-stage (mesmo padrão dos demais serviços Spring Boot) — os cinco microsserviços sobem juntos via `docker-compose up`.
 
 ---
 
@@ -567,12 +573,15 @@ auth-service   queue-service   regulacao-service   agendamento-service
 2. auth-service valida credenciais no banco
 3. auth-service gera JWT:
      header:  { alg: "HS256", typ: "JWT" }
-     payload: { sub: "username", role: "ROLE_REGULADOR", iat: ..., exp: ... }
+     payload: { sub: "username", role: "REGULADOR", iat: ..., exp: ... }
      assinado com JWT_SECRET (variável de ambiente)
+     — nota: o claim "role" NÃO tem o prefixo ROLE_ (JwtService faz
+       claim("role", user.getRole().name())); o prefixo é adicionado
+       por cada serviço consumidor ao montar a authority do Spring Security
 4. Cliente envia token em todas as requests:
      Authorization: Bearer <token>
 5. JwtAuthenticationFilter em queue/regulacao/agendamento valida a assinatura
-   localmente, extrai a role e popula o SecurityContext
+   localmente, extrai a role, normaliza para ROLE_<valor> e popula o SecurityContext
 6. Spring Security avalia a role contra as regras do SecurityConfig
 ```
 

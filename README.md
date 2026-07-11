@@ -59,7 +59,7 @@ O sistema é composto por cinco microsserviços independentes e se comunica inte
 - `auth-service` → todos: JWT — cada serviço valida o token localmente com a mesma `JWT_SECRET`.
 - `queue-service` ↔ `notification-service`: AMQP via RabbitMQ — exchange `sus.queue.exchange`.
 - `regulacao-service` → `queue-service` / `agendamento-service`: AMQP — exchange `sus.regulacao.exchange`.
-- `agendamento-service` → `queue-service` / `notification-service`: AMQP — exchange `sus.agenda.exchange`.
+- `agendamento-service` → `queue-service` / `notification-service`: AMQP — exchange `sus.agendamento.exchange`.
 
 ---
 
@@ -141,16 +141,16 @@ Todos os endpoints do `queue-service` exigem um **Bearer token JWT** emitido pel
 ### Fluxo de autenticação
 
 ```bash
-# 1. Registrar usuário
-curl -X POST http://localhost:8082/api/v1/auth/register \
+# 1. Registrar usuário (username, email, password e role são todos obrigatórios)
+curl -X POST http://localhost:8082/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"email": "medico@sus.gov.br", "password": "senha123", "role": "MEDICO"}'
+  -d '{"username": "dr.silva", "email": "medico@sus.gov.br", "password": "Senh@Forte123", "role": "MEDICO"}'
 
-# 2. Fazer login e obter token
-curl -X POST http://localhost:8082/api/v1/auth/login \
+# 2. Fazer login e obter token (login é por username, não e-mail)
+curl -X POST http://localhost:8082/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "medico@sus.gov.br", "password": "senha123"}'
-# → resposta: { "token": "eyJ..." }
+  -d '{"username": "dr.silva", "password": "Senh@Forte123"}'
+# → resposta: { "token": "eyJ...", "type": "Bearer", "expiresIn": 86400000, "role": "MEDICO" }
 
 # 3. Usar o token nas requisições ao queue-service
 curl -H "Authorization: Bearer eyJ..." http://localhost:8080/api/v1/queue
@@ -259,7 +259,7 @@ curl -H "Authorization: Bearer <token>" \
 
 ## Algoritmo de Prioridade
 
-A fila é ordenada por **4 critérios em cascata**, implementados em `PriorityCalculator` (domínio puro, sem dependências de framework):
+A fila é ordenada por **4 critérios em cascata**. Na prática, quem aplica esses 4 critérios em runtime é a query JPQL de `QueueEntryJpaRepository` — não `PriorityCalculator.compare()`, que hoje não é chamado pelos usecases de listagem/posição e nem implementa o Critério 1. Ver `docs/logica_priorizacao_sus.md` para o detalhe dessa divergência.
 
 ### Critério 1 — Tipo de fila
 
@@ -276,7 +276,7 @@ A fila é ordenada por **4 critérios em cascata**, implementados em `PriorityCa
 
 ### Critério 3 — Grupo de prioridade legal (somente `FILA_REGULADA`, mesmo cor)
 
-Baseado na Lei 10.048/2000 e no Estatuto do Idoso. Pacientes com **60 anos ou mais recebem o grupo `IDOSO` automaticamente**, sobrescrevendo o campo `grupoLegal` cadastrado.
+Baseado na Lei 10.048/2000 e no Estatuto do Idoso. Pacientes com **60 anos ou mais recebem o grupo `IDOSO` automaticamente** no momento do cadastro/atualização (`RegisterPatient`/`UpdatePatient`), sobrescrevendo o campo `grupoLegal` informado. Essa checagem **não** é refeita a cada ordenação da fila — a fila lê o `grupoLegal` já salvo no paciente, então um paciente que completa 60 anos enquanto já está na fila só passa a contar como `IDOSO` depois de um novo `PATCH /api/v1/patients/{id}`.
 
 | Grupo        | Prioridade |
 |--------------|-----------|

@@ -22,7 +22,9 @@ A classificação de risco determina a urgência clínica do paciente e é o cri
 | `VERDE`    | 2       | Eletivo     | ≤ 6 meses             | Condição estável, procedimento indicado               |
 | `AZUL`     | 3       | Rotina      | ≤ 12 meses            | Entrada padrão — toda entrada nova começa em AZUL     |
 
-> **Regra de entrada:** toda solicitação é criada com cor `AZUL`. O regulador pode elevar a cor no ato da avaliação. O médico pode reclassificar uma entrada existente em `FILA_REGULADA` via `PATCH /api/v1/queue/{id}/priority`.
+> **Regra de entrada (queue-service):** toda `QueueEntry` é criada com cor `AZUL` (`AddToQueue`). O médico pode reclassificar uma entrada existente em `FILA_REGULADA` via `PATCH /api/v1/queue/{id}/priority`.
+>
+> **Regra de entrada (regulacao-service):** a `Solicitacao` também nasce com cor `AZUL` — o construtor de `Solicitacao` define `riskColor = ERiscoSolicitado.AZUL` explicitamente na criação (não fica `NULL`). O regulador substitui essa cor pela definitiva ao avaliar (`POST /api/v1/regulacao/{id}/avaliar`, decisão `AUTORIZAR`/`FILA_ESPERA`, via `Solicitacao.aprovar(riskColor, ...)`), e é essa cor definitiva que a `QueueEntry` resultante recebe ao consumir `SOLICITATION_APPROVED`.
 >
 > **Restrição de FILA_ESPERA:** entradas em `FILA_ESPERA` são sempre `AZUL` e não admitem reclassificação de cor.
 
@@ -43,17 +45,17 @@ A prioridade legal é o segundo critério de ordenação dentro da `FILA_REGULAD
 
 ### 3.1 Detecção automática de IDOSO
 
-O `PriorityCalculator.getPriorityGroup(Patient patient)` verifica a idade do paciente em tempo real:
+O `PriorityCalculator.getPriorityGroup(Patient patient)` calcula a idade do paciente no momento em que é chamado:
 
 ```java
-// Paciente com 60+ anos → IDOSO (sobrescreve grupoLegal cadastrado)
+// Paciente com 60+ anos → IDOSO (sobrescreve grupoLegal informado)
 if (Period.between(patient.getDataNascimento(), LocalDate.now()).getYears() >= 60) {
     return EPriorityGroup.IDOSO;
 }
-return patient.getGrupoLegal();
+return patient.getGrupoLegal() != null ? patient.getGrupoLegal() : EPriorityGroup.GERAL;
 ```
 
-> Isso garante que um paciente que completou 60 anos após o cadastro seja automaticamente promovido ao grupo `IDOSO` na próxima ordenação, sem necessidade de recadastro.
+> **Este método só é chamado em `RegisterPatient` e `UpdatePatient`** (cadastro/atualização de paciente) — o resultado é gravado em `patients.grupo_legal`. A ordenação da fila **não** chama este método; ela lê o `grupoLegal` já armazenado (ver `docs/logica_priorizacao_sus.md`, seção 0). Ou seja: um paciente que completa 60 anos **enquanto já está na fila** não é promovido a `IDOSO` automaticamente "na próxima ordenação" — só passa a contar como `IDOSO` depois que seu cadastro for atualizado via `PATCH /api/v1/patients/{id}`.
 
 ---
 

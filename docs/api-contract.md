@@ -864,6 +864,8 @@ Cria uma nova solicitação de inclusão de paciente em fila ambulatorial.
 }
 ```
 
+> `riskColor` é sempre `AZUL` na criação — o construtor de `Solicitacao` define `riskColor = AZUL` explicitamente (não fica `null`). O regulador substitui essa cor pela definitiva ao avaliar (`AUTORIZAR`/`FILA_ESPERA`).
+
 **Erros:**
 
 | Status | Motivo                                                               |
@@ -897,7 +899,9 @@ Lista solicitações com filtros opcionais.
 
 ### GET /api/v1/solicitacoes/{id}
 
-Retorna o detalhe completo de uma solicitação com histórico de pareceres.
+Retorna o detalhe de uma solicitação.
+
+> A resposta real **não inclui histórico de pareceres** — é um objeto plano (`SolicitacaoStatusResponseDTO`). Para ver as decisões emitidas, seria preciso um endpoint próprio de pareceres, que hoje não existe; versões anteriores deste documento mostravam um array `pareceres` aninhado que não corresponde à implementação.
 
 **Auth:** `ROLE_SOLICITANTE` ou `ROLE_REGULADOR`
 
@@ -914,15 +918,8 @@ Retorna o detalhe completo de uma solicitação com histórico de pareceres.
   "riskColor": "AMARELO",
   "status": "APROVADA",
   "criadaEm": "2026-06-12T09:00:00Z",
-  "pareceres": [
-    {
-      "id": "aabb1122-...",
-      "decisao": "AUTORIZAR",
-      "riskColorDefinido": "AMARELO",
-      "justificativa": null,
-      "emitidoEm": "2026-06-12T11:30:00Z"
-    }
-  ]
+  "updatedAt": "2026-06-12T11:30:00Z",
+  "justificativaNegacao": null
 }
 ```
 
@@ -1028,16 +1025,17 @@ Emite um parecer sobre uma solicitação. Disponível apenas para o médico regu
 **Response `200 OK`:**
 ```json
 {
+  "parecerId": "aabb1122-cc33-dd44-ee55-ff6677889900",
   "solicitacaoId": "11223344-5566-7788-99aa-bbccddeeff00",
-  "parecer": {
-    "id": "aabb1122-cc33-dd44-ee55-ff6677889900",
-    "decisao": "AUTORIZAR",
-    "riskColorDefinido": "AMARELO",
-    "emitidoEm": "2026-06-12T11:30:00Z"
-  },
+  "reguladorId": "0f1e2d3c-4b5a-6789-0fed-cba098765432",
+  "decisao": "AUTORIZAR",
+  "justificativa": null,
+  "emitidoEm": "2026-06-12T11:30:00Z",
   "novoStatus": "APROVADA"
 }
 ```
+
+> A resposta real (`AvaliarSolicitacaoResponseDTO`) é um objeto plano, sem aninhar um objeto `parecer` — e não inclui `riskColorDefinido`: o `Parecer` não tem coluna de cor (ver `erd.md`); a cor escolhida fica gravada em `solicitacoes.risco_solicitado`, consultável via `GET /api/v1/solicitacoes/{id}`.
 
 **Erros:**
 
@@ -1570,11 +1568,12 @@ enum AppointmentStatus {
 | `AGUARDANDO`        | Paciente aguardando chamada (estado inicial)                        |
 | `CHAMADO`           | Chamado pelo call-next; aguardando slot do agendamento-service      |
 | `AGENDADO`          | Slot confirmado pelo agendamento-service                            |
-| `AGUARDANDO_VAGA`   | Chamado, mas sem slot disponível no momento                         |
 | `ATENDIDO`          | Atendimento realizado                                               |
 | `FALTOU`            | Paciente não compareceu após ser chamado                            |
 | `CANCELADO`         | Entrada cancelada (pelo médico ou pelo paciente)                    |
 | `DEVOLVIDO`         | Paciente devolvido à fila após não comparecimento (intermediário)   |
+
+> `EQueueStatus` no código tem exatamente estes 7 valores. `AGUARDANDO_VAGA` (chamado mas sem slot disponível, ao consumir `appointment.no_slot`) **não está implementado** — não existe no enum. Além disso, hoje nenhum fluxo do domínio produz `ATENDIDO`, `FALTOU` ou `DEVOLVIDO`; `DEVOLVIDO` só é lido como precondição em `ReclassifyPriority`. Ver `requisitos-dominio-sus.md` §6.
 
 ### TipoFila
 
