@@ -222,8 +222,6 @@ erDiagram
 
 ### PATIENTS *(queue-service)*
 
-> Implementado em: **V2** (`create_patients_table`) + **V5** (`add_ativo_to_patients`)
-
 | Coluna            | Tipo         | Restrições             | Descrição                                                              |
 |-------------------|--------------|------------------------|------------------------------------------------------------------------|
 | `id`              | UUID         | PK, NOT NULL           | Identificador único                                                    |
@@ -253,8 +251,6 @@ erDiagram
 ---
 
 ### QUEUE_ENTRIES *(queue-service)*
-
-> Implementado em: **V3** (`create_queue_entries_table`), **V7** (`add_tipo_fila_to_queue_entries`), **V8** (`add_solicitacao_fields_to_queue_entries`), **V9** (`add_chamado_to_queue_entries_status_check`)
 
 | Coluna              | Tipo        | Restrições                     | Descrição                                                           |
 |---------------------|-------------|--------------------------------|---------------------------------------------------------------------|
@@ -306,8 +302,6 @@ cadastro ──▶ AGUARDANDO ──call-next──▶ CHAMADO ──appointment
 
 ### UNIT_PROCEDURE_QUOTAS *(queue-service)*
 
-> Implementado em: **V10** (`create_unit_procedure_quotas_table`)
-
 Controla a cota **diária** de inserções em FILA_ESPERA por unidade+procedimento. Não há contador persistido — `CheckAndEnforceQuota` conta ao vivo as entradas `AGUARDANDO` em `FILA_ESPERA` daquela combinação criadas no dia corrente e compara com `max_per_day`.
 
 | Coluna         | Tipo        | Restrições                                  | Descrição                              |
@@ -324,8 +318,6 @@ Controla a cota **diária** de inserções em FILA_ESPERA por unidade+procedimen
 ---
 
 ### PATIENT_PROCEDURES *(queue-service)*
-
-> Implementado em: **V6** (`create_patient_procedures_table`)
 
 Tabela de junção que vincula procedimentos SUS a pacientes, controlando elegibilidade e permitindo atribuição prévia ao cadastro na fila.
 
@@ -358,8 +350,6 @@ Tabela de junção que vincula procedimentos SUS a pacientes, controlando elegib
 ---
 
 ### SOLICITACOES *(regulacao-service)*
-
-> Implementado em: **V1** (`create_solicitacoes`) + **V5** (`update_solicitacoes_align_doc`) + **V7** (`add_appointment_id_to_solicitacoes`).
 
 Representa o pedido de inclusão de um paciente em fila ambulatorial, criado pelo operador da UBS (`ROLE_SOLICITANTE`).
 
@@ -429,8 +419,6 @@ Cadastro das UBS que podem criar solicitações no sistema.
 
 ### QUOTAS *(regulacao-service)*
 
-> Implementado em: **V4** (`create_quotas`) — não documentada em versões anteriores deste arquivo.
->
 > ⚠️ Esta é a cota *própria* do regulacao-service, distinta de `UNIT_PROCEDURE_QUOTAS` (queue-service, diária/opt-in, exclusiva de `FILA_ESPERA` — ver aviso em `arquitetura-sistema-sus.md` §2.4). O contador é verificado/incrementado em `CriarSolicitacaoUseCase` quando `destino = FILA_ESPERA` na criação, e também em `AvaliarSolicitacaoUseCase` quando o regulador redireciona uma solicitação `FILA_REGULADA` para `FILA_ESPERA` na decisão (`CotaExcedidaException` bloqueia a aprovação nesse caso). Solicitações já criadas com `destino = FILA_ESPERA` não são re-verificadas na avaliação — a cota já foi consumida na criação.
 
 | Coluna          | Tipo    | Restrições                                          | Descrição                                       |
@@ -447,8 +435,6 @@ Cadastro das UBS que podem criar solicitações no sistema.
 ---
 
 ### HEALTH_UNITS *(agendamento-service)*
-
-> Implementado em: **V1** (`create_health_units`) + **V9** (`add_health_unit_endereco`) + **V10** (`add_health_unit_telefone`). `municipio`/`uf` não documentados antes.
 
 Unidades executantes que realizam os procedimentos agendados.
 
@@ -469,8 +455,6 @@ O tipo GraphQL `HealthUnit` (ver `api-contract.md`) expõe `address`/`phone`: `a
 
 ### PROVIDERS *(agendamento-service)*
 
-> Implementado em: **V2** (`create_providers`)
-
 Profissionais de saúde vinculados a uma unidade executante.
 
 | Coluna          | Tipo         | Restrições                        | Descrição                  |
@@ -485,9 +469,6 @@ Profissionais de saúde vinculados a uma unidade executante.
 ---
 
 ### SCHEDULES *(agendamento-service)*
-
-> Implementado em: **V3** (`create_schedules`). A tabela é inteiramente em português, exceto `id`/`unit_id`/`provider_id`/`procedure_id`.
-
 Grade semanal de atendimento de uma unidade para um procedimento.
 
 | Coluna                 | Tipo        | Restrições                              | Descrição                               |
@@ -506,8 +487,6 @@ Grade semanal de atendimento de uma unidade para um procedimento.
 ---
 
 ### SLOTS *(agendamento-service)*
-
-> Implementado em: **V4** (`create_slots`) + **V11** (`remove_reservado_slot_status`)
 
 Horários individuais gerados a partir de uma grade semanal.
 

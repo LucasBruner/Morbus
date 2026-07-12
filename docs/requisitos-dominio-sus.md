@@ -55,8 +55,6 @@ if (Period.between(patient.getDataNascimento(), LocalDate.now()).getYears() >= 6
 return patient.getGrupoLegal() != null ? patient.getGrupoLegal() : EPriorityGroup.GERAL;
 ```
 
-> Este método Java é chamado em `RegisterPatient`, `UpdatePatient` e `RegisterPatientInQueue`, gravando um snapshot em `patients.grupo_legal`. A ordenação da fila espelha a mesma regra **diretamente em SQL** (`QueueEntryJpaRepository.EFFECTIVE_PRIORITY_GROUP`, ver `docs/logica_priorizacao_sus.md` seção 0), recalculando a idade a cada consulta — não depende apenas do snapshot. Um paciente que completa 60 anos **enquanto já está na fila** é promovido a `IDOSO` automaticamente na próxima consulta, sem precisar de um `PATCH /api/v1/patients/{id}`.
-
 ---
 
 ## 4. Algoritmo de Ordenação da Fila
@@ -162,8 +160,6 @@ A tabela `unit_procedure_quotas` controla quantas inserções em `FILA_ESPERA` c
 | CHAMADO → AGENDADO              | Evento `appointment.confirmed` do agendamento-service (`AppointmentConfirmedConsumer`) |
 | AGUARDANDO / AGENDADO → CANCELADO | `CancelQueueEntry` (DELETE /queue/{id})        |
 | AGENDADO → AGUARDANDO           | Evento `appointment.expired` ou `patient.no_show` do agendamento-service (reinserção no fim da fila, via `ReinstatePatientInQueue`) |
-
-> `ATENDIDO`, `FALTOU` e `DEVOLVIDO` existem no enum `EQueueStatus`, mas hoje nenhum fluxo do domínio os produz — nenhum método de `QueueEntry` atribui esses valores (`DEVOLVIDO` só é *lido* como precondição em `ReclassifyPriority`). `AGUARDANDO_VAGA` (chamado sem slot disponível, ao consumir `appointment.no_slot`) não existe no enum — ver nota de "planejado" em `erd.md`.
 
 ### Solicitação (regulacao-service)
 

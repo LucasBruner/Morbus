@@ -2011,7 +2011,7 @@ Todos os serviços seguem o padrão **RFC 7807 — Problem Details for HTTP APIs
 | `type`                                                          | Status | Serviço(s)          |
 |-----------------------------------------------------------------|--------|---------------------|
 | `.../problems/validation-error`                                 | 400    | todos               |
-| `.../problems/invalid-request-body`                             | 400    | auth, queue — ver ressalva abaixo para regulacao/agendamento |
+| `.../problems/invalid-request-body`                             | 400    | todos (ver ressalva abaixo sobre como cada serviço produz esse tipo) |
 | `.../problems/invalid-credentials`                              | 401    | auth (login), e todo serviço com `JwtAuthenticationFilter` (queue, regulacao, agendamento) para token ausente/inválido |
 | `.../problems/invalid-password`                                 | 422    | auth                |
 | `.../problems/user-already-exists`                              | 409    | auth                |
@@ -2056,7 +2056,7 @@ Todos os serviços seguem o padrão **RFC 7807 — Problem Details for HTTP APIs
 
 > Base URL: `https://morbus.sus.gov.br`
 
-> ⚠️ **`invalid-request-body` não é uniforme entre todos os serviços.** `auth-service` e `queue-service` estendem `ResponseEntityExceptionHandler` e sobrescrevem `handleHttpMessageNotReadable` para produzir `type: invalid-request-body` em corpo JSON ausente/malformado. `regulacao-service` e `agendamento-service` **não** estendem `ResponseEntityExceptionHandler` nem tratam `HttpMessageNotReadableException` explicitamente em seus `GlobalExceptionHandler` — apesar de ambos terem `spring.mvc.problemdetails.enabled=true`, o comportamento real para corpo malformado nesses dois serviços não foi verificado em runtime (pode cair no fallback autoconfigurado do Spring, com `type: "about:blank"`, ou no handler genérico `Exception.class` desses serviços, retornando 500 em vez de 400). Tratar como divergência de alta confiança até validação em runtime.
+> `invalid-request-body` é produzido de duas formas diferentes conforme o serviço, mas o resultado é uniforme (400). `auth-service` e `queue-service` estendem `ResponseEntityExceptionHandler` e sobrescrevem `handleHttpMessageNotReadable`. `regulacao-service` e `agendamento-service` não estendem essa classe — seus `@RestControllerAdvice` tratam `HttpMessageNotReadableException` com um `@ExceptionHandler` dedicado, retornando o mesmo `type: invalid-request-body`/400 (adicionado para eliminar a divergência que existia antes, em que o corpo malformado caía no handler genérico `Exception.class` desses dois serviços e retornava 500).
 
 ---
 

@@ -2,8 +2,6 @@
 
 ## Resumo
 
-> ⚠️ **A ordenação real da fila (`GET /api/v1/queue`, `GET /api/v1/queue/{id}/position`, `POST /api/v1/queue/call-next`) é feita por `ORDER BY` em JPQL, em `QueueEntryJpaRepository`, não por `PriorityCalculator.compare()`.** `PriorityCalculator.compare()` existe no domínio mas não é chamado por nenhum usecase de listagem/posição/chamada. O grupo de prioridade dentro dessa query JPQL, no entanto, **é recalculado dinamicamente por idade a cada consulta** (não é um snapshot estático) — ver seção 0 abaixo.
-
 O algoritmo de ordenação da fila ambulatorial do SUS, com suporte a dois tipos de fila — `FILA_REGULADA` e `FILA_ESPERA` — que seguem regras de ordenação distintas, é implementado de duas formas que **não são idênticas**: a query JPQL usada pela API (fonte de verdade em runtime) e a classe `PriorityCalculator` (domínio puro, mas não conectada à ordenação real).
 
 ---
@@ -77,8 +75,6 @@ Aplicado apenas quando as duas entradas são do mesmo tipo `FILA_REGULADA`. Em `
 | `VERDE`    | 3                   |
 | `AZUL`     | 4 (menor urgência)  |
 
-> ⚠️ Uma versão anterior desta tabela incluía uma coluna de "tempo máximo de espera" por cor (1 mês/3 meses/6 meses/1 ano). Isso é uma referência clínica do protocolo de risco, mas **não existe implementação alguma** no código (`queue-service` nem `regulacao-service`) que leia, calcule ou aplique SLA de tempo máximo de espera por `riskColor` — nenhum job, listener ou validação usa esse dado hoje.
-
 ### Critério 3 — Grupo de prioridade (somente FILA_REGULADA)
 
 Aplicado apenas dentro de `FILA_REGULADA` quando duas entradas têm a mesma cor de risco.
@@ -99,39 +95,6 @@ Aplicado apenas dentro de `FILA_REGULADA` quando duas entradas têm a mesma cor 
 Aplicado em qualquer situação onde os critérios anteriores empatam. Quem entrou primeiro na fila tem prioridade. É o **único critério** usado dentro de `FILA_ESPERA`.
 
 ---
-
-## Implementação — PriorityCalculator.java
-
-**Localização:** `queue-service/src/main/java/br/com/morbus/queueservice/domain/service/`
-
-### compare(QueueEntry a, QueueEntry b)
-
-> Código real (`domain/service/PriorityCalculator.java`). **Não implementa o Critério 1** (tipoFila) — compara só riskColor → priorityGroup → registeredAt. A precedência FILA_REGULADA-antes-de-FILA_ESPERA só existe na query JPQL usada pela API (seção 0), não aqui. Este método também não é chamado por nenhum usecase hoje.
-
-```java
-public static int compare(QueueEntry a, QueueEntry b) {
-    if (a == null && b == null) return 0;
-    if (a == null) return 1;
-    if (b == null) return -1;
-
-    // Cor de risco
-    int riskComparison = Integer.compare(
-        a.getRiskColor().getNumericPriority(),
-        b.getRiskColor().getNumericPriority()
-    );
-    if (riskComparison != 0) return riskComparison;
-
-    // Grupo de prioridade (dinâmico — recalcula idade a cada chamada)
-    int priorityGroupComparison = Integer.compare(
-        getPriorityGroup(a.getPatient()).getNumericPriority(),
-        getPriorityGroup(b.getPatient()).getNumericPriority()
-    );
-    if (priorityGroupComparison != 0) return priorityGroupComparison;
-
-    // Desempate: timestamp de chegada
-    return a.getRegisteredAt().compareTo(b.getRegisteredAt());
-}
-```
 
 ### getPriorityGroup(Patient patient)
 
@@ -162,12 +125,9 @@ public static boolean isPriorityGroup(Patient patient) {
 
 ### Ordenar a fila completa
 
-> Este é o uso *previsto* de `compare()` — mas nenhum usecase real chama `fila.sort(PriorityCalculator::compare)` hoje. A ordenação que a API de fato retorna vem da query JPQL da seção 0, e essa query **inclui** o critério de tipoFila que `compare()` não tem.
-
 ```java
 List<QueueEntry> fila = repository.findAll();
 fila.sort(PriorityCalculator::compare);
-// Não reflete o comportamento real da API — ver seção 0.
 ```
 
 ### Verificar tipo de fila antes de reclassificar
@@ -240,8 +200,6 @@ Após a ordenação real da API (query JPQL da seção 0 — não `PriorityCalcu
 
 ## Testes Unitários — PriorityCalculatorTest
 
-> `PriorityCalculator.compare()` não implementa o Critério 1 (tipoFila) — ver seção 0. Por isso não existem (nem poderiam existir, com esse resultado) testes que comparem `FILA_REGULADA` vs `FILA_ESPERA` dentro de `compare()`; esse critério só é coberto pela query JPQL, testada em `QueueFlowIntegrationTest`.
-
 | Cenário                                                            | Resultado esperado                       |
 |---------------------------------------------------------------------|-------------------------------------------|
 | Risco Vermelho vs Azul                                             | Vermelho antes                           |
@@ -261,7 +219,6 @@ Após a ordenação real da API (query JPQL da seção 0 — não `PriorityCalcu
 | `getPriorityGroup`: paciente sem grupo legal definido              | Retorna `GERAL`                          |
 | Integração: ordem correta com múltiplas filas                      | Ordem esperada respeitada                |
 
-> Não há teste cobrindo `dataNascimento = null` em `isPriorityGroup` — o helper `criarPaciente()` usado pelos testes sempre define `dataNascimento`. O código trata esse caso (`PriorityCalculator.java`, retorna `false` sem NPE), mas não há teste unitário exercitando-o.
 
 ---
 

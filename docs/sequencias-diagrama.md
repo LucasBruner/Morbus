@@ -49,8 +49,6 @@ sequenceDiagram
     end
 ```
 
-> `role` com valor fora do enum `UserRole` quebra a desserialização Jackson **antes** de qualquer validação de negócio — cai em `GlobalExceptionHandler.handleHttpMessageNotReadable`, que devolve **400** com `type: invalid-request-body` (não existe o tipo `invalid-role`/422 documentado em versões anteriores deste diagrama). A validação de complexidade de senha (`AuthService.validatePassword`) roda antes da checagem de unicidade.
-
 ---
 
 ## 2. Login e Obtenção do JWT
@@ -81,8 +79,6 @@ sequenceDiagram
         end
     end
 ```
-
-> O token gerado contém a **role** do usuário no payload **sem o prefixo `ROLE_`** (ex: `"role": "MEDICO"`, não `"ROLE_MEDICO"`) — é validado localmente pelo queue-service/regulacao-service/agendamento-service a cada request, sem round-trip ao auth-service. Cada serviço consumidor normaliza para `ROLE_<valor>` ao construir a authority do Spring Security a partir do claim.
 
 ---
 
@@ -241,9 +237,6 @@ sequenceDiagram
     NS->>DB: INSERT INTO notifications
     NS->>NS: EmailService.send(...)<br/>[EMAIL SIMULADO] Para: maria@email.com | ...
 ```
-
-> O status `AGENDADO` só é atribuído posteriormente, quando o `queue-service` consome o evento `appointment.confirmed` publicado pelo `agendamento-service` (ver seção 10, e `AppointmentConfirmedConsumer`/`ConfirmAppointment`).
-
 ---
 
 ## 6. Reclassificação de Prioridade

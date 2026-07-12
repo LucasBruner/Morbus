@@ -490,12 +490,6 @@ sus.agendamento.exchange (direct)      publicado por: agendamento-service
                                regulacao-service: "regulacao.appointment.no_show"
 ```
 > `appointment.cancelled` e `appointment.no_slot` reinserem o paciente na fila via `ReinstatePatientInQueue` no queue-service (mesma semântica já usada por `appointment.expired`/`patient.no_show`).
->
-> regulacao-service só consome eventos de `sus.agendamento.exchange` (`AppointmentCreatedConsumer`/`AppointmentAttendedConsumer`/`AppointmentNoShowConsumer`); ele nunca consome os eventos que publica em `sus.regulacao.exchange`. Uma versão anterior do `RabbitMQConfig` chegava a declarar e vincular 4 filas órfãs (`regulacao.solicitacao.aprovada/negada/devolvida/reclassificada`) sem nenhum `@RabbitListener`, que acumulavam mensagens indefinidamente — essas filas foram removidas.
->
-> O queue-service tinha o mesmo problema: `RabbitMQConfig.java` declarava um `DirectExchange` extra, `sus.queue.priority.exchange` (nunca referenciado em nenhum binding ou publisher — resquício do commit inicial `configure rabbitmq`, anterior a qualquer consumer real), e uma fila `queue.patient.registered` vinculada ao próprio `sus.queue.exchange` com a routing key `patient.registered` (mesma routing key que `notification.queue.events` já consome), sem nenhum `@RabbitListener`. Ambos foram removidos.
-
-> ⚠️ **agendamento-service ainda tem o problema equivalente, não corrigido.** Seu `RabbitMQConfig.java` declara 7 filas vinculadas ao próprio `sus.agendamento.exchange` (`appointmentConfirmedQueue`, `appointmentCancelledQueue`, `appointmentRescheduledQueue`, `appointmentAttendedQueue`, `appointmentNoSlotQueue`, `appointmentExpiredQueue`, `patientNoShowQueue`), mas o único `@RabbitListener` do serviço é `PatientCalledConsumer` (consumindo de `sus.queue.exchange`, não desses). Duas dessas filas (`queue.appointment.rescheduled`, `queue.appointment.attended`) são órfãs de verdade — nenhum serviço as consome (os eventos equivalentes são recebidos por filas com outro nome em notification-service/regulacao-service). As outras 5 duplicam, com o mesmo nome, filas já declaradas e efetivamente consumidas pelo `queue-service` — mas a declaração do agendamento-service **não** inclui os argumentos de dead-letter (`x-dead-letter-exchange`/`x-dead-letter-routing-key`) que o queue-service usa, o que é uma divergência de argumentos para uma fila de mesmo nome e pode causar `PRECONDITION_FAILED` do RabbitMQ dependendo da ordem de subida dos serviços.
 
 **Dead Letter Exchange (DLX):**
 
