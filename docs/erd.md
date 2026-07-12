@@ -265,9 +265,9 @@ erDiagram
 | `preferred_unit_id` | UUID        | nullable, sem FK cross-schema  | Unidade executante preferencial definida na regulação               |
 | `priority_group`    | SMALLINT    | nullable                       | Ordinal do `EPriorityGroup` — snapshot calculado no registro. **Não é usado para ordenar a fila** (ver nota abaixo) |
 
-> **Ordenação real da fila:** `PriorityCalculator.compare()` (o comparador documentado em `logica_priorizacao_sus.md`) **não é chamado em nenhum fluxo do sistema** — é código morto, sem callers. A ordenação de fato acontece em SQL, via `QueueEntryJpaRepository` (`findByPriority`/`findAllOrderedByPriority`/`findByProcedureIdAndFilters`):
-> `ORDER BY CASE tipo_fila WHEN 'FILA_REGULADA' THEN 0 ELSE 1 END, risk_color, <grupo de prioridade efetivo>, registered_at`.
-> O "grupo de prioridade efetivo" **é recalculado dinamicamente a cada consulta** (`QueueEntryJpaRepository.EFFECTIVE_PRIORITY_GROUP`): se a idade do paciente (`CURRENT_DATE` vs `patients.data_nascimento`) já é ≥ 60, ele conta como `IDOSO` na ordenação **mesmo que `patients.grupo_legal` ainda esteja gravado como outro grupo** (snapshot desatualizado). Ou seja, um paciente que completa 60 anos enquanto aguarda na fila é promovido automaticamente na próxima consulta, sem precisar de `PATCH /api/v1/patients/{id}`. `patients.grupo_legal` continua existindo como snapshot (gravado por `RegisterPatient`/`UpdatePatient`/`RegisterPatientInQueue` via `PriorityCalculator.getPriorityGroup()`) e é usado como fallback para os demais grupos legais (`GESTANTE`/`DEFICIENTE`/`LACTANTE`/`OBESO`), que não são detectáveis por idade.
+**Ordenação real da fila:** a ordenação acontece em SQL, via `QueueEntryJpaRepository` (`findByPriority`/`findAllOrderedByPriority`/`findByProcedureIdAndFilters`):
+`ORDER BY CASE tipo_fila WHEN 'FILA_REGULADA' THEN 0 ELSE 1 END, risk_color, <grupo de prioridade efetivo>, registered_at`.
+O "grupo de prioridade efetivo" é recalculado dinamicamente a cada consulta (`QueueEntryJpaRepository.EFFECTIVE_PRIORITY_GROUP`): se a idade do paciente (`CURRENT_DATE` vs `patients.data_nascimento`) já é ≥ 60, ele conta como `IDOSO` na ordenação mesmo que `patients.grupo_legal` ainda esteja gravado como outro grupo (snapshot desatualizado) — um paciente que completa 60 anos enquanto aguarda na fila é promovido automaticamente na próxima consulta, sem precisar de `PATCH /api/v1/patients/{id}`. `patients.grupo_legal` continua existindo como snapshot (gravado por `RegisterPatient`/`UpdatePatient`/`RegisterPatientInQueue` via `PriorityCalculator.getPriorityGroup()`) e é usado como fallback para os demais grupos legais (`GESTANTE`/`DEFICIENTE`/`LACTANTE`/`OBESO`), que não são detectáveis por idade.
 
 **Índice de prioridade:**
 ```sql
@@ -336,7 +336,7 @@ Tabela de junção que vincula procedimentos SUS a pacientes, controlando elegib
 
 ### NOTIFICATIONS *(notification-service)*
 
-> `Notification` estende `PanacheEntity` (Quarkus/Hibernate ORM), cujo `id` é `Long` autogerado — não UUID. É o único identificador não-UUID do sistema (ver Convenções em `api-contract.md`).
+`Notification` estende `PanacheEntity` (Quarkus/Hibernate ORM), cujo `id` é `Long` autogerado — não UUID. É o único identificador não-UUID do sistema (ver Convenções em `api-contract.md`).
 
 | Coluna              | Tipo         | Restrições   | Descrição                                         |
 |---------------------|--------------|--------------|---------------------------------------------------|
@@ -352,7 +352,7 @@ Tabela de junção que vincula procedimentos SUS a pacientes, controlando elegib
 
 ### SOLICITACOES *(regulacao-service)*
 
-> Implementado em: **V1** (`create_solicitacoes`) + **V5** (`update_solicitacoes_align_doc`) + **V7** (`add_appointment_id_to_solicitacoes`). Vários nomes/tamanhos de coluna reais divergem do desenho original — ver notas abaixo.
+> Implementado em: **V1** (`create_solicitacoes`) + **V5** (`update_solicitacoes_align_doc`) + **V7** (`add_appointment_id_to_solicitacoes`).
 
 Representa o pedido de inclusão de um paciente em fila ambulatorial, criado pelo operador da UBS (`ROLE_SOLICITANTE`).
 
@@ -440,7 +440,7 @@ Cadastro das UBS que podem criar solicitações no sistema.
 
 ### HEALTH_UNITS *(agendamento-service)*
 
-> Implementado em: **V1** (`create_health_units`) + **V9** (`add_health_unit_endereco`). Estrutura real diverge do desenho original — sem coluna de telefone, com `municipio`/`uf` não documentados antes.
+> Implementado em: **V1** (`create_health_units`) + **V9** (`add_health_unit_endereco`). Não existe coluna de telefone; `municipio`/`uf` não documentados antes.
 
 Unidades executantes que realizam os procedimentos agendados.
 
@@ -454,7 +454,7 @@ Unidades executantes que realizam os procedimentos agendados.
 | `endereco`  | VARCHAR(255) | nullable     | Adicionada em V9; coluna real é `endereco`, não `address`     |
 | `ativo`     | BOOLEAN      | NOT NULL, DEFAULT TRUE | Não documentado antes                               |
 
-> **Não existe coluna de telefone.** O tipo GraphQL `HealthUnit` (ver `api-contract.md`) expõe campos `address`/`phone`, mas o resolver popula `address` com `"{municipio} - {uf}"` (não com `endereco`) e `phone` sempre `null` — só o endpoint REST `PATCH /api/v1/appointments/{id}/confirmar` usa `endereco` de fato, no campo `unitAddress`.
+**Não existe coluna de telefone.** O tipo GraphQL `HealthUnit` (ver `api-contract.md`) expõe campos `address`/`phone`, mas o resolver popula `address` com `"{municipio} - {uf}"` (não com `endereco`) e `phone` sempre `null` — só o endpoint REST `PATCH /api/v1/appointments/{id}/confirmar` usa `endereco` de fato, no campo `unitAddress`.
 
 ---
 
@@ -477,7 +477,7 @@ Profissionais de saúde vinculados a uma unidade executante.
 
 ### SCHEDULES *(agendamento-service)*
 
-> Implementado em: **V3** (`create_schedules`). A tabela real é inteiramente em português (exceto `id`/`unit_id`/`provider_id`/`procedure_id`) — versões anteriores deste documento usavam nomes em inglês que não existem no banco.
+> Implementado em: **V3** (`create_schedules`). A tabela é inteiramente em português, exceto `id`/`unit_id`/`provider_id`/`procedure_id`.
 
 Grade semanal de atendimento de uma unidade para um procedimento.
 
@@ -511,7 +511,7 @@ Horários individuais gerados a partir de uma grade semanal.
 | `reservados`  | INTEGER     | NOT NULL, DEFAULT 0                   | Coluna real: `reservados` (não `booked`)                     |
 | `status`      | VARCHAR(20) | NOT NULL, DEFAULT `DISPONIVEL`        | `DISPONIVEL`, `RESERVADO`, `OCUPADO`, `INDISPONIVEL`         |
 
-> Restrição `UNIQUE (schedule_id, data_hora)`. O schema GraphQL expõe estas mesmas colunas como `capacity`/`booked`/`remainingCapacity` (tradução feita no resolver, não no banco).
+Restrição `UNIQUE (schedule_id, data_hora)`. O schema GraphQL expõe estas mesmas colunas como `capacity`/`booked`/`remainingCapacity` (tradução feita no resolver, não no banco).
 
 > `RESERVADO` está no `CHECK` da tabela e no schema GraphQL, mas é um estado morto no domínio Java hoje — `EStatusSlots` só tem `DISPONIVEL`/`OCUPADO`/`INDISPONIVEL`, nenhum fluxo o produz.
 
@@ -544,7 +544,7 @@ Agendamento de um paciente em um slot específico.
 CONFIRMADO ──▶ ATENDIDO
            ──▶ FALTOU ──▶ (PATIENT_NO_SHOW → PATIENT_REINSTATED no queue)
 ```
-> Não existe um status `EXPIRED` distinto no `CHECK` de `appointments.status` — o job de expiração seta `CANCELADO` diretamente (o evento publicado é que se chama `APPOINTMENT_EXPIRED`, não o status em si).
+Não existe um status `EXPIRED` distinto no `CHECK` de `appointments.status` — o job de expiração seta `CANCELADO` diretamente (o evento publicado é que se chama `APPOINTMENT_EXPIRED`, não o status em si).
 
 ---
 

@@ -6,7 +6,7 @@
 ## Convenções
 
 - Todos os endpoints retornam `Content-Type: application/json`
-- Datas e timestamps seguem o formato **ISO 8601**: `yyyy-MM-dd` / `yyyy-MM-ddTHH:mm:ssZ`
+- Datas e timestamps seguem o formato **ISO 8601**: `yyyy-MM-dd` / `yyyy-MM-ddTHH:mm:ssZ`, exceto os campos baseados em `LocalDateTime` sem timezone (`auth-service.createdAt`; `queue-service.registeredAt`/`calledAt`/`updatedAt`), que são serializados **sem o sufixo `Z`**
 - IDs são **UUID v4**, exceto no notification-service, que usa identificador numérico sequencial (`Long`) — serviço interno de auditoria/observabilidade sem consumidores externos que dependam do formato UUID
 - Endpoints protegidos exigem o header: `Authorization: Bearer <jwt_token>`
 - Erros seguem um envelope padrão (ver seção [Respostas de Erro](#respostas-de-erro))
@@ -91,8 +91,6 @@ Cria um novo usuário com a role desejada.
   "createdAt": "2026-05-27T10:00:00"
 }
 ```
-
-> `createdAt` é um `LocalDateTime` (`model/User.java`), sem timezone e sem configuração Jackson forçando UTC/offset — a resposta real **não tem o sufixo `Z`**, ao contrário do formato geral definido em [Convenções](#convenções).
 
 **Erros:**
 
@@ -223,15 +221,11 @@ Cadastra um paciente em uma fila de procedimento. A cor de entrada é sempre **A
   "solicitacaoId": null,
   "preferredUnitId": null,
   "position": 7,
-  "registeredAt": "2026-05-27T10:15:00Z",
+  "registeredAt": "2026-05-27T10:15:00",
   "calledAt": null,
   "newPosition": null
 }
 ```
-
-> `patient` é serializado com `PatientResponseDTO` — **não existe campo `nomeCompleto`** aqui (apenas `nome`/`sobrenome` separados, mais os demais campos do cadastro). `nomeCompleto` só existe no schema de `GET /api/v1/queue/{id}/position`, que usa um DTO diferente (`QueuePositionPatientDTO`). `QueueEntryResponseDTO` é um schema plano único reaproveitado por vários endpoints deste recurso, por isso sempre inclui `tipoFila`, `solicitacaoId`, `preferredUnitId`, `calledAt` e `newPosition`, mesmo quando não fazem sentido para a operação (ficam `null`).
->
-> `registeredAt`, `calledAt`, `updatedAt` e demais timestamps deste recurso são `LocalDateTime` (`QueueEntry.java`), sem timezone e sem configuração Jackson forçando UTC — igual ao caso de `auth-service.createdAt` (ver [Convenções](#convenções)). A resposta real **não tem o sufixo `Z`** em nenhum desses campos, mesmo nos exemplos abaixo onde ele aparece por consistência ilustrativa com o restante do documento.
 
 **Erros:**
 
@@ -321,7 +315,7 @@ Retorna a posição atual de um paciente na fila e informações do seu cadastro
   "priorityGroup": "GERAL",
   "status": "AGUARDANDO",
   "estimatedWaitMonths": 12,
-  "registeredAt": "2026-05-27T10:15:00Z"
+  "registeredAt": "2026-05-27T10:15:00"
 }
 ```
 
@@ -371,11 +365,9 @@ Chama o próximo paciente da fila (maior prioridade com status `AGUARDANDO`). Al
   "priorityGroup": "IDOSO",
   "tipoFila": "FILA_REGULADA",
   "status": "CHAMADO",
-  "calledAt": "2026-05-27T14:00:00Z"
+  "calledAt": "2026-05-27T14:00:00"
 }
 ```
-
-> Assim como em `POST /api/v1/queue`, `patient` usa `PatientResponseDTO` — sem campo `nomeCompleto`.
 
 **Erros:**
 
@@ -416,7 +408,7 @@ Reclassifica a cor de risco de uma entrada na fila. Publica o evento `PRIORITY_U
   "priorityGroup": "GERAL",
   "status": "AGUARDANDO",
   "newPosition": 4,
-  "updatedAt": "2026-05-27T14:30:00Z"
+  "updatedAt": "2026-05-27T14:30:00"
 }
 ```
 
@@ -490,12 +482,10 @@ Cadastra um novo paciente no sistema.
 | `cns`            | string | ❌          | Cartão Nacional de Saúde, único se informado            |
 | `nome`           | string | ✅          | Primeiro nome do paciente                               |
 | `sobrenome`      | string | ✅          | Sobrenome do paciente                                   |
-| `dataNascimento` | date   | ✅          | Formato `yyyy-MM-dd`. Não há `@Past`/`@PastOrPresent` em `RegisterPatientDTO` nem checagem no use case — **uma data futura é aceita sem erro**, ao contrário do que versões anteriores deste documento afirmavam. |
+| `dataNascimento` | date   | ✅          | Formato `yyyy-MM-dd`. Não há `@Past`/`@PastOrPresent` em `RegisterPatientDTO` nem checagem no use case — **uma data futura é aceita sem erro**. |
 | `gender`         | enum   | ❌          | `MASCULINO` \| `FEMININO` \| `OUTROS`                  |
 | `contato`        | string | ❌          | Apenas e-mail **neste endpoint** — `RegisterPatientDTO` valida com `@Email`, um telefone é **rejeitado** apesar do nome do campo sugerir "e-mail ou telefone". Essa validação não é reaplicada no `PATCH /api/v1/patients/{id}` (ver abaixo). |
-| `grupoLegal`     | enum   | ❌          | `IDOSO` \| `GESTANTE` \| `DEFICIENTE` \| `LACTANTE` \| `OBESO` \| `GERAL` — sem `@NotNull` em `RegisterPatientDTO`; se omitido, assume `GERAL` como padrão |
-
-> **Detecção automática de IDOSO:** paciente com 60+ anos recebe `grupoLegal = IDOSO` automaticamente via `PriorityCalculator.getPriorityGroup()`, sobrescrevendo o valor informado.
+| `grupoLegal`     | enum   | ❌          | `IDOSO` \| `GESTANTE` \| `DEFICIENTE` \| `LACTANTE` \| `OBESO` \| `GERAL` — sem `@NotNull` em `RegisterPatientDTO`; se omitido, assume `GERAL` como padrão. Pacientes com 60+ anos recebem `IDOSO` automaticamente (via `PriorityCalculator.getPriorityGroup()`), sobrescrevendo o valor informado. |
 
 **Response `201 Created`:**
 ```json
@@ -607,7 +597,7 @@ Atualiza dados cadastrais de um paciente.
 }
 ```
 
-> `cpf` não é um campo deste corpo — o CPF não pode ser alterado via este endpoint. `contato` aqui é uma `String` livre, sem `@Email` (diferente do `POST /api/v1/patients`) — qualquer valor, inclusive telefone, é aceito.
+`cpf` não é um campo deste corpo — o CPF não pode ser alterado via este endpoint. `contato` aqui é uma `String` livre, sem `@Email` (diferente do `POST /api/v1/patients`) — qualquer valor, inclusive telefone, é aceito.
 
 **Response `200 OK`:** mesmo schema de `GET /api/v1/patients/{id}`
 
@@ -692,7 +682,7 @@ Lista os procedimentos disponíveis para agendamento na fila, com suporte a pagi
 | `page`    | integer | ❌          | `0`    | Número da página (zero-based)     |
 | `size`    | integer | ❌          | `20`   | Itens por página (máx. 100)       |
 
-> `codigo` **não é um parâmetro deste endpoint** — `ProcedureController` registra `codigo` numa rota Spring separada (`@GetMapping(params = "codigo")`, ver `GET /api/v1/procedures?codigo={codigo}` abaixo), que retorna um objeto único, não a lista paginada. Passar `codigo` junto com `page`/`size` na mesma chamada não combina os dois filtros.
+`codigo` **não é um parâmetro deste endpoint** — é tratado por uma rota Spring separada (`@GetMapping(params = "codigo")`, ver `GET /api/v1/procedures?codigo={codigo}` abaixo), que retorna um objeto único, não a lista paginada. Passar `codigo` junto com `page`/`size` na mesma chamada não combina os dois filtros.
 
 **Response `200 OK`:**
 ```json
@@ -909,7 +899,7 @@ Cria uma nova solicitação de inclusão de paciente em fila ambulatorial.
 | `409`  | Solicitação duplicada — paciente já possui solicitação ativa para este procedimento |
 | `422`  | Cota da UBS esgotada para FILA_ESPERA neste procedimento             |
 
-> **`patientId`/`procedureId` não são validados contra o queue-service.** `CriarSolicitacaoUseCase.java` só verifica a existência de `unitSolicitanteId` (via `unit-not-found`) — um `patientId` ou `procedureId` inexistente é aceito sem erro na criação da solicitação. O 404 documentado anteriormente para "paciente ou procedimento não encontrados" não corresponde ao comportamento atual.
+`patientId`/`procedureId` não são validados contra o queue-service — `CriarSolicitacaoUseCase.java` só verifica a existência de `unitSolicitanteId` (via `unit-not-found`); um `patientId` ou `procedureId` inexistente é aceito sem erro na criação da solicitação.
 
 ---
 
@@ -936,11 +926,7 @@ Lista solicitações com filtros opcionais.
 
 ### GET /api/v1/solicitacoes/{id}
 
-Retorna o detalhe de uma solicitação.
-
-> A resposta real **não inclui histórico de pareceres** — é um objeto plano (`SolicitacaoStatusResponseDTO`). Para ver as decisões emitidas, seria preciso um endpoint próprio de pareceres, que hoje não existe; versões anteriores deste documento mostravam um array `pareceres` aninhado que não corresponde à implementação.
-
-> Diferente de `GET /api/v1/solicitacoes` (listagem), este endpoint **não restringe** um `ROLE_SOLICITANTE` a ver apenas solicitações da própria unidade — `ConsultarStatusSolicitacaoUseCase.execute()` recebe o `UsuarioContexto` do JWT mas não o utiliza para checar propriedade. Qualquer `ROLE_SOLICITANTE` autenticado pode consultar qualquer `id` de solicitação por este endpoint.
+Retorna o detalhe de uma solicitação como objeto plano (`SolicitacaoStatusResponseDTO`), sem histórico de pareceres — não existe hoje um endpoint próprio para consultar as decisões emitidas. Ao contrário de `GET /api/v1/solicitacoes` (listagem), este endpoint não restringe um `ROLE_SOLICITANTE` a ver apenas solicitações da própria unidade: qualquer `ROLE_SOLICITANTE` autenticado pode consultar qualquer `id`.
 
 **Auth:** `ROLE_SOLICITANTE` ou `ROLE_REGULADOR`
 
@@ -1074,7 +1060,7 @@ Emite um parecer sobre uma solicitação. Disponível apenas para o médico regu
 }
 ```
 
-> A resposta real (`AvaliarSolicitacaoResponseDTO`) é um objeto plano, sem aninhar um objeto `parecer` — e não inclui `riskColorDefinido`: o `Parecer` não tem coluna de cor (ver `erd.md`); a cor escolhida fica gravada em `solicitacoes.risco_solicitado`, consultável via `GET /api/v1/solicitacoes/{id}`.
+Esta resposta (`AvaliarSolicitacaoResponseDTO`) é um objeto plano — não inclui `riskColorDefinido`, pois `Parecer` não tem coluna de cor; a cor escolhida pelo regulador fica gravada em `solicitacoes.risco_solicitado`, consultável via `GET /api/v1/solicitacoes/{id}`.
 
 **Erros:**
 
@@ -1088,9 +1074,7 @@ Emite um parecer sobre uma solicitação. Disponível apenas para o médico regu
 
 ### PATCH /api/v1/regulacao/solicitacoes/{id}/risco
 
-Reclassifica a cor de risco de uma solicitação **já aprovada** (`status == APROVADA`) e com `destino == FILA_REGULADA`. Solicitações em `FILA_ESPERA` não podem ser reclassificadas (permanecem sempre `AZUL`).
-
-> `ReclassificarRiscoUseCase.java` exige `status == APROVADA` — ao contrário do que uma versão anterior deste documento descrevia ("solicitação ainda não avaliada"). A reclassificação acontece **depois** do parecer do regulador (`POST /api/v1/regulacao/{id}/avaliar`), não antes.
+Reclassifica a cor de risco de uma solicitação **já aprovada** (`status == APROVADA`) e com `destino == FILA_REGULADA`. Solicitações em `FILA_ESPERA` não podem ser reclassificadas (permanecem sempre `AZUL`). A reclassificação acontece **depois** do parecer do regulador (`POST /api/v1/regulacao/{id}/avaliar`), não antes.
 
 **Auth:** `ROLE_REGULADOR`
 
@@ -1411,7 +1395,7 @@ query {
         "schedule": {
           "unit": {
             "nome": "UPA Norte",
-            "address": "Rua das Flores, 100",
+            "address": "São Paulo - SP",
             "cnes": "2077485"
           },
           "provider": {

@@ -418,8 +418,8 @@ type Query {
 ```
 
 > `AgendamentoGraphqlController` usa `@Argument` com nome explícito (`@Argument("dataInicio")`, `@Argument("pacienteId")`) nos dois pontos onde o schema usa um nome em português diferente do parâmetro Java interno — sem isso, o binding por nome de parâmetro divergia do schema e os filtros de data/paciente ficavam silenciosamente `null`.
->
-> `HealthUnit.address`/`HealthUnit.phone` também não são o que parecem: no resolver da query `grade`, `address` é montado como `"{municipio} - {uf}"` (não a coluna real `endereco`) e `phone` é sempre `null` (não existe coluna de telefone em `health_units`). Ver `erd.md`.
+
+`HealthUnit.address` é montado no resolver da query `grade` como `"{municipio} - {uf}"` (não é a coluna `endereco`) e `HealthUnit.phone` é sempre `null` (não existe coluna de telefone em `health_units`). Ver `erd.md`.
 
 **Endpoints REST (commands):**
 
