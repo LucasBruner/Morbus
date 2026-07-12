@@ -48,11 +48,6 @@ public class RabbitMQConfig {
     }
 
     @Bean
-    public DirectExchange priorityExchange() {
-        return new DirectExchange("sus.queue.priority.exchange");
-    }
-
-    @Bean
     public DirectExchange queueDlx() {
         return new DirectExchange(QUEUE_DLX, true, false);
     }
@@ -65,20 +60,6 @@ public class RabbitMQConfig {
     @Bean
     public DirectExchange agendamentoExchange() {
         return new DirectExchange(AGENDAMENTO_EXCHANGE, true, false);
-    }
-
-    @Bean
-    public Queue patientRegisteredQueue() {
-        return new Queue("queue.patient.registered", true);
-    }
-
-    @Bean
-    public Binding patientRegisteredBinding(Queue patientRegisteredQueue,
-                                            DirectExchange queueExchange) {
-        return BindingBuilder
-                .bind(patientRegisteredQueue)
-                .to(queueExchange)
-                .with("patient.registered");
     }
 
     // ─── Filas consumidas ──────────────────────────────────────────────────────

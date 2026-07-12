@@ -789,9 +789,13 @@ CREATE INDEX idx_slots_availability
 CREATE INDEX idx_appointments_expiration
     ON appointments (status, expires_at)
     WHERE status = 'AGUARDANDO_CONFIRMACAO';
+
+-- V5__create_appointments.sql — terceiro índice, não parcial, não documentado antes
+CREATE INDEX idx_appointments_paciente
+    ON appointments (paciente_id);
 ```
 
-> Os índices `idx_slots_availability` e `idx_appointments_expiration` otimizam as duas queries mais críticas do agendamento-service: busca de disponibilidade e job de expiração de 72h. Nenhum dos dois inclui comparação de capacidade (`reservados < capacidade`) na condição — esse filtro é feito na aplicação, não no índice parcial.
+> Os índices `idx_slots_availability` e `idx_appointments_expiration` otimizam as duas queries mais críticas do agendamento-service: busca de disponibilidade e job de expiração de 72h. Nenhum dos dois inclui comparação de capacidade (`reservados < capacidade`) na condição — esse filtro é feito na aplicação, não no índice parcial. Um terceiro índice, `idx_appointments_paciente` (não parcial, sobre `paciente_id`), também é criado na mesma migration (V5) para acelerar a busca de agendamentos por paciente (usada pela query GraphQL `agendamentos`).
 
 ---
 

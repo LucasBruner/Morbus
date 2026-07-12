@@ -178,7 +178,7 @@ sequenceDiagram
     UC-->>QS: QueueEntryResponse
     QS-->>Medico: 201 Created<br/>{ id, riskColor: AZUL, position, status: AGUARDANDO, ... }
 
-    MQ-->>NS: Entrega mensagem na fila<br/>queue.patient.registered
+    MQ-->>NS: Entrega mensagem na fila<br/>notification.queue.events
 
     NS->>NS: QueueEventConsumer.consume(event)
     NS->>NS: NotificationService.process(event)<br/>Monta: "Você foi cadastrado na fila para<br/>[procedimento]. Classificação: AZUL."
@@ -229,7 +229,7 @@ sequenceDiagram
     UC-->>QS: CalledPatientResponse
     QS-->>Medico: 200 OK<br/>{ id, patient, procedure,<br/>riskColor, status: CHAMADO, calledAt }
 
-    MQ-->>NS: Entrega mensagem na fila<br/>queue.patient.called
+    MQ-->>NS: Entrega mensagem na fila<br/>notification.queue.events
 
     NS->>NS: QueueEventConsumer.consume(event)
     NS->>NS: NotificationService.process(event)<br/>Monta: "É a sua vez! Compareça ao<br/>guichê para [procedimento]."
@@ -288,7 +288,7 @@ sequenceDiagram
     UC-->>QS: ReclassifyResponse
     QS-->>Medico: 200 OK<br/>{ id, riskColor: AMARELO,<br/>newPosition: 4, updatedAt }
 
-    MQ-->>NS: Entrega mensagem na fila<br/>queue.priority.updated
+    MQ-->>NS: Entrega mensagem na fila<br/>notification.queue.events
 
     NS->>NS: QueueEventConsumer.consume(event)
     NS->>NS: NotificationService.process(event)<br/>Monta: "Sua prioridade na fila foi<br/>atualizada para AMARELO."
@@ -342,7 +342,7 @@ sequenceDiagram
     UC-->>QS: void
     QS-->>Medico: 204 No Content
 
-    MQ-->>NS: Entrega mensagem na fila<br/>queue.patient.cancelled
+    MQ-->>NS: Entrega mensagem na fila<br/>notification.queue.events
 
     NS->>NS: NotificationService.process(event)<br/>Monta: "Seu agendamento para<br/>[procedimento] foi cancelado."
     NS->>DB: INSERT INTO notifications

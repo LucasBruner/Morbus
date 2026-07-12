@@ -492,6 +492,8 @@ sus.agendamento.exchange (direct)      publicado por: agendamento-service
 > `appointment.cancelled` e `appointment.no_slot` reinserem o paciente na fila via `ReinstatePatientInQueue` no queue-service (mesma semântica já usada por `appointment.expired`/`patient.no_show`).
 >
 > regulacao-service só consome eventos de `sus.agendamento.exchange` (`AppointmentCreatedConsumer`/`AppointmentAttendedConsumer`/`AppointmentNoShowConsumer`); ele nunca consome os eventos que publica em `sus.regulacao.exchange`. Uma versão anterior do `RabbitMQConfig` chegava a declarar e vincular 4 filas órfãs (`regulacao.solicitacao.aprovada/negada/devolvida/reclassificada`) sem nenhum `@RabbitListener`, que acumulavam mensagens indefinidamente — essas filas foram removidas.
+>
+> O queue-service tinha o mesmo problema: `RabbitMQConfig.java` declarava um `DirectExchange` extra, `sus.queue.priority.exchange` (nunca referenciado em nenhum binding ou publisher — resquício do commit inicial `configure rabbitmq`, anterior a qualquer consumer real), e uma fila `queue.patient.registered` vinculada ao próprio `sus.queue.exchange` com a routing key `patient.registered` (mesma routing key que `notification.queue.events` já consome), sem nenhum `@RabbitListener`. Ambos foram removidos.
 
 **Dead Letter Exchange (DLX):**
 
