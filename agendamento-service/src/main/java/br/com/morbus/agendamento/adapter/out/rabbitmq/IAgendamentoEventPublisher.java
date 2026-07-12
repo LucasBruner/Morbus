@@ -11,6 +11,10 @@ public interface IAgendamentoEventPublisher {
                                      UUID patientId,
                                      LocalDateTime agendadoEm);
 
+    void publishAppointmentCreated(UUID solicitacaoId,
+                                   UUID appointmentId,
+                                   UUID slotId);
+
     void publishAppointmentNoSlot(UUID queueEntryId,
                                   UUID patientId,
                                   UUID procedureId);

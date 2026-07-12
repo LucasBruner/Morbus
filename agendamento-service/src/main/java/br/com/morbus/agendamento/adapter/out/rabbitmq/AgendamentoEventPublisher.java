@@ -36,6 +36,18 @@ public class AgendamentoEventPublisher implements IAgendamentoEventPublisher {
     }
 
     @Override
+    public void publishAppointmentCreated(UUID solicitacaoId,
+                                          UUID appointmentId,
+                                          UUID slotId) {
+        AppointmentCreatedEvent event = new AppointmentCreatedEvent(solicitacaoId, appointmentId, slotId);
+        rabbitTemplate.convertAndSend(
+                RabbitMQConfig.AGENDAMENTO_EXCHANGE,
+                RabbitMQConfig.RK_APPOINTMENT_CREATED,
+                event
+        );
+    }
+
+    @Override
     public void publishAppointmentNoSlot(UUID queueEntryId,
                                          UUID patientId,
                                          UUID procedureId) {

@@ -40,13 +40,13 @@ public class AlocarPacienteEmSlotUseCase implements IAlocarPacienteEmSlotUseCase
         );
 
         if (slotOpt.isEmpty()) {
-            eventPublisher.publishAppointmentNoSlot(event.queueEntryId(), event.pacienteId(), event.procedureId());
+            eventPublisher.publishAppointmentNoSlot(event.queueEntryId(), event.patientId(), event.procedureId());
             return Optional.empty();
         }
 
         Slot slot = slotOpt.get();
         if (!EStatusSlots.DISPONIVEL.equals(slot.getStatus())) {
-            eventPublisher.publishAppointmentNoSlot(event.queueEntryId(), event.pacienteId(), event.procedureId());
+            eventPublisher.publishAppointmentNoSlot(event.queueEntryId(), event.patientId(), event.procedureId());
             return Optional.empty();
         }
 
@@ -56,7 +56,7 @@ public class AlocarPacienteEmSlotUseCase implements IAlocarPacienteEmSlotUseCase
         Agendamento agendamento = new Agendamento(
                 event.queueEntryId(),
                 savedSlot.getId(),
-                event.pacienteId(),
+                event.patientId(),
                 LocalDateTime.now(ZoneId.systemDefault()).plusHours(expiracaoHoras)
         );
 
@@ -65,9 +65,17 @@ public class AlocarPacienteEmSlotUseCase implements IAlocarPacienteEmSlotUseCase
                 savedAgendamento.getId(),
                 savedSlot.getId(),
                 event.queueEntryId(),
-                event.pacienteId(),
+                event.patientId(),
                 savedAgendamento.getCreatedAt()
         );
+
+        if (event.solicitacaoId() != null) {
+            eventPublisher.publishAppointmentCreated(
+                    event.solicitacaoId(),
+                    savedAgendamento.getId(),
+                    savedSlot.getId()
+            );
+        }
 
         return Optional.of(savedAgendamento);
     }

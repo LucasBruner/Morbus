@@ -22,7 +22,7 @@ A classificação de risco determina a urgência clínica do paciente e é o cri
 | `VERDE`    | 2       | Eletivo     | ≤ 6 meses             | Condição estável, procedimento indicado               |
 | `AZUL`     | 3       | Rotina      | ≤ 12 meses            | Entrada padrão — toda entrada nova começa em AZUL     |
 
-> **Regra de entrada (queue-service):** toda `QueueEntry` é criada com cor `AZUL` (`AddToQueue`). O médico pode reclassificar uma entrada existente em `FILA_REGULADA` via `PATCH /api/v1/queue/{id}/priority`.
+> **Regra de entrada (queue-service):** o cadastro manual via `POST /api/v1/queue` (`QueueController` → `RegisterPatientInQueue`) sempre cria a `QueueEntry` com cor `AZUL`, hardcoded, independente do `tipoFila` informado. Já o usecase `AddToQueue` — usado exclusivamente pelo `SolicitationApprovedConsumer` ao consumir `SOLICITATION_APPROVED` — só força `AZUL` quando `tipoFila == FILA_ESPERA`; para `FILA_REGULADA` ele preserva a cor recebida no evento, que é a cor definitiva escolhida pelo regulador (ver nota abaixo). O médico pode reclassificar uma entrada existente em `FILA_REGULADA` via `PATCH /api/v1/queue/{id}/priority`.
 >
 > **Regra de entrada (regulacao-service):** a `Solicitacao` também nasce com cor `AZUL` — o construtor de `Solicitacao` define `riskColor = ERiscoSolicitado.AZUL` explicitamente na criação (não fica `NULL`). O regulador substitui essa cor pela definitiva ao avaliar (`POST /api/v1/regulacao/{id}/avaliar`, decisão `AUTORIZAR`/`FILA_ESPERA`, via `Solicitacao.aprovar(riskColor, ...)`), e é essa cor definitiva que a `QueueEntry` resultante recebe ao consumir `SOLICITATION_APPROVED`.
 >

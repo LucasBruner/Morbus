@@ -32,6 +32,7 @@ public class RabbitMQConfig {
     public static final String QUEUE_PATIENT_NO_SHOW         = "queue.patient.no_show";
 
     // Routing keys publicadas pelo agendamento-service
+    public static final String RK_APPOINTMENT_CREATED     = "appointment.created";
     public static final String RK_APPOINTMENT_CONFIRMED   = "appointment.confirmed";
     public static final String RK_APPOINTMENT_CANCELLED   = "appointment.cancelled";
     public static final String RK_APPOINTMENT_RESCHEDULED = "appointment.rescheduled";
