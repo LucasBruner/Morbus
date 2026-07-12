@@ -39,6 +39,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
                         .requestMatchers("/graphiql", "/graphiql/**").permitAll()
+                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/graphql", "/graphql/**").authenticated()
                         .anyRequest().authenticated()
                 )
@@ -51,6 +52,7 @@ public class SecurityConfig {
         return configureBaseSecurity(http)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
+                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/graphql", "/graphql/**").authenticated()
                         .anyRequest().authenticated()
                 )
