@@ -1,0 +1,273 @@
+{
+  "info": {
+    "_postman_id": "d3a7c1e9-4b2f-4e6a-9c1d-8f5b2a3e6d70",
+    "name": "Morbus - Agendamento Service",
+    "description": "Coleção para o agendamento-service (porta 8084). Gestão de grades (schedules), slots e agendamentos (appointments). Expõe dois canais: REST (comandos/write) e GraphQL em /graphql (consultas/read). Todos os endpoints exigem JWT Bearer. ROLE_EXECUTANTE é restrito à própria unidade (comparação server-side contra unitId do JWT) nos endpoints de schedules e nos comandos attend/falta.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Appointments",
+      "item": [
+        {
+          "name": "Confirmar Agendamento",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/{{appointmentId}}/confirmar",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "appointments", "{{appointmentId}}", "confirmar"]
+            },
+            "description": "Confirma a presença do paciente dono do agendamento, dentro do prazo de 72h. Sem request body. Requer role PACIENTE."
+          },
+          "response": []
+        },
+        {
+          "name": "Reagendar Agendamento",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"newSlotId\": \"{{slotId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/{{appointmentId}}/reagendar",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "appointments", "{{appointmentId}}", "reagendar"]
+            },
+            "description": "Move o agendamento para outro slot disponível, liberando o slot anterior. Requer role MEDICO."
+          },
+          "response": []
+        },
+        {
+          "name": "Attend Agendamento",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/{{appointmentId}}/attend",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "appointments", "{{appointmentId}}", "attend"]
+            },
+            "description": "Marca o agendamento como ATENDIDO. Requer status CONFIRMADO. Restrito à unidade do EXECUTANTE autenticado. Requer role EXECUTANTE."
+          },
+          "response": []
+        },
+        {
+          "name": "Registrar Falta",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/{{appointmentId}}/falta",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "appointments", "{{appointmentId}}", "falta"]
+            },
+            "description": "Registra a falta do paciente, libera o slot e publica evento PATIENT_NO_SHOW (reinsere o paciente na fila). Restrito à unidade do EXECUTANTE autenticado. Requer role EXECUTANTE."
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Agendamento",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/{{appointmentId}}?motivo=Paciente desistiu",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "appointments", "{{appointmentId}}"],
+              "query": [
+                { "key": "motivo", "value": "Paciente desistiu", "description": "Opcional" }
+              ]
+            },
+            "description": "Cancela o agendamento e libera o slot. PACIENTE só pode cancelar o próprio agendamento; MEDICO pode cancelar qualquer um. Bloqueado se status for ATENDIDO/FALTOU ou se o prazo já expirou. Requer role PACIENTE ou MEDICO."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Schedules",
+      "item": [
+        {
+          "name": "Create Schedule",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"unitId\": \"{{unitId}}\",\n  \"providerId\": \"{{providerId}}\",\n  \"procedureId\": \"{{procedureId}}\",\n  \"diaDaSemana\": \"SEGUNDA\",\n  \"horarioInicio\": \"08:00:00\",\n  \"horarioFim\": \"12:00:00\",\n  \"slotDuracaoMinutos\": 30,\n  \"capacidade\": 2\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/schedules",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "schedules"]
+            },
+            "description": "Cria uma grade semanal para um provider/unidade/procedimento, gerando os slots automaticamente. EXECUTANTE só pode criar grades para a própria unidade (unitId do body é comparado ao unitId do JWT). Requer role EXECUTANTE."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Schedule",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"providerId\": \"{{providerId}}\",\n  \"horarioInicio\": \"08:00:00\",\n  \"horarioFim\": \"13:00:00\",\n  \"capacidade\": 3\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/schedules/{{scheduleId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "schedules", "{{scheduleId}}"]
+            },
+            "description": "Atualiza provider, horário e capacidade de uma grade existente. Restrito à unidade do EXECUTANTE autenticado. Requer role EXECUTANTE."
+          },
+          "response": []
+        },
+        {
+          "name": "Block Schedule Slots",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2026-07-20\",\n  \"motivo\": \"Feriado municipal\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/schedules/{{scheduleId}}/block",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "schedules", "{{scheduleId}}", "block"]
+            },
+            "description": "Bloqueia todos os slots DISPONIVEL de uma grade em uma data específica. Restrito à unidade do EXECUTANTE autenticado. Requer role EXECUTANTE."
+          },
+          "response": []
+        },
+        {
+          "name": "Unblock Schedule Slots",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/schedules/{{scheduleId}}/unblock",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "schedules", "{{scheduleId}}", "unblock"]
+            },
+            "description": "Desbloqueia (volta para DISPONIVEL) todos os slots INDISPONIVEL da grade — não filtrado por data. Restrito à unidade do EXECUTANTE autenticado. Requer role EXECUTANTE."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "GraphQL",
+      "item": [
+        {
+          "name": "Query: disponibilidade",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query Disponibilidade($procedureId: ID!, $unitId: ID, $dataInicio: String!, $dataFim: String!) {\\n  disponibilidade(procedureId: $procedureId, unitId: $unitId, dataInicio: $dataInicio, dataFim: $dataFim) {\\n    id\\n    dataHora\\n    capacity\\n    booked\\n    remainingCapacity\\n    schedule {\\n      unit { nome address cnes }\\n      provider { nome crm especialidade }\\n    }\\n  }\\n}\",\n  \"variables\": {\n    \"procedureId\": \"{{procedureId}}\",\n    \"unitId\": \"{{unitId}}\",\n    \"dataInicio\": \"2026-07-01\",\n    \"dataFim\": \"2026-07-07\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "Retorna slots disponíveis para um procedimento, com filtros opcionais de unidade e período. Requer role REGULADOR, MEDICO, PACIENTE ou EXECUTANTE."
+          },
+          "response": []
+        },
+        {
+          "name": "Query: agendamentos",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query Agendamentos($pacienteId: ID, $unitId: ID, $status: AppointmentStatus, $dateFrom: String!, $dateTo: String!) {\\n  agendamentos(pacienteId: $pacienteId, unitId: $unitId, status: $status, dateFrom: $dateFrom, dateTo: $dateTo) {\\n    id\\n    status\\n    expiresAt\\n    slot {\\n      dataHora\\n      schedule {\\n        unit { nome address }\\n        provider { nome especialidade }\\n      }\\n    }\\n    cancellationReason\\n  }\\n}\",\n  \"variables\": {\n    \"pacienteId\": \"{{patientId}}\",\n    \"status\": \"CONFIRMADO\",\n    \"dateFrom\": \"2026-07-01\",\n    \"dateTo\": \"2026-07-31\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "Retorna agendamentos com filtros flexíveis. PACIENTE vê apenas os próprios (pacienteId extraído do JWT). dateFrom/dateTo são obrigatórios. Requer role REGULADOR, MEDICO, PACIENTE ou EXECUTANTE."
+          },
+          "response": []
+        },
+        {
+          "name": "Query: agendamento (por ID)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query Agendamento($id: ID!) {\\n  agendamento(id: $id) {\\n    id\\n    status\\n    expiresAt\\n    slot {\\n      dataHora\\n      schedule {\\n        unit { nome address phone }\\n        provider { nome crm especialidade }\\n      }\\n    }\\n  }\\n}\",\n  \"variables\": {\n    \"id\": \"{{appointmentId}}\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "Retorna o detalhe de um agendamento pelo ID. Requer role REGULADOR, MEDICO, PACIENTE ou EXECUTANTE."
+          },
+          "response": []
+        },
+        {
+          "name": "Query: grade",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query Grade($unitId: ID!, $week: String!) {\\n  grade(unitId: $unitId, week: $week) {\\n    id\\n    dayOfWeek\\n    startTime\\n    endTime\\n    slotDurationMin\\n    capacity\\n    active\\n    provider { nome especialidade }\\n  }\\n}\",\n  \"variables\": {\n    \"unitId\": \"{{unitId}}\",\n    \"week\": \"2026-07-07\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
+            },
+            "description": "Retorna a grade semanal de uma unidade para a semana informada. Não acessível a ROLE_PACIENTE (diferente das demais queries). Requer role EXECUTANTE, MEDICO ou REGULADOR."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8084", "type": "string" },
+    { "key": "token", "value": "", "type": "string" },
+    { "key": "appointmentId", "value": "", "type": "string" },
+    { "key": "scheduleId", "value": "", "type": "string" },
+    { "key": "slotId", "value": "", "type": "string" },
+    { "key": "unitId", "value": "", "type": "string" },
+    { "key": "providerId", "value": "", "type": "string" },
+    { "key": "procedureId", "value": "", "type": "string" },
+    { "key": "patientId", "value": "", "type": "string" }
+  ]
+}

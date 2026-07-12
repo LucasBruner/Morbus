@@ -1,0 +1,54 @@
+{
+  "info": {
+    "_postman_id": "b6f2e6b2-1c34-4b2a-9f3d-7a5c8d2e4f10",
+    "name": "Morbus - Notification Service",
+    "description": "Coleção para o notification-service (porta 8081, Quarkus). Consome eventos do RabbitMQ e envia e-mails simulados. Expõe apenas endpoints de consulta ao histórico de notificações, para fins de observabilidade/demo. Nenhum endpoint exige autenticação JWT.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "List Notifications",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifications?page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "notifications"],
+              "query": [
+                { "key": "eventType", "value": "PATIENT_CALLED", "description": "Filtro opcional, string livre (não validado contra enum fechado). Ex: PATIENT_REGISTERED, PATIENT_CALLED, PRIORITY_UPDATED, PATIENT_CANCELLED, PATIENT_REINSTATED, APPOINTMENT_CONFIRMED, APPOINTMENT_CANCELLED, APPOINTMENT_RESCHEDULED, APPOINTMENT_NO_SLOT, APPOINTMENT_EXPIRED, SOLICITATION_DENIED, SOLICITATION_DEVOLVED", "disabled": true },
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" }
+              ]
+            },
+            "description": "Lista o histórico de notificações enviadas, ordenadas por sentAt decrescente. Público (interno, sem JWT)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Notification by Id",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifications/{{notificationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "notifications", "{{notificationId}}"]
+            },
+            "description": "Busca uma notificação específica pelo ID numérico sequencial (Long, não UUID). Público (interno, sem JWT)."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8081", "type": "string" },
+    { "key": "notificationId", "value": "1", "type": "string" }
+  ]
+}

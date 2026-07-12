@@ -194,14 +194,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"patientId\": \"{{patientId}}\",\n  \"procedureId\": \"{{procedureId}}\",\n  \"riskColor\": \"VERDE\"\n}"
+              "raw": "{\n  \"patientId\": \"{{patientId}}\",\n  \"procedureId\": \"{{procedureId}}\",\n  \"tipoFila\": \"FILA_REGULADA\",\n  \"preferredUnitId\": null\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/queue",
               "host": ["{{baseUrl}}"],
               "path": ["api", "v1", "queue"]
             },
-            "description": "Registra um paciente em uma fila. `riskColor` aceita VERMELHO|AMARELO|VERDE|AZUL. Requer role MEDICO."
+            "description": "Registra um paciente em uma fila. A cor de entrada é sempre AZUL (não é um campo aceito no body). `tipoFila` aceita FILA_REGULADA|FILA_ESPERA (padrão FILA_REGULADA se omitido). `preferredUnitId` é opcional. Requer role MEDICO."
           },
           "response": []
         },
@@ -295,6 +295,49 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Quotas",
+      "item": [
+        {
+          "name": "Create/Update Quota",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"unitId\": \"{{unidadeId}}\",\n  \"procedureId\": \"{{procedureId}}\",\n  \"maxPerDay\": 10\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/quotas",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "quotas"]
+            },
+            "description": "Cria ou atualiza (upsert por unitId+procedureId) a cota diária de FILA_ESPERA para uma unidade+procedimento. FILA_REGULADA nunca é afetada por esta cota — distinta da cota mensal do regulacao-service. Requer role MEDICO."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Quota",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/quotas?unitId={{unidadeId}}&procedureId={{procedureId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "quotas"],
+              "query": [
+                { "key": "unitId", "value": "{{unidadeId}}" },
+                { "key": "procedureId", "value": "{{procedureId}}" }
+              ]
+            },
+            "description": "Consulta a cota diária configurada para uma unidade+procedimento. Requer role MEDICO."
+          },
+          "response": []
+        }
+      ]
     }
   ],
   "variable": [
@@ -304,6 +347,7 @@
     { "key": "procedureId", "value": "", "type": "string" },
     { "key": "procedureCodigo", "value": "", "type": "string" },
     { "key": "patientCpf", "value": "", "type": "string" },
-    { "key": "queueEntryId", "value": "", "type": "string" }
+    { "key": "queueEntryId", "value": "", "type": "string" },
+    { "key": "unidadeId", "value": "", "type": "string" }
   ]
 }

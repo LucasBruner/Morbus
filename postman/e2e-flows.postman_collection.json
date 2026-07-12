@@ -1,0 +1,1540 @@
+{
+  "info": {
+    "_postman_id": "f4a7c2e1-8b3d-4e6a-9c1f-2d5e6a7b8c9d",
+    "name": "Morbus - E2E Flows (docs/sequencias-diagrama.md)",
+    "description": "Reproduz, requisição a requisição, os 13 fluxos de docs/sequencias-diagrama.md, encadeando auth-service, queue-service, regulacao-service, agendamento-service e notification-service. Rode a coleção inteira em ordem (Collection Runner ou `newman run postman/e2e-flows.postman_collection.json --delay-request 500`) contra o docker-compose.yml da raiz do repo.\n\nPré-requisitos:\n1. `docker-compose up -d` na raiz do projeto.\n2. Antes da pasta \"Flow 10\", rode `./postman/seed-agendamento.sh` — sem isso o slot do agendamento-service não existe e a Flow 10 não completa (ver `postman/README.md`, seção Limitações Conhecidas).\n\nEsta coleção é independente das 3 coleções por serviço já existentes (auth-service, queue-service, regulacao-service) — aquelas testam endpoints isolados; esta testa as jornadas ponta-a-ponta entre serviços, incluindo a propagação via RabbitMQ.\n\nVeja `postman/README.md` para as limitações reais encontradas no código durante a criação desta coleção (username precisa ser UUID para regulacao/agendamento-service; endpoints ROLE_EXECUTANTE sempre retornam 403; call-next é ROLE_MEDICO mesmo nos fluxos onde o diagrama mostra o Regulador chamando).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Flow 1-2 - Registro de Usuario e Login",
+      "description": "Registra e autentica os 4 atores que nao dependem de nenhum ID gerado durante o teste (Solicitante, Regulador, Executante, Medico). O Paciente e registrado na Flow 3, pois seu username precisa ser o UUID do Patient recem-criado (ver README > Limitacoes Conhecidas).",
+      "item": [
+        {
+          "name": "Register Solicitante",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const uuid = pm.variables.replaceIn('{{$randomUUID}}');",
+                  "pm.collectionVariables.set('solicitanteUsername', uuid);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('role SOLICITANTE', () => pm.expect(pm.response.json().role).to.eql('SOLICITANTE'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{solicitanteUsername}}\",\n  \"email\": \"solicitante.{{solicitanteUsername}}@sus.gov.br\",\n  \"password\": \"{{senhaPadrao}}\",\n  \"role\": \"SOLICITANTE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlAuth}}/auth/register",
+              "host": ["{{baseUrlAuth}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "username e um UUID (nao um nome legivel) porque regulacao-service faz `UUID.fromString(username)` incondicionalmente no JwtAuthenticationFilter, para qualquer role. Ver README."
+          },
+          "response": []
+        },
+        {
+          "name": "Login Solicitante",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('solicitanteToken', body.token);",
+                  "pm.test('token recebido', () => pm.expect(body.token).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{solicitanteUsername}}\",\n  \"password\": \"{{senhaPadrao}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlAuth}}/auth/login",
+              "host": ["{{baseUrlAuth}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Register Regulador",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const uuid = pm.variables.replaceIn('{{$randomUUID}}');",
+                  "pm.collectionVariables.set('reguladorUsername', uuid);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{reguladorUsername}}\",\n  \"email\": \"regulador.{{reguladorUsername}}@sus.gov.br\",\n  \"password\": \"{{senhaPadrao}}\",\n  \"role\": \"REGULADOR\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlAuth}}/auth/register",
+              "host": ["{{baseUrlAuth}}"],
+              "path": ["auth", "register"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login Regulador",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('reguladorToken', pm.response.json().token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{reguladorUsername}}\",\n  \"password\": \"{{senhaPadrao}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlAuth}}/auth/login",
+              "host": ["{{baseUrlAuth}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Register Executante",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const uuid = pm.variables.replaceIn('{{$randomUUID}}');",
+                  "pm.collectionVariables.set('executanteUsername', uuid);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{executanteUsername}}\",\n  \"email\": \"executante.{{executanteUsername}}@sus.gov.br\",\n  \"password\": \"{{senhaPadrao}}\",\n  \"role\": \"EXECUTANTE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlAuth}}/auth/register",
+              "host": ["{{baseUrlAuth}}"],
+              "path": ["auth", "register"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login Executante",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('executanteToken', pm.response.json().token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{executanteUsername}}\",\n  \"password\": \"{{senhaPadrao}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlAuth}}/auth/login",
+              "host": ["{{baseUrlAuth}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Register Medico",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const uuid = pm.variables.replaceIn('{{$randomUUID}}');",
+                  "pm.collectionVariables.set('medicoUsername', uuid);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{medicoUsername}}\",\n  \"email\": \"medico.{{medicoUsername}}@sus.gov.br\",\n  \"password\": \"{{senhaPadrao}}\",\n  \"role\": \"MEDICO\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlAuth}}/auth/register",
+              "host": ["{{baseUrlAuth}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Nao precisaria ser UUID (medico so fala com queue-service nesta colecao, que nao faz UUID.fromString(username)) — mantido UUID por uniformidade."
+          },
+          "response": []
+        },
+        {
+          "name": "Login Medico",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('medicoToken', pm.response.json().token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{medicoUsername}}\",\n  \"password\": \"{{senhaPadrao}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlAuth}}/auth/login",
+              "host": ["{{baseUrlAuth}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Flow 3 - Cadastro de Paciente",
+      "item": [
+        {
+          "name": "Register Patient A",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function gerarCpf() {",
+                  "    const rand9 = () => Array.from({length: 9}, () => Math.floor(Math.random() * 9));",
+                  "    const calcDv = (nums) => {",
+                  "        let sum = 0;",
+                  "        const weight = nums.length + 1;",
+                  "        for (let i = 0; i < nums.length; i++) sum += nums[i] * (weight - i);",
+                  "        const rest = sum % 11;",
+                  "        return rest < 2 ? 0 : 11 - rest;",
+                  "    };",
+                  "    const base = rand9();",
+                  "    const dv1 = calcDv(base);",
+                  "    const dv2 = calcDv([...base, dv1]);",
+                  "    const all = [...base, dv1, dv2];",
+                  "    return `${all.slice(0,3).join('')}.${all.slice(3,6).join('')}.${all.slice(6,9).join('')}-${all.slice(9).join('')}`;",
+                  "}",
+                  "pm.collectionVariables.set('patientACpf', gerarCpf());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('patientAId', body.id);",
+                  "pm.test('grupoLegal calculado', () => pm.expect(body.grupoLegal).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{medicoToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cpf\": \"{{patientACpf}}\",\n  \"cns\": \"123456789012345\",\n  \"nome\": \"Maria\",\n  \"sobrenome\": \"Silva\",\n  \"dataNascimento\": \"1990-05-15\",\n  \"gender\": \"FEMININO\",\n  \"contato\": \"maria.silva.e2e@example.com\",\n  \"grupoLegal\": \"GERAL\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlQueue}}/api/v1/patients",
+              "host": ["{{baseUrlQueue}}"],
+              "path": ["api", "v1", "patients"]
+            },
+            "description": "Flow 3 do diagrama. Requer ROLE_MEDICO. grupoLegal e recalculado automaticamente pelo backend a partir de idade/campos (o valor enviado aqui e apenas o default do form)."
+          },
+          "response": []
+        },
+        {
+          "name": "Register Auth User - Paciente A",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('username == patientAId', () => pm.expect(pm.response.json().username).to.eql(pm.collectionVariables.get('patientAId')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{patientAId}}\",\n  \"email\": \"paciente.{{patientAId}}@example.com\",\n  \"password\": \"{{senhaPadrao}}\",\n  \"role\": \"PACIENTE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlAuth}}/auth/register",
+              "host": ["{{baseUrlAuth}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "O username DEVE ser o mesmo UUID do Patient criado acima. AppointmentController.confirmar() compara principal.userId() (extraido do JWT `sub`) com Agendamento.pacienteId, que por sua vez vem do patientId propagado desde o queue-service. Se o username do login do paciente nao for esse UUID, a confirmacao de presenca (Flow 10) nunca reconhece o dono do agendamento."
+          },
+          "response": []
+        },
+        {
+          "name": "Login Paciente A",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('pacienteAToken', pm.response.json().token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{patientAId}}\",\n  \"password\": \"{{senhaPadrao}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlAuth}}/auth/login",
+              "host": ["{{baseUrlAuth}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Flow 4 - Inclusao na Fila",
+      "item": [
+        {
+          "name": "Find Procedure Principal (codigo)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "const item = Array.isArray(body) ? body[0] : body;",
+                  "pm.collectionVariables.set('procedureId', item.id);",
+                  "pm.test('procedimento encontrado', () => pm.expect(item.id).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{medicoToken}}" }],
+            "url": {
+              "raw": "{{baseUrlQueue}}/api/v1/procedures?codigo={{procedureCodigo}}",
+              "host": ["{{baseUrlQueue}}"],
+              "path": ["api", "v1", "procedures"],
+              "query": [{ "key": "codigo", "value": "{{procedureCodigo}}" }]
+            },
+            "description": "Procedimentos vem do seed SIGTAP (Flyway V4__seed_procedures.sql) — nao existe endpoint de criacao publico, por isso buscamos um ja existente pelo codigo."
+          },
+          "response": []
+        },
+        {
+          "name": "Register Queue Entry - Patient A",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('queueEntryIdMain', body.id);",
+                  "pm.test('entra sempre com riskColor AZUL', () => pm.expect(body.riskColor).to.eql('AZUL'));",
+                  "pm.test('status AGUARDANDO', () => pm.expect(body.status).to.eql('AGUARDANDO'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{medicoToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": \"{{patientAId}}\",\n  \"procedureId\": \"{{procedureId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlQueue}}/api/v1/queue",
+              "host": ["{{baseUrlQueue}}"],
+              "path": ["api", "v1", "queue"]
+            },
+            "description": "Flow 4. O corpo NAO envia riskColor (a entrada e sempre criada AZUL pelo backend, ver api-contract.md). Publica PATIENT_REGISTERED no RabbitMQ, consumido pelo notification-service."
+          },
+          "response": []
+        },
+        {
+          "name": "Verificar Notificacao PATIENT_REGISTERED (informativo)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrlNotification}}/api/v1/notifications?eventType=PATIENT_REGISTERED&size=5",
+              "host": ["{{baseUrlNotification}}"],
+              "path": ["api", "v1", "notifications"],
+              "query": [
+                { "key": "eventType", "value": "PATIENT_REGISTERED" },
+                { "key": "size", "value": "5" }
+              ]
+            },
+            "description": "Consumo assincrono via RabbitMQ — inspecao apenas, sem asserir o conteudo (pode haver corrida entre a publicacao e esta consulta em ambientes lentos)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Flow 5 - Chamada do Proximo Paciente",
+      "item": [
+        {
+          "name": "Call Next Patient",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('chamou a entrada da Flow 4', () => pm.expect(body.id).to.eql(pm.collectionVariables.get('queueEntryIdMain')));",
+                  "pm.test('status CHAMADO', () => pm.expect(body.status).to.eql('CHAMADO'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{medicoToken}}" }],
+            "url": {
+              "raw": "{{baseUrlQueue}}/api/v1/queue/call-next",
+              "host": ["{{baseUrlQueue}}"],
+              "path": ["api", "v1", "queue", "call-next"]
+            },
+            "description": "Assume que esta e a UNICA entrada AGUARDANDO no banco no momento (rode a colecao em ordem, contra um ambiente limpo, para que o teste seja deterministico — call-next nao filtra por procedimento, pega a de maior prioridade global)."
+          },
+          "response": []
+        },
+        {
+          "name": "Verificar Notificacao PATIENT_CALLED (informativo)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrlNotification}}/api/v1/notifications?eventType=PATIENT_CALLED&size=5",
+              "host": ["{{baseUrlNotification}}"],
+              "path": ["api", "v1", "notifications"],
+              "query": [
+                { "key": "eventType", "value": "PATIENT_CALLED" },
+                { "key": "size", "value": "5" }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Flow 6 - Reclassificacao de Prioridade",
+      "item": [
+        {
+          "name": "Find Procedure Reclassificacao (codigo)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "const item = Array.isArray(body) ? body[0] : body;",
+                  "pm.collectionVariables.set('procedureIdReclass', item.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{medicoToken}}" }],
+            "url": {
+              "raw": "{{baseUrlQueue}}/api/v1/procedures?codigo={{procedureCodigoReclass}}",
+              "host": ["{{baseUrlQueue}}"],
+              "path": ["api", "v1", "procedures"],
+              "query": [{ "key": "codigo", "value": "{{procedureCodigoReclass}}" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Register Queue Entry - Patient A (para reclassificar)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('queueEntryIdReclass', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{medicoToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": \"{{patientAId}}\",\n  \"procedureId\": \"{{procedureIdReclass}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlQueue}}/api/v1/queue",
+              "host": ["{{baseUrlQueue}}"],
+              "path": ["api", "v1", "queue"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Queue Position (antes)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('riskColor AZUL antes da reclassificacao', () => pm.expect(pm.response.json().riskColor).to.eql('AZUL'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{pacienteAToken}}" }],
+            "url": {
+              "raw": "{{baseUrlQueue}}/api/v1/queue/{{queueEntryIdReclass}}/position",
+              "host": ["{{baseUrlQueue}}"],
+              "path": ["api", "v1", "queue", "{{queueEntryIdReclass}}", "position"]
+            },
+            "description": "Flow 8 (consulta de posicao) exercida aqui e novamente apos a reclassificacao, para comparar o antes/depois."
+          },
+          "response": []
+        },
+        {
+          "name": "Reclassify Priority -> AMARELO",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('riskColor AMARELO', () => pm.expect(pm.response.json().riskColor).to.eql('AMARELO'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{medicoToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"riskColor\": \"AMARELO\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlQueue}}/api/v1/queue/{{queueEntryIdReclass}}/priority",
+              "host": ["{{baseUrlQueue}}"],
+              "path": ["api", "v1", "queue", "{{queueEntryIdReclass}}", "priority"]
+            },
+            "description": "Flow 6. Publica PRIORITY_UPDATED."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Queue Position (depois)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('riskColor refletiu a reclassificacao', () => pm.expect(pm.response.json().riskColor).to.eql('AMARELO'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{pacienteAToken}}" }],
+            "url": {
+              "raw": "{{baseUrlQueue}}/api/v1/queue/{{queueEntryIdReclass}}/position",
+              "host": ["{{baseUrlQueue}}"],
+              "path": ["api", "v1", "queue", "{{queueEntryIdReclass}}", "position"]
+            },
+            "description": "Flow 8 do diagrama (consulta de posicao pelo paciente)."
+          },
+          "response": []
+        },
+        {
+          "name": "Verificar Notificacao PRIORITY_UPDATED (informativo)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrlNotification}}/api/v1/notifications?eventType=PRIORITY_UPDATED&size=5",
+              "host": ["{{baseUrlNotification}}"],
+              "path": ["api", "v1", "notifications"],
+              "query": [
+                { "key": "eventType", "value": "PRIORITY_UPDATED" },
+                { "key": "size", "value": "5" }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Flow 7 - Cancelamento de Entrada na Fila",
+      "item": [
+        {
+          "name": "Find Procedure Cancelamento (codigo)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "const item = Array.isArray(body) ? body[0] : body;",
+                  "pm.collectionVariables.set('procedureIdCancel', item.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{medicoToken}}" }],
+            "url": {
+              "raw": "{{baseUrlQueue}}/api/v1/procedures?codigo={{procedureCodigoCancel}}",
+              "host": ["{{baseUrlQueue}}"],
+              "path": ["api", "v1", "procedures"],
+              "query": [{ "key": "codigo", "value": "{{procedureCodigoCancel}}" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Register Queue Entry - Patient A (para cancelar)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('queueEntryIdCancel', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{medicoToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": \"{{patientAId}}\",\n  \"procedureId\": \"{{procedureIdCancel}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlQueue}}/api/v1/queue",
+              "host": ["{{baseUrlQueue}}"],
+              "path": ["api", "v1", "queue"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Queue Entry",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('204 No Content', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{medicoToken}}" }],
+            "url": {
+              "raw": "{{baseUrlQueue}}/api/v1/queue/{{queueEntryIdCancel}}?motivo=Paciente desistiu do procedimento",
+              "host": ["{{baseUrlQueue}}"],
+              "path": ["api", "v1", "queue", "{{queueEntryIdCancel}}"],
+              "query": [{ "key": "motivo", "value": "Paciente desistiu do procedimento" }]
+            },
+            "description": "Flow 7. Publica PATIENT_CANCELLED."
+          },
+          "response": []
+        },
+        {
+          "name": "Verificar Notificacao PATIENT_CANCELLED (informativo)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrlNotification}}/api/v1/notifications?eventType=PATIENT_CANCELLED&size=5",
+              "host": ["{{baseUrlNotification}}"],
+              "path": ["api", "v1", "notifications"],
+              "query": [
+                { "key": "eventType", "value": "PATIENT_CANCELLED" },
+                { "key": "size", "value": "5" }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Flow 8 - Consulta de Posicao pelo Paciente (dedicado)",
+      "item": [
+        {
+          "name": "Register Queue Entry - Patient A (para consulta de posicao)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('queueEntryIdPosition', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{medicoToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": \"{{patientAId}}\",\n  \"procedureId\": \"{{procedureId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlQueue}}/api/v1/queue",
+              "host": ["{{baseUrlQueue}}"],
+              "path": ["api", "v1", "queue"]
+            },
+            "description": "2a entrada do Patient A no mesmo procedimento da Flow 4 — permitido porque a 1a entrada ja saiu de AGUARDANDO (esta CHAMADO desde a Flow 5)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Queue Position",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "['position', 'totalAhead', 'riskColor', 'priorityGroup', 'status', 'estimatedWaitMonths'].forEach((field) => {",
+                  "    pm.test(`campo ${field} presente`, () => pm.expect(body).to.have.property(field));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{pacienteAToken}}" }],
+            "url": {
+              "raw": "{{baseUrlQueue}}/api/v1/queue/{{queueEntryIdPosition}}/position",
+              "host": ["{{baseUrlQueue}}"],
+              "path": ["api", "v1", "queue", "{{queueEntryIdPosition}}", "position"]
+            },
+            "description": "Flow 8. Autenticado com o token do proprio paciente (ROLE_PACIENTE), nao do medico."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Flow 10 - Solicitacao Aprovada -> Fila -> Agendamento",
+      "description": "Requer Flow 1-2, Flow 3 e Flow 4 ja executadas nesta run (usa {{medicoToken}}, {{solicitanteToken}}, {{reguladorToken}} e {{procedureId}}). Requer tambem que ./postman/seed-agendamento.sh tenha sido rodado — sem isso o agendamento-service nao encontra slot disponivel e a jornada para no PATIENT_CALLED (ver postman/README.md).",
+      "item": [
+        {
+          "name": "Register Unidade Solicitante",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('unidadeSolicitanteId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{reguladorToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cnes\": \"1234567\",\n  \"nome\": \"UBS Jardim das Flores\",\n  \"endereco\": \"Rua das Acacias, 100\",\n  \"telefone\": \"(11) 4002-8922\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlRegulacao}}/api/v1/unidades-solicitantes",
+              "host": ["{{baseUrlRegulacao}}"],
+              "path": ["api", "v1", "unidades-solicitantes"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Register Patient B",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function gerarCpf() {",
+                  "    const rand9 = () => Array.from({length: 9}, () => Math.floor(Math.random() * 9));",
+                  "    const calcDv = (nums) => {",
+                  "        let sum = 0;",
+                  "        const weight = nums.length + 1;",
+                  "        for (let i = 0; i < nums.length; i++) sum += nums[i] * (weight - i);",
+                  "        const rest = sum % 11;",
+                  "        return rest < 2 ? 0 : 11 - rest;",
+                  "    };",
+                  "    const base = rand9();",
+                  "    const dv1 = calcDv(base);",
+                  "    const dv2 = calcDv([...base, dv1]);",
+                  "    const all = [...base, dv1, dv2];",
+                  "    return `${all.slice(0,3).join('')}.${all.slice(3,6).join('')}.${all.slice(6,9).join('')}-${all.slice(9).join('')}`;",
+                  "}",
+                  "pm.collectionVariables.set('patientBCpf', gerarCpf());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('patientBId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{medicoToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cpf\": \"{{patientBCpf}}\",\n  \"cns\": \"987654321012345\",\n  \"nome\": \"Joao\",\n  \"sobrenome\": \"Oliveira\",\n  \"dataNascimento\": \"1955-08-20\",\n  \"gender\": \"MASCULINO\",\n  \"contato\": \"joao.oliveira.e2e@example.com\",\n  \"grupoLegal\": \"IDOSO\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlQueue}}/api/v1/patients",
+              "host": ["{{baseUrlQueue}}"],
+              "path": ["api", "v1", "patients"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Register Auth User - Paciente B",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{patientBId}}\",\n  \"email\": \"paciente.{{patientBId}}@example.com\",\n  \"password\": \"{{senhaPadrao}}\",\n  \"role\": \"PACIENTE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlAuth}}/auth/register",
+              "host": ["{{baseUrlAuth}}"],
+              "path": ["auth", "register"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login Paciente B",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('pacienteBToken', pm.response.json().token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{patientBId}}\",\n  \"password\": \"{{senhaPadrao}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlAuth}}/auth/login",
+              "host": ["{{baseUrlAuth}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Solicitacao",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('solicitacaoId', body.id);",
+                  "pm.test('status AGUARDANDO', () => pm.expect(body.status).to.eql('AGUARDANDO'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{solicitanteToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": \"{{patientBId}}\",\n  \"procedureId\": \"{{procedureId}}\",\n  \"cid\": \"M54.5\",\n  \"justificativaClinica\": \"Paciente com dor lombar cronica, necessita avaliacao especializada\",\n  \"profissionalSolicitante\": \"Dra. Ana Souza\",\n  \"crmProfissional\": \"CRM-SP 123456\",\n  \"unitSolicitanteId\": \"{{unidadeSolicitanteId}}\",\n  \"destino\": \"FILA_REGULADA\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlRegulacao}}/api/v1/solicitacoes",
+              "host": ["{{baseUrlRegulacao}}"],
+              "path": ["api", "v1", "solicitacoes"]
+            },
+            "description": "Flow 10, passo 1 (Solicitante/UBS)."
+          },
+          "response": []
+        },
+        {
+          "name": "List Pendentes (informativo)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{reguladorToken}}" }],
+            "url": {
+              "raw": "{{baseUrlRegulacao}}/api/v1/regulacao/pendentes?procedureId={{procedureId}}&page=0&size=20",
+              "host": ["{{baseUrlRegulacao}}"],
+              "path": ["api", "v1", "regulacao", "pendentes"],
+              "query": [
+                { "key": "procedureId", "value": "{{procedureId}}" },
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Avaliar Solicitacao - AUTORIZAR",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('novoStatus APROVADA', () => pm.expect(pm.response.json().novoStatus).to.eql('APROVADA'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{reguladorToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decisao\": \"AUTORIZAR\",\n  \"riskColorDefinido\": \"AMARELO\",\n  \"justificativa\": \"Solicitacao dentro dos criterios clinicos\",\n  \"unidadeExecutanteId\": \"{{agendamentoUnitId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlRegulacao}}/api/v1/regulacao/{{solicitacaoId}}/avaliar",
+              "host": ["{{baseUrlRegulacao}}"],
+              "path": ["api", "v1", "regulacao", "{{solicitacaoId}}", "avaliar"]
+            },
+            "description": "unidadeExecutanteId precisa ser o MESMO UUID usado em postman/seed-agendamento.sh (health_units.id / schedules.unit_id), senao o AlocarPacienteEmSlotUseCase nao encontra slot e a jornada para em APPOINTMENT_NO_SLOT.\n\nPublica SOLICITATION_APPROVED -> queue-service cria QueueEntry (AGUARDANDO, FILA_REGULADA, riskColor=AMARELO, preferredUnitId={{agendamentoUnitId}}) -> publica PATIENT_REGISTERED -> notification-service notifica o paciente."
+          },
+          "response": []
+        },
+        {
+          "name": "Localizar QueueEntry do Patient B",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const list = pm.response.json();",
+                  "const patientBId = pm.collectionVariables.get('patientBId');",
+                  "const entry = list.find((e) => e.patient && e.patient.id === patientBId);",
+                  "pm.test('QueueEntry do Patient B foi criado pelo consumer', () => pm.expect(entry).to.not.be.undefined);",
+                  "if (entry) { pm.collectionVariables.set('queueEntryIdB', entry.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{medicoToken}}" }],
+            "url": {
+              "raw": "{{baseUrlQueue}}/api/v1/queue?procedureId={{procedureId}}&status=AGUARDANDO&size=50",
+              "host": ["{{baseUrlQueue}}"],
+              "path": ["api", "v1", "queue"],
+              "query": [
+                { "key": "procedureId", "value": "{{procedureId}}" },
+                { "key": "status", "value": "AGUARDANDO" },
+                { "key": "size", "value": "50" }
+              ]
+            },
+            "description": "queue-service nao expoe o id da entrada criada pelo SolicitationApprovedConsumer diretamente na resposta de 'Avaliar Solicitacao' (aquela e uma resposta do regulacao-service) — por isso localizamos a entrada recem-criada filtrando pelo patientId na listagem da fila."
+          },
+          "response": []
+        },
+        {
+          "name": "Call Next Patient (aloca Patient B)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('chamou a entrada do Patient B', () => pm.expect(body.id).to.eql(pm.collectionVariables.get('queueEntryIdB')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{medicoToken}}" }],
+            "url": {
+              "raw": "{{baseUrlQueue}}/api/v1/queue/call-next",
+              "host": ["{{baseUrlQueue}}"],
+              "path": ["api", "v1", "queue", "call-next"]
+            },
+            "description": "O diagrama (docs/sequencias-diagrama.md, Flow 10) mostra o REGULADOR chamando este endpoint. No codigo, QueueController.callNext() e @PreAuthorize(\"hasRole('MEDICO')\") — REGULADOR recebe 403. Usamos {{medicoToken}} para refletir o comportamento real. Publica PATIENT_CALLED, consumido tanto pelo notification-service quanto pelo agendamento-service (PatientCalledConsumer -> AlocarPacienteEmSlotUseCase)."
+          },
+          "response": []
+        },
+        {
+          "name": "GraphQL - Agendamentos do Paciente B (AGUARDANDO_CONFIRMACAO)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "const list = body.data && body.data.agendamentos ? body.data.agendamentos : [];",
+                  "pm.test('agendamento foi criado pelo AlocarPacienteEmSlotUseCase (requer seed-agendamento.sh)', () => pm.expect(list.length).to.be.above(0));",
+                  "if (list.length > 0) { pm.collectionVariables.set('agendamentoId', list[0].id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{pacienteBToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query { agendamentos(status: AGUARDANDO_CONFIRMACAO, dateFrom: \\\"2026-01-01\\\", dateTo: \\\"2026-12-31\\\") { id status expiresAt slot { dataHora schedule { unit { nome address } provider { nome especialidade } } } } }\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlAgendamento}}/graphql",
+              "host": ["{{baseUrlAgendamento}}"],
+              "path": ["graphql"]
+            },
+            "description": "ROLE_PACIENTE ignora um pacienteId explicito no argumento — AgendamentosPacienteUseCase.resolvePatientId() forca sempre o proprio principal.userId(). Por isso nao passamos pacienteId aqui, so o token do paciente basta.\n\nSe list.length for 0, o motivo mais provavel e que ./postman/seed-agendamento.sh nao foi rodado antes desta pasta (sem Schedule/Slot cadastrado, AlocarPacienteEmSlotUseCase publica APPOINTMENT_NO_SLOT em vez de criar o Agendamento)."
+          },
+          "response": []
+        },
+        {
+          "name": "Confirmar Agendamento",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('status CONFIRMADO', () => pm.expect(pm.response.json().status).to.eql('CONFIRMADO'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{pacienteBToken}}" }],
+            "url": {
+              "raw": "{{baseUrlAgendamento}}/api/v1/appointments/{{agendamentoId}}/confirmar",
+              "host": ["{{baseUrlAgendamento}}"],
+              "path": ["api", "v1", "appointments", "{{agendamentoId}}", "confirmar"]
+            },
+            "description": "Fecha o Flow 10 (caminho feliz completo: solicitacao -> aprovacao -> fila -> chamada -> slot -> confirmacao)."
+          },
+          "response": []
+        },
+        {
+          "name": "Verificar Notificacao APPOINTMENT_CONFIRMED (informativo)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrlNotification}}/api/v1/notifications?eventType=APPOINTMENT_CONFIRMED&size=5",
+              "host": ["{{baseUrlNotification}}"],
+              "path": ["api", "v1", "notifications"],
+              "query": [
+                { "key": "eventType", "value": "APPOINTMENT_CONFIRMED" },
+                { "key": "size", "value": "5" }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Flow 11 - Solicitacao Negada pelo Regulador",
+      "item": [
+        {
+          "name": "Register Patient C",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function gerarCpf() {",
+                  "    const rand9 = () => Array.from({length: 9}, () => Math.floor(Math.random() * 9));",
+                  "    const calcDv = (nums) => {",
+                  "        let sum = 0;",
+                  "        const weight = nums.length + 1;",
+                  "        for (let i = 0; i < nums.length; i++) sum += nums[i] * (weight - i);",
+                  "        const rest = sum % 11;",
+                  "        return rest < 2 ? 0 : 11 - rest;",
+                  "    };",
+                  "    const base = rand9();",
+                  "    const dv1 = calcDv(base);",
+                  "    const dv2 = calcDv([...base, dv1]);",
+                  "    const all = [...base, dv1, dv2];",
+                  "    return `${all.slice(0,3).join('')}.${all.slice(3,6).join('')}.${all.slice(6,9).join('')}-${all.slice(9).join('')}`;",
+                  "}",
+                  "pm.collectionVariables.set('patientCCpf', gerarCpf());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('patientCId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{medicoToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cpf\": \"{{patientCCpf}}\",\n  \"cns\": \"555444333012345\",\n  \"nome\": \"Carlos\",\n  \"sobrenome\": \"Pereira\",\n  \"dataNascimento\": \"1988-01-10\",\n  \"gender\": \"MASCULINO\",\n  \"contato\": \"carlos.pereira.e2e@example.com\",\n  \"grupoLegal\": \"GERAL\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlQueue}}/api/v1/patients",
+              "host": ["{{baseUrlQueue}}"],
+              "path": ["api", "v1", "patients"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Solicitacao (Patient C)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('solicitacaoIdC', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{solicitanteToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": \"{{patientCId}}\",\n  \"procedureId\": \"{{procedureId}}\",\n  \"cid\": \"Z00.0\",\n  \"justificativaClinica\": \"Encaminhamento de rotina sem indicacao clinica clara\",\n  \"profissionalSolicitante\": \"Dra. Ana Souza\",\n  \"crmProfissional\": \"CRM-SP 123456\",\n  \"unitSolicitanteId\": \"{{unidadeSolicitanteId}}\",\n  \"destino\": \"FILA_REGULADA\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlRegulacao}}/api/v1/solicitacoes",
+              "host": ["{{baseUrlRegulacao}}"],
+              "path": ["api", "v1", "solicitacoes"]
+            },
+            "description": "Requer que a Flow 10 ja tenha rodado nesta execucao (usa {{unidadeSolicitanteId}} criada la). Se rodar esta pasta isoladamente, crie antes uma unidade solicitante."
+          },
+          "response": []
+        },
+        {
+          "name": "Avaliar Solicitacao - NEGAR",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('novoStatus NEGADA', () => pm.expect(pm.response.json().novoStatus).to.eql('NEGADA'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{reguladorToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decisao\": \"NEGAR\",\n  \"riskColorDefinido\": \"AZUL\",\n  \"justificativa\": \"Procedimento nao indicado para o CID informado\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlRegulacao}}/api/v1/regulacao/{{solicitacaoIdC}}/avaliar",
+              "host": ["{{baseUrlRegulacao}}"],
+              "path": ["api", "v1", "regulacao", "{{solicitacaoIdC}}", "avaliar"]
+            },
+            "description": "Flow 11 completo. Publica SOLICITATION_DENIED, notification-service notifica a UBS."
+          },
+          "response": []
+        },
+        {
+          "name": "Verificar Notificacao SOLICITATION_DENIED (informativo)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrlNotification}}/api/v1/notifications?eventType=SOLICITATION_DENIED&size=5",
+              "host": ["{{baseUrlNotification}}"],
+              "path": ["api", "v1", "notifications"],
+              "query": [
+                { "key": "eventType", "value": "SOLICITATION_DENIED" },
+                { "key": "size", "value": "5" }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Flow 12 - Agendamento Expirado (informativo)",
+      "description": "Flow 12 do diagrama nao tem um gatilho HTTP: e disparado pelo AppointmentExpirationJob (@Scheduled, cron '0 */15 * * * *') dentro do agendamento-service, 72h apos a criacao do agendamento. Nao ha como forcar sua execucao via API publica. Este item so consulta o historico de notificacoes para inspecao manual depois que o job rodar em um ambiente de longa duracao.",
+      "item": [
+        {
+          "name": "Verificar Notificacao APPOINTMENT_EXPIRED (informativo)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrlNotification}}/api/v1/notifications?eventType=APPOINTMENT_EXPIRED&size=5",
+              "host": ["{{baseUrlNotification}}"],
+              "path": ["api", "v1", "notifications"],
+              "query": [
+                { "key": "eventType", "value": "APPOINTMENT_EXPIRED" },
+                { "key": "size", "value": "5" }
+              ]
+            },
+            "description": "Fica vazio a menos que o job ja tenha expirado algum agendamento de uma run anterior com mais de 72h. Sem asserts."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Flow 13 - Paciente Faltou (bloqueado no codigo atual)",
+      "description": "Reproduz o gatilho de Flow 13 (EXECUTANTE registra falta), mas o endpoint retorna 403 de forma consistente no codigo atual. Ver postman/README.md > Limitacoes Conhecidas para a causa raiz confirmada em codigo.",
+      "item": [
+        {
+          "name": "Registrar Falta (esperado 403 - gap de unitId no JWT)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 Forbidden (gap conhecido, nao e falha do teste)', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{executanteToken}}" }],
+            "url": {
+              "raw": "{{baseUrlAgendamento}}/api/v1/appointments/{{agendamentoId}}/falta",
+              "host": ["{{baseUrlAgendamento}}"],
+              "path": ["api", "v1", "appointments", "{{agendamentoId}}", "falta"]
+            },
+            "description": "RegistrarFaltaAgendamentoUseCase.execute() compara schedule.getUnitId() com o unitId do principal autenticado. O agendamento-service extrai esse unitId via JwtService.extractUnitId(token) — mas o auth-service (JwtService.generateToken) NUNCA adiciona um claim 'unitId' ao JWT, so 'sub' e 'role'. Logo principal.unitId() e sempre null e a comparacao falha, resultando em AccessDeniedException (403) para QUALQUER usuario EXECUTANTE, independente de qual unidade ele deveria representar. O mesmo bloqueia POST /api/v1/schedules, .../block, .../unblock e PATCH .../attend. Nao ha workaround via API publica; corrigir exigiria o auth-service emitir um claim unitId (e um jeito de associar um EXECUTANTE a uma unidade no cadastro), o que esta fora do escopo desta colecao de testes."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrlAuth", "value": "http://localhost:8082", "type": "string" },
+    { "key": "baseUrlQueue", "value": "http://localhost:8080", "type": "string" },
+    { "key": "baseUrlRegulacao", "value": "http://localhost:8083", "type": "string" },
+    { "key": "baseUrlAgendamento", "value": "http://localhost:8084", "type": "string" },
+    { "key": "baseUrlNotification", "value": "http://localhost:8081", "type": "string" },
+    { "key": "senhaPadrao", "value": "Senh@Forte123", "type": "string" },
+    { "key": "procedureCodigo", "value": "0301010072", "type": "string" },
+    { "key": "procedureCodigoReclass", "value": "0301010064", "type": "string" },
+    { "key": "procedureCodigoCancel", "value": "0301040010", "type": "string" },
+    { "key": "agendamentoUnitId", "value": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "type": "string" },
+    { "key": "solicitanteUsername", "value": "", "type": "string" },
+    { "key": "solicitanteToken", "value": "", "type": "string" },
+    { "key": "reguladorUsername", "value": "", "type": "string" },
+    { "key": "reguladorToken", "value": "", "type": "string" },
+    { "key": "executanteUsername", "value": "", "type": "string" },
+    { "key": "executanteToken", "value": "", "type": "string" },
+    { "key": "medicoUsername", "value": "", "type": "string" },
+    { "key": "medicoToken", "value": "", "type": "string" },
+    { "key": "patientACpf", "value": "", "type": "string" },
+    { "key": "patientAId", "value": "", "type": "string" },
+    { "key": "pacienteAToken", "value": "", "type": "string" },
+    { "key": "procedureId", "value": "", "type": "string" },
+    { "key": "procedureIdReclass", "value": "", "type": "string" },
+    { "key": "procedureIdCancel", "value": "", "type": "string" },
+    { "key": "queueEntryIdMain", "value": "", "type": "string" },
+    { "key": "queueEntryIdReclass", "value": "", "type": "string" },
+    { "key": "queueEntryIdCancel", "value": "", "type": "string" },
+    { "key": "queueEntryIdPosition", "value": "", "type": "string" },
+    { "key": "unidadeSolicitanteId", "value": "", "type": "string" },
+    { "key": "patientBCpf", "value": "", "type": "string" },
+    { "key": "patientBId", "value": "", "type": "string" },
+    { "key": "pacienteBToken", "value": "", "type": "string" },
+    { "key": "solicitacaoId", "value": "", "type": "string" },
+    { "key": "queueEntryIdB", "value": "", "type": "string" },
+    { "key": "agendamentoId", "value": "", "type": "string" },
+    { "key": "patientCCpf", "value": "", "type": "string" },
+    { "key": "patientCId", "value": "", "type": "string" },
+    { "key": "solicitacaoIdC", "value": "", "type": "string" }
+  ]
+}
