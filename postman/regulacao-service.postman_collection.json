@@ -39,12 +39,13 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/solicitacoes?unidadeId={{unidadeId}}&status=AGUARDANDO&procedureId={{procedureId}}&page=0&size=20",
+              "raw": "{{baseUrl}}/api/v1/solicitacoes?unidadeId={{unidadeId}}&status=AGUARDANDO&destino=FILA_REGULADA&procedureId={{procedureId}}&page=0&size=20",
               "host": ["{{baseUrl}}"],
               "path": ["api", "v1", "solicitacoes"],
               "query": [
                 { "key": "unidadeId", "value": "{{unidadeId}}" },
                 { "key": "status", "value": "AGUARDANDO", "description": "AGUARDANDO|APROVADA|NEGADA|CANCELADA|DEVOLVIDA|PENDENTE|AGENDADA|ATENDIDA|FALTOU" },
+                { "key": "destino", "value": "FILA_REGULADA", "description": "FILA_ESPERA|FILA_REGULADA" },
                 { "key": "procedureId", "value": "{{procedureId}}" },
                 { "key": "page", "value": "0" },
                 { "key": "size", "value": "20" }
@@ -65,6 +66,26 @@
               "path": ["api", "v1", "solicitacoes", "{{solicitacaoId}}"]
             },
             "description": "Detalhes/status de uma solicitação. Requer role SOLICITANTE ou REGULADOR."
+          },
+          "response": []
+        },
+        {
+          "name": "Complementar Solicitacao",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cid\": \"I11.9\",\n  \"justificativaClinica\": \"Complemento: paciente com HAS estagio 3, sem resposta a 3 anti-hipertensivos.\",\n  \"crmProfissional\": \"CRM-SP 123456\",\n  \"profissionalSolicitante\": \"Dra. Ana Souza\",\n  \"observacoes\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/solicitacoes/{{solicitacaoId}}/complementar",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "solicitacoes", "{{solicitacaoId}}", "complementar"]
+            },
+            "description": "Complementa uma solicitação devolvida (status DEVOLVIDA) pelo regulador. Todos os campos são opcionais — apenas os enviados são sobrescritos. Após a complementação o status volta para AGUARDANDO. Requer role SOLICITANTE."
           },
           "response": []
         },
