@@ -172,7 +172,7 @@ sequenceDiagram
     UC->>DB: INSERT INTO queue_entries<br/>{ riskColor: AZUL, status: AGUARDANDO }
     DB-->>UC: QueueEntry { id, position }
 
-    UC->>Publisher: publishPatientRegistered(QueueEventDTO)
+    UC->>Publisher: publishPatientRegistered(QueueEntry)
     Publisher->>MQ: Exchange: sus.queue.exchange<br/>Routing key: patient.registered<br/>Payload: { eventType, patientName, patientContact,<br/>procedureName, riskColor: AZUL, timestamp }
 
     UC-->>QS: QueueEntryResponse
@@ -223,7 +223,7 @@ sequenceDiagram
     UC->>DB: UPDATE queue_entries<br/>SET status = 'CHAMADO', updated_at = NOW()<br/>WHERE id = ?
     DB-->>UC: OK
 
-    UC->>Publisher: publishPatientCalled(QueueEventDTO)
+    UC->>Publisher: publishPatientCalled(QueueEntry)
     Publisher->>MQ: Exchange: sus.queue.exchange<br/>Routing key: patient.called<br/>Payload: { eventType: PATIENT_CALLED,<br/>patientName, patientContact,<br/>procedureName, riskColor, timestamp }
 
     UC-->>QS: CalledPatientResponse
@@ -282,7 +282,7 @@ sequenceDiagram
     UC->>DB: SELECT COUNT(*) FROM queue_entries<br/>WHERE status = 'AGUARDANDO'<br/>AND (risk_color < 'AMARELO'<br/>OR (risk_color = 'AMARELO' AND registered_at < ?))
     DB-->>UC: newPosition = 4
 
-    UC->>Publisher: publishPriorityUpdated(QueueEventDTO)
+    UC->>Publisher: publishPriorityUpdated(QueueEntry)
     Publisher->>MQ: Exchange: sus.queue.exchange<br/>Routing key: priority.updated<br/>Payload: { eventType: PRIORITY_UPDATED,<br/>riskColor: AMARELO, ... }
 
     UC-->>QS: ReclassifyResponse
@@ -336,7 +336,7 @@ sequenceDiagram
     UC->>DB: UPDATE queue_entries<br/>SET status = 'CANCELADO', updated_at = NOW()<br/>WHERE id = ?
     DB-->>UC: OK
 
-    UC->>Publisher: publishPatientCancelled(QueueEventDTO)
+    UC->>Publisher: publishPatientCancelled(QueueEntry)
     Publisher->>MQ: Exchange: sus.queue.exchange<br/>Routing key: patient.cancelled
 
     UC-->>QS: void

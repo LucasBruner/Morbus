@@ -50,7 +50,7 @@ public class AgendamentoGraphqlController {
                                                                 @Argument("dataFim") @NotNull String dataFim) {
 		return consultarDisponibilidadeUseCase.execute(procedureId, unitId, dataInicio, dataFim)
 				.stream()
-				.map(SlotsAvailableResponseDTO::fromEntity)
+				.map(SlotsAvailableResponseDTO::fromItem)
 				.toList();
 	}
 

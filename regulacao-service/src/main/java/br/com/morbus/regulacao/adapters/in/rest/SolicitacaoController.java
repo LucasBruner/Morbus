@@ -96,7 +96,7 @@ public class SolicitacaoController {
                                       "procedureId": "7b3c1a2d-9e4f-4a8b-b6d1-1f2e3a4b5c6d",
                                       "cid": "I10",
                                       "destino": "FILA_REGULADA",
-                                      "riskColor": null,
+                                      "riskColor": "AZUL",
                                       "status": "AGUARDANDO",
                                       "criadaEm": "2026-07-06T10:30:00"
                                     }"""))),

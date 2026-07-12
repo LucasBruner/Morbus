@@ -77,7 +77,7 @@ erDiagram
         VARCHAR(255) recipient_name     "nullable"
         VARCHAR(255) recipient_contact  "e-mail ou telefone, nullable"
         TEXT         message            "NOT NULL"
-        VARCHAR(20)  status             "SENT | FAILED"
+        VARCHAR(20)  status             "ENVIADO | FALHA — String Java gravada direto por NotificationService, não enum"
         TIMESTAMP    sent_at            "NOT NULL"
     }
 
@@ -250,7 +250,7 @@ erDiagram
 
 ### QUEUE_ENTRIES *(queue-service)*
 
-> Implementado em: **V3** (`create_queue_entries_table`), **V7** (`add_tipo_fila_to_queue_entries`), **V8** (`add_solicitacao_fields_to_queue_entries`)
+> Implementado em: **V3** (`create_queue_entries_table`), **V7** (`add_tipo_fila_to_queue_entries`), **V8** (`add_solicitacao_fields_to_queue_entries`), **V9** (`add_chamado_to_queue_entries_status_check`)
 
 | Coluna              | Tipo        | Restrições                     | Descrição                                                           |
 |---------------------|-------------|--------------------------------|---------------------------------------------------------------------|
@@ -346,7 +346,7 @@ Tabela de junção que vincula procedimentos SUS a pacientes, controlando elegib
 | `recipient_name`    | VARCHAR(255) | nullable     | Nome do destinatário                              |
 | `recipient_contact` | VARCHAR(255) | nullable     | E-mail ou telefone                                |
 | `message`           | TEXT         | NOT NULL     | Conteúdo completo da mensagem enviada             |
-| `status`            | VARCHAR(20)  | NOT NULL     | `SENT` ou `FAILED`                                |
+| `status`            | VARCHAR(20)  | NOT NULL     | `ENVIADO` ou `FALHA` (valores em português, gravados como `String` Java — ver api-contract.md) |
 | `sent_at`           | TIMESTAMP    | NOT NULL     | Momento do processamento                          |
 
 ---
@@ -589,6 +589,14 @@ CREATE TABLE queue_entries (
 CREATE INDEX idx_queue_entries_priority
     ON queue_entries (risk_color, status, registered_at)
     WHERE status = 'AGUARDANDO';
+
+-- V9__add_chamado_to_queue_entries_status_check.sql (o CHECK original acima não incluía CHAMADO;
+-- CallNextPatient passou a setar CHAMADO em vez de pular direto para AGENDADO)
+ALTER TABLE queue_entries
+    DROP CONSTRAINT IF EXISTS queue_entries_status_check;
+ALTER TABLE queue_entries
+    ADD CONSTRAINT queue_entries_status_check
+    CHECK (status IN ('AGUARDANDO', 'CHAMADO', 'AGENDADO', 'ATENDIDO', 'FALTOU', 'CANCELADO', 'DEVOLVIDO'));
 
 -- V4__seed_procedures.sql (seed de procedimentos SIGTAP — sem alterações de schema)
 

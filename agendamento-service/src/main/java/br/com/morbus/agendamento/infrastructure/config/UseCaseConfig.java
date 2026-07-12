@@ -113,8 +113,11 @@ public class UseCaseConfig {
     }
 
     @Bean
-    public IConsultarDisponibilidadeUseCase consultarDisponibilidadeUseCase(ISlotRepository slotRepository) {
-        return new ConsultarDisponibilidadeUseCase(slotRepository);
+    public IConsultarDisponibilidadeUseCase consultarDisponibilidadeUseCase(ISlotRepository slotRepository,
+                                                                            IScheduleRepository scheduleRepository,
+                                                                            IHealthUnitRepository healthUnitRepository,
+                                                                            IProviderRepository providerRepository) {
+        return new ConsultarDisponibilidadeUseCase(slotRepository, scheduleRepository, healthUnitRepository, providerRepository);
     }
 
     @Bean

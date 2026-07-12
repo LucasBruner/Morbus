@@ -35,6 +35,8 @@
   - [GET /api/v1/procedures](#get-apiv1procedures)
   - [GET /api/v1/procedures?codigo={codigo}](#get-apiv1procedurescodigocodigo)
   - [GET /api/v1/procedures/{id}](#get-apiv1proceduresid)
+  - [POST /api/v1/quotas](#post-apiv1quotas)
+  - [GET /api/v1/quotas](#get-apiv1quotas)
 - [notification-service `:8081`](#notification-service-8081)
   - [GET /api/v1/notifications](#get-apiv1notifications)
   - [GET /api/v1/notifications/{id}](#get-apiv1notificationsid)
@@ -48,6 +50,10 @@
   - [PATCH /api/v1/regulacao/solicitacoes/{id}/risco](#patch-apiv1regulacaosolicitacoesidrisco)
   - [GET /api/v1/regulacao/pendentes](#get-apiv1regulacaopendentes)
   - [GET /api/v1/regulacao/pendentes-vaga](#get-apiv1regulacaopendentes-vaga)
+  - [POST /api/v1/regulacao/cotas](#post-apiv1regulacaocotas)
+  - [GET /api/v1/regulacao/cotas](#get-apiv1regulacaocotas)
+  - [POST /api/v1/unidades-solicitantes](#post-apiv1unidades-solicitantes)
+  - [GET /api/v1/unidades-solicitantes/{id}](#get-apiv1unidades-solicitantesid)
 - [agendamento-service `:8084`](#agendamento-service-8084)
   - [REST — Commands](#rest--commands)
   - [GraphQL — Queries](#graphql--queries)
@@ -762,6 +768,70 @@ Busca um procedimento pelo ID.
 
 ---
 
+### POST /api/v1/quotas
+
+Cria ou atualiza a cota diária de `FILA_ESPERA` para uma combinação unidade+procedimento. `FILA_REGULADA` nunca é afetada por esta cota — ver `docs/arquitetura-sistema-sus.md` §2.2 para a distinção em relação à cota própria do regulacao-service.
+
+**Auth:** `ROLE_MEDICO`
+
+**Request Body:**
+```json
+{
+  "unitId": "7b3c1a2d-9e4f-4a8b-b6d1-1f2e3a4b5c6d",
+  "procedureId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "maxPerDay": 10
+}
+```
+
+| Campo         | Tipo    | Obrigatório | Validações                                    |
+|---------------|---------|-------------|-------------------------------------------------|
+| `unitId`      | UUID    | ✅          | `preferredUnitId` do `QueueEntry` — sem FK cross-service |
+| `procedureId` | UUID    | ✅          | Deve referenciar um procedimento existente       |
+| `maxPerDay`   | integer | ✅          | `@Min(1)` — limite diário de entradas `AGUARDANDO` em `FILA_ESPERA` |
+
+**Response `201 Created`:**
+```json
+{
+  "id": "a1b2c3d4-e5f6-7890-ab12-cd34ef567890",
+  "unitId": "7b3c1a2d-9e4f-4a8b-b6d1-1f2e3a4b5c6d",
+  "procedureId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "maxPerDay": 10
+}
+```
+
+Se já existir uma cota para a combinação `unitId`+`procedureId`, ela é atualizada (restrição `UNIQUE (unit_id, procedure_id)` — ver `erd.md`).
+
+**Erros:**
+
+| Status | Motivo                        |
+|--------|---------------------------------|
+| `400`  | Dados de entrada inválidos      |
+
+---
+
+### GET /api/v1/quotas
+
+Consulta a cota diária configurada para uma unidade+procedimento.
+
+**Auth:** `ROLE_MEDICO`
+
+**Query Parameters:**
+
+| Parâmetro     | Tipo | Obrigatório | Descrição              |
+|---------------|------|-------------|--------------------------|
+| `unitId`      | UUID | ✅          | ID da unidade de execução |
+| `procedureId` | UUID | ✅          | ID do procedimento        |
+
+**Response `200 OK`:** mesmo schema de `POST /api/v1/quotas`.
+
+**Erros:**
+
+| Status | Motivo                                                                 |
+|--------|---------------------------------------------------------------------------|
+| `404`  | Não existe cota configurada para essa combinação (`type`: `.../problems/quota-not-found`) |
+
+---
+
 ## notification-service `:8081`
 
 > Os endpoints do notification-service não exigem autenticação JWT — são de consulta interna para fins de observabilidade e demo.
@@ -1124,6 +1194,137 @@ Lista solicitações aprovadas mas com status `PENDENTE` (sem vaga disponível n
 
 ---
 
+### POST /api/v1/regulacao/cotas
+
+Cria ou atualiza a cota de solicitações de uma unidade+procedimento para um período (mês). Se já existir cota para a combinação `unitId`/`procedureId`/`periodStart`, ela é atualizada.
+
+> Esta é a cota *própria* do regulacao-service (`Quota`, tabela `quotas`), distinta da `UnitProcedureQuota` do queue-service — ver aviso em `arquitetura-sistema-sus.md` §2.4.
+
+**Auth:** `ROLE_REGULADOR`
+
+**Request Body:**
+```json
+{
+  "unitId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "procedureId": "7b3c1a2d-9e4f-4a8b-b6d1-1f2e3a4b5c6d",
+  "maxPerPeriod": 50,
+  "periodStart": "2026-08-01"
+}
+```
+
+| Campo          | Tipo    | Obrigatório | Validações                    |
+|----------------|---------|-------------|--------------------------------|
+| `unitId`       | UUID    | ✅          | Deve referenciar uma `unidade_solicitante` existente |
+| `procedureId`  | UUID    | ✅          | Ref. ao procedure no queue-service (sem FK) |
+| `maxPerPeriod` | integer | ✅          | `@Min(1)`                      |
+| `periodStart`  | date    | ✅          | Formato `yyyy-MM-dd`, normalmente o primeiro dia do mês |
+
+**Response `200 OK`:**
+```json
+{
+  "id": "a1b2c3d4-e5f6-7890-ab12-cd34ef567890",
+  "unitId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "procedureId": "7b3c1a2d-9e4f-4a8b-b6d1-1f2e3a4b5c6d",
+  "maxPerPeriod": 50,
+  "currentCount": 0,
+  "periodStart": "2026-08-01"
+}
+```
+
+**Erros:**
+
+| Status | Motivo                                     |
+|--------|---------------------------------------------|
+| `400`  | Dados de entrada inválidos                   |
+| `404`  | Unidade solicitante não encontrada           |
+
+---
+
+### GET /api/v1/regulacao/cotas
+
+Lista as cotas cadastradas, filtráveis por unidade, procedimento e mês de referência.
+
+**Auth:** `ROLE_REGULADOR`
+
+**Query Parameters:**
+
+| Parâmetro     | Tipo    | Obrigatório | Padrão | Descrição                                    |
+|---------------|---------|-------------|--------|-----------------------------------------------|
+| `unitId`      | UUID    | ❌          | —      | Filtra por unidade solicitante                 |
+| `procedureId` | UUID    | ❌          | —      | Filtra por procedimento                        |
+| `mes`         | string  | ❌          | —      | Mês de referência no formato `yyyy-MM` (ex: `2026-08`) |
+| `page`        | integer | ❌          | `0`    | Número da página (zero-based)                  |
+| `size`        | integer | ❌          | `20`   | Itens por página (máx. 100)                    |
+
+**Response `200 OK`:** lista paginada de objetos com o mesmo schema de `POST /api/v1/regulacao/cotas`.
+
+**Erros:**
+
+| Status | Motivo                                  |
+|--------|-------------------------------------------|
+| `400`  | Parâmetro `mes` fora do formato `yyyy-MM` |
+
+---
+
+### POST /api/v1/unidades-solicitantes
+
+Cadastra uma nova unidade de saúde (UBS) apta a solicitar regulação de procedimentos.
+
+**Auth:** `ROLE_REGULADOR`
+
+**Request Body:**
+```json
+{
+  "cnes": "2077469",
+  "nome": "UBS Jardim das Flores",
+  "endereco": "Rua das Acácias, 123 - São Paulo/SP",
+  "telefone": "(11) 4002-8922"
+}
+```
+
+| Campo      | Tipo   | Obrigatório | Validações                          |
+|------------|--------|-------------|---------------------------------------|
+| `cnes`     | string | ✅          | `@NotBlank`, máximo 7 caracteres, único |
+| `nome`     | string | ✅          | `@NotBlank`                            |
+| `endereco` | string | ❌          | —                                       |
+| `telefone` | string | ❌          | —                                       |
+
+**Response `201 Created`:**
+```json
+{
+  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "cnes": "2077469",
+  "nome": "UBS Jardim das Flores",
+  "endereco": "Rua das Acácias, 123 - São Paulo/SP",
+  "telefone": "(11) 4002-8922"
+}
+```
+
+**Erros:**
+
+| Status | Motivo                                    |
+|--------|----------------------------------------------|
+| `400`  | Dados de entrada inválidos                    |
+| `409`  | Já existe unidade cadastrada com o mesmo CNES |
+
+---
+
+### GET /api/v1/unidades-solicitantes/{id}
+
+Retorna os dados cadastrais de uma unidade solicitante.
+
+**Auth:** `ROLE_REGULADOR` ou `ROLE_SOLICITANTE`
+
+**Response `200 OK`:** mesmo schema de `POST /api/v1/unidades-solicitantes`.
+
+**Erros:**
+
+| Status | Motivo                    |
+|--------|---------------------------|
+| `404`  | Unidade não encontrada    |
+
+---
+
 ## agendamento-service `:8084`
 
 > Todos os endpoints abaixo exigem o header:
@@ -1135,7 +1336,7 @@ Lista solicitações aprovadas mas com status `PENDENTE` (sem vaga disponível n
 > - **REST** (porta `8084`) — comandos que alteram estado (write operations)
 > - **GraphQL** (porta `8084`, path `/graphql`) — consultas flexíveis (read operations)
 >
-> **Restrição de unidade para `ROLE_EXECUTANTE`** (não documentada anteriormente): `POST /api/v1/schedules`, `PUT /api/v1/schedules/{id}`, `POST /api/v1/schedules/{id}/block`, `POST /api/v1/schedules/{id}/unblock` e `POST /api/v1/appointments/{id}/falta` comparam `principal.unitId()` (extraído do JWT) com a unidade do recurso (`schedule.getUnitId()`) e retornam `403 AccessDeniedException` ("EXECUTANTE restrito a sua unidade") em caso de divergência — um EXECUTANTE só opera sobre grades/agendamentos da própria unidade.
+> **Restrição de unidade para `ROLE_EXECUTANTE`** (não documentada anteriormente): `POST /api/v1/schedules`, `PUT /api/v1/schedules/{id}`, `POST /api/v1/schedules/{id}/block`, `POST /api/v1/schedules/{id}/unblock`, `POST /api/v1/appointments/{id}/falta` e `PATCH /api/v1/appointments/{id}/attend` comparam `principal.unitId()` (extraído do JWT) com a unidade do recurso e retornam `403 AccessDeniedException` ("EXECUTANTE restrito a sua unidade") em caso de divergência — um EXECUTANTE só opera sobre grades/agendamentos da própria unidade. Em `POST /api/v1/schedules` a comparação é contra `request.unitId()` (o corpo da requisição, já que ainda não existe um schedule persistido); nos demais, contra `schedule.getUnitId()` do recurso já existente.
 
 ---
 
@@ -1705,6 +1906,8 @@ Todos os serviços seguem o padrão **RFC 7807 — Problem Details for HTTP APIs
 | `instance` | URI    | URI da request que originou o erro (ex: `/api/v1/patients`).             |
 
 > Extension fields (campos extras fora da RFC) podem ser adicionados por tipo de erro — por exemplo, `violations` nos erros de validação.
+>
+> No queue-service, `instance` **não é preenchido** nas respostas `400` de `validation-error` e `invalid-request-body` (`GlobalExceptionHandler.handleMethodArgumentNotValid`/`handleHttpMessageNotReadable`) — só os handlers baseados em `HttpServletRequest` (404/409/422/500) chamam `problem.setInstance(...)`. Os exemplos abaixo mostram `instance` para ilustrar o formato RFC 7807 completo, mas ele vem `null` nesses dois casos específicos.
 
 ---
 

@@ -24,10 +24,10 @@ public record ScheduleResponseDTO(
     public record ProviderDTO(UUID id, String nome, String crm, String especialidade) {}
 
     public static ScheduleResponseDTO fromGradeItem(GradeItem item) {
-        Schedule sc = item.schedule();
-        HealthUnit hu = item.unit();
-        Provider p = item.provider();
+        return from(item.schedule(), item.unit(), item.provider());
+    }
 
+    public static ScheduleResponseDTO from(Schedule sc, HealthUnit hu, Provider p) {
         HealthUnitDTO unitDTO = new HealthUnitDTO(
                 hu.getId(),
                 hu.getCnes(),

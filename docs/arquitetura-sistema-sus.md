@@ -145,7 +145,7 @@ queue-service/
         │   ├── consumer/ # SolicitationApprovedConsumer, AppointmentConfirmedConsumer,
         │   │             # AppointmentExpiredConsumer, PatientNoShowConsumer,
         │   │             # AppointmentCancelledConsumer, AppointmentNoSlotConsumer
-        │   └── DTO/      # QueueEventDTO e eventos de entrada de cada consumer
+        │   └── DTO/      # QueueEventPayload e eventos de entrada de cada consumer
         └── security/     # JwtAuthenticationFilter (SecurityConfig fica em infrastructure/config/)
 ```
 
@@ -286,7 +286,7 @@ regulacao-service/
         │   ├── jpa/      # entidades JPA, Spring Data repositories, adapters de ISolicitacaoRepository etc.
         │   ├── rabbitmq/ # RabbitMQConfig, RabbitMqRegulacaoEventPublisher, DTOs de payload
         │   ├── config/   # OpenApiConfig, UseCaseConfig
-        │   └── security/ # JwtAuthenticationFilter, JwtService — apesar do nome "out", faz a validação de entrada
+        │   └── security/ # JwtAuthenticationFilter, JwtService, SecurityConfig — apesar do nome "out", faz a validação de entrada
         └── security/     # UserPrincipal — pacote irmão de in/out, não aninhado em nenhum dos dois
 ```
 > A fronteira transacional (`@Transactional`) vive nos adapters de entrada (controllers REST e consumers RabbitMQ), não no domínio.
@@ -358,16 +358,16 @@ agendamento-service/
     │   ├── exception/    # 10 exceções (DuplicateScheduleException, InvalidSchedulePeriodException,
     │   │                 # DuplicateAgendamentoException, CancelamentoNaoPermitidoException, ...)
     │   └── port/
-    │       ├── in/       # ~13 use case ports — ex.: IDetalharAgendamentoUseCase, IAgendamentosPacienteUseCase
+    │       ├── in/       # 15 use case ports — ex.: IDetalharAgendamentoUseCase, IAgendamentosPacienteUseCase
     │       │             # (recebem UUID/String primitivos, nunca Authentication ou DTOs de adapter)
     │       └── out/      # portas de saída (persistência, eventos)
     ├── application/
     │   ├── command/      # CriarScheduleCommand, CriarScheduleResult, CriarAgendamentoCommand
-    │   └── usecase/      # ~13 use cases — CriarScheduleUseCase, CriarAgendamentoUseCase,
+    │   └── usecase/      # 16 use cases — CriarScheduleUseCase, CriarAgendamentoUseCase,
     │                     # CancelarAgendamentoUseCase, ExpirarAgendamentosUseCase, DetalharAgendamentoUseCase, ...
     ├── adapter/
     │   ├── in/
-    │   │   ├── rest/     # ScheduleController, AgendamentoController
+    │   │   ├── rest/     # ScheduleController, AppointmentController
     │   │   │   └── dto/  # ScheduleRequestDTO, ScheduleCreatedResponseDTO
     │   │   ├── graphql/  # AgendamentoGraphqlController + DTOs (traduz Authentication/request GraphQL
     │   │   │             # em UUID/String antes de chamar os use cases — a tradução fica no adapter, não no domínio)
@@ -380,7 +380,7 @@ agendamento-service/
     │   │   └── security/    # JwtAuthenticationFilter, JwtService, SecurityConfig
     │   └── security/     # UserPrincipal
     └── infrastructure/
-        ├── config/       # UseCaseConfig
+        ├── config/       # UseCaseConfig, SchedulerConfig
         └── scheduling/   # AppointmentExpirationJob
 ```
 
@@ -408,8 +408,8 @@ type Query {
     pacienteId: ID
     unitId: ID
     status: AppointmentStatus
-    dateFrom: String
-    dateTo: String
+    dateFrom: String!
+    dateTo: String!
   ): [Appointment!]!
 
   grade(unitId: ID!, week: String!): [Schedule!]!
@@ -495,11 +495,12 @@ sus.agendamento.exchange (direct)      publicado por: agendamento-service
 
 Cada consumer do `queue-service` (`SolicitationApprovedConsumer`, `AppointmentConfirmedConsumer`, `AppointmentExpiredConsumer`, `PatientNoShowConsumer`, `AppointmentCancelledConsumer`, `AppointmentNoSlotConsumer`) tem sua fila principal ligada a um exchange de dead-letter dedicado, `sus.queue.dlx` (`RabbitMQConfig.java`). O regulacao-service segue o mesmo padrão para seus consumers de agendamento, com DLQs próprias. Mensagens que falham repetidamente no processamento (após as tentativas de retry do `spring.rabbitmq.listener.simple.retry.*`) são roteadas para uma fila `.dlq` correspondente (ex.: `queue.solicitation.approved.dlq`) em vez de serem perdidas ou reentregues indefinidamente — permitindo inspeção/reprocessamento manual via RabbitMQ Management.
 
-**Payload base dos eventos (JSON):**
+**Payload base dos eventos (JSON) — `QueueEventPayload`:**
 ```json
 {
   "eventType": "PATIENT_CALLED",
   "queueEntryId": "uuid",
+  "patientId": "uuid",
   "patientName": "João da Silva",
   "patientContact": "joao@email.com",
   "procedureName": "Consulta de Cardiologia",
@@ -507,9 +508,11 @@ Cada consumer do `queue-service` (`SolicitationApprovedConsumer`, `AppointmentCo
   "preferredUnitId": "uuid",
   "riskColor": "AMARELO",
   "tipoFila": "FILA_REGULADA",
+  "motivoCancelamento": null,
   "timestamp": "2026-06-12T10:30:00Z"
 }
 ```
+> `patientId`, `procedureId`, `preferredUnitId` e `tipoFila` são obrigatórios para o `PatientCalledConsumer`/`AlocarPacienteEmSlotUseCase` do agendamento-service localizar um slot e criar o `Agendamento` a partir do evento `patient.called`. `motivoCancelamento` só é preenchido em `PATIENT_CANCELLED`; nos demais eventos vai `null`.
 
 ---
 
