@@ -3,6 +3,7 @@ package br.com.morbus.queueservice.infrastructure.messaging;
 import br.com.morbus.queueservice.domain.entity.Patient;
 import br.com.morbus.queueservice.domain.entity.Procedure;
 import br.com.morbus.queueservice.domain.entity.QueueEntry;
+import br.com.morbus.queueservice.domain.enums.EDestino;
 import br.com.morbus.queueservice.domain.enums.EPriorityGroup;
 import br.com.morbus.queueservice.domain.enums.EQueueStatus;
 import br.com.morbus.queueservice.domain.enums.ERiskColor;
@@ -65,6 +66,8 @@ class RabbitMqQueueEventPublisherTest {
                 .patient(patient)
                 .procedure(procedure)
                 .riskColor(ERiskColor.AMARELO)
+                .tipoFila(EDestino.FILA_REGULADA)
+                .preferredUnitId(UUID.randomUUID())
                 .queueStatus(EQueueStatus.AGUARDANDO)
                 .registeredAt(LocalDateTime.now().minusHours(1))
                 .build();
@@ -121,10 +124,14 @@ class RabbitMqQueueEventPublisherTest {
             QueueEventPayload payload = capturePayload("sus.queue.exchange", "patient.registered");
 
             assertThat(payload.queueEntryId()).isEqualTo(entry.getId());
+            assertThat(payload.patientId()).isEqualTo(entry.getPatient().getId());
             assertThat(payload.patientName()).isEqualTo("Maria Oliveira");
             assertThat(payload.patientContact()).isEqualTo("maria@email.com");
             assertThat(payload.procedureName()).isEqualTo("Consulta de Cardiologia");
+            assertThat(payload.procedureId()).isEqualTo(entry.getProcedure().getId());
+            assertThat(payload.preferredUnitId()).isEqualTo(entry.getPreferredUnitId());
             assertThat(payload.riskColor()).isEqualTo(ERiskColor.AMARELO);
+            assertThat(payload.tipoFila()).isEqualTo(EDestino.FILA_REGULADA);
             assertThat(payload.timestamp()).isAfterOrEqualTo(antes).isBeforeOrEqualTo(depois);
             assertThat(payload.motivoCancelamento()).isNull();
         }
@@ -180,6 +187,20 @@ class RabbitMqQueueEventPublisherTest {
             assertThat(payload.timestamp())
                     .isAfterOrEqualTo(antes)
                     .isBeforeOrEqualTo(depois);
+        }
+
+        @Test
+        @DisplayName("deve incluir patientId, procedureId, preferredUnitId e tipoFila " +
+                "para permitir a alocação de slot no agendamento-service")
+        void deveIncluirCamposNecessariosParaAlocacaoDeSlot() {
+            QueueEntry entry = buildEntry();
+            publisher.publishPatientCalled(entry);
+
+            QueueEventPayload payload = capturePayload("sus.queue.exchange", "patient.called");
+            assertThat(payload.patientId()).isEqualTo(entry.getPatient().getId());
+            assertThat(payload.procedureId()).isEqualTo(entry.getProcedure().getId());
+            assertThat(payload.preferredUnitId()).isEqualTo(entry.getPreferredUnitId());
+            assertThat(payload.tipoFila()).isEqualTo(entry.getTipoFila());
         }
     }
 

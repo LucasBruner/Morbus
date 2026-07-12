@@ -19,7 +19,8 @@ public record SolicitacaoStatusResponseDTO(UUID id,
                                            EStatusSolicitacao status,
                                            LocalDateTime criadaEm,
                                            LocalDateTime updatedAt,
-                                           String justificativaNegacao) {
+                                           String justificativaNegacao,
+                                           String observacoes) {
 
     public static SolicitacaoStatusResponseDTO fromDomain(Solicitacao solicitacao) {
         return new SolicitacaoStatusResponseDTO(
@@ -34,7 +35,8 @@ public record SolicitacaoStatusResponseDTO(UUID id,
                 solicitacao.getStatus(),
                 solicitacao.getCreatedAt(),
                 solicitacao.getUpdatedAt(),
-                solicitacao.getJustificativaNegacao()
+                solicitacao.getJustificativaNegacao(),
+                solicitacao.getObservacoes()
         );
     }
 }

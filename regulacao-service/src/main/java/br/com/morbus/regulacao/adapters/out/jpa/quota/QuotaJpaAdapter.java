@@ -1,5 +1,6 @@
 package br.com.morbus.regulacao.adapters.out.jpa.quota;
 
+import br.com.morbus.regulacao.domain.dto.PageResult;
 import br.com.morbus.regulacao.domain.model.Quota;
 import br.com.morbus.regulacao.ports.in.dto.ConsultarCotasQuery;
 import br.com.morbus.regulacao.ports.out.IQuotaRepository;
@@ -47,7 +48,7 @@ public class QuotaJpaAdapter implements IQuotaRepository {
     }
 
     @Override
-    public Page<Quota> listar(ConsultarCotasQuery query) {
+    public PageResult<Quota> listar(ConsultarCotasQuery query) {
         Specification<QuotaEntity> specification = (r, cq, cb) -> cb.conjunction();
         if (query.unitId() != null) {
             specification = specification.and((r, cq, cb) -> cb.equal(r.get("unitId"), query.unitId()));
@@ -62,6 +63,7 @@ public class QuotaJpaAdapter implements IQuotaRepository {
         }
 
         Pageable pageable = PageRequest.of(query.page(), query.size());
-        return quotaJpaRepository.findAll(specification, pageable).map(QuotaEntity::toDomain);
+        Page<Quota> page = quotaJpaRepository.findAll(specification, pageable).map(QuotaEntity::toDomain);
+        return new PageResult<>(page.getContent(), page.getNumber(), page.getSize(), page.getTotalElements(), page.getTotalPages());
     }
 }

@@ -1,5 +1,6 @@
 package br.com.morbus.regulacao.adapters.in.rest;
 
+import br.com.morbus.regulacao.adapters.in.rest.dto.ComplementarSolicitacaoRequestDTO;
 import br.com.morbus.regulacao.adapters.in.rest.dto.SolicitacaoCreatedResponseDTO;
 import br.com.morbus.regulacao.adapters.in.rest.dto.SolicitacaoRequestDTO;
 import br.com.morbus.regulacao.adapters.in.rest.dto.SolicitacaoStatusResponseDTO;
@@ -7,9 +8,11 @@ import br.com.morbus.regulacao.adapters.in.rest.dto.SolicitacaoSummaryDTO;
 import br.com.morbus.regulacao.adapters.security.UserPrincipal;
 import br.com.morbus.regulacao.domain.dto.ListarSolicitacoesQuery;
 import br.com.morbus.regulacao.domain.dto.UsuarioContexto;
+import br.com.morbus.regulacao.domain.enums.EDestino;
 import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
 import br.com.morbus.regulacao.domain.model.Solicitacao;
 import br.com.morbus.regulacao.ports.in.ICancelarSolicitacaoUseCase;
+import br.com.morbus.regulacao.ports.in.IComplementarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.in.IConsultarStatusSolicitacao;
 import br.com.morbus.regulacao.ports.in.ICriarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.in.IListarSolicitacoesUseCase;
@@ -27,6 +30,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -43,15 +47,18 @@ public class SolicitacaoController {
     private final IListarSolicitacoesUseCase listarSolicitacoesUseCase;
     private final ICancelarSolicitacaoUseCase deletarSolicitacaoUseCase;
     private final IConsultarStatusSolicitacao statusSolicitacao;
+    private final IComplementarSolicitacaoUseCase complementarSolicitacaoUseCase;
 
     public SolicitacaoController(ICriarSolicitacaoUseCase criarSolicitacaoUseCase,
                                  IListarSolicitacoesUseCase listarSolicitacoesUseCase,
                                  ICancelarSolicitacaoUseCase deletarSolicitacaoUseCase,
-                                 IConsultarStatusSolicitacao statusSolicitacao) {
+                                 IConsultarStatusSolicitacao statusSolicitacao,
+                                 IComplementarSolicitacaoUseCase complementarSolicitacaoUseCase) {
         this.criarSolicitacaoUseCase = criarSolicitacaoUseCase;
         this.listarSolicitacoesUseCase = listarSolicitacoesUseCase;
         this.deletarSolicitacaoUseCase = deletarSolicitacaoUseCase;
         this.statusSolicitacao = statusSolicitacao;
+        this.complementarSolicitacaoUseCase = complementarSolicitacaoUseCase;
     }
 
     @PostMapping
@@ -89,7 +96,7 @@ public class SolicitacaoController {
                                       "procedureId": "7b3c1a2d-9e4f-4a8b-b6d1-1f2e3a4b5c6d",
                                       "cid": "I10",
                                       "destino": "FILA_REGULADA",
-                                      "riskColor": null,
+                                      "riskColor": "AZUL",
                                       "status": "AGUARDANDO",
                                       "criadaEm": "2026-07-06T10:30:00"
                                     }"""))),
@@ -100,6 +107,7 @@ public class SolicitacaoController {
             @ApiResponse(responseCode = "409", description = "Já existe solicitação equivalente em aberto para o paciente/procedimento", content = @Content),
             @ApiResponse(responseCode = "422", description = "Cota do procedimento esgotada para a unidade/período", content = @Content)
     })
+    @Transactional
     public ResponseEntity<SolicitacaoCreatedResponseDTO> criar(
             @Valid @RequestBody SolicitacaoRequestDTO request,
             @AuthenticationPrincipal UserPrincipal principal) {
@@ -127,6 +135,7 @@ public class SolicitacaoController {
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(required = false) UUID unidadeId,
             @RequestParam(required = false) EStatusSolicitacao status,
+            @RequestParam(required = false) EDestino destino,
             @RequestParam(required = false) UUID procedureId,
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
@@ -135,9 +144,9 @@ public class SolicitacaoController {
                 ? principal.unitId()
                 : unidadeId;
 
-        var query = new ListarSolicitacoesQuery(unidadeFiltro, status, procedureId, page, size);
-        Page<SolicitacaoSummaryDTO> result = listarSolicitacoesUseCase.execute(query)
-                .map(SolicitacaoSummaryDTO::fromDomain);
+        var query = new ListarSolicitacoesQuery(unidadeFiltro, status, destino, procedureId, page, size);
+        Page<SolicitacaoSummaryDTO> result = PageMapper.toSpringPage(
+                listarSolicitacoesUseCase.execute(query).map(SolicitacaoSummaryDTO::fromDomain));
 
         return ResponseEntity.ok(result);
     }
@@ -177,5 +186,40 @@ public class SolicitacaoController {
         SolicitacaoStatusResponseDTO solicitacao = SolicitacaoStatusResponseDTO
                 .fromDomain(statusSolicitacao.execute(id, new UsuarioContexto(principal.role(), principal.userId())));
         return ResponseEntity.ok(solicitacao);
+    }
+
+    @PostMapping("/{id}/complementar")
+    @PreAuthorize("hasRole('SOLICITANTE')")
+    @Operation(
+            summary = "Complementa solicitação devolvida",
+            description = "Complementa uma solicitação devolvida pelo regulador com informações faltantes. Apenas campos enviados (não nulos) são atualizados. Após a complementação o status volta para AGUARDANDO.",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ComplementarSolicitacaoRequestDTO.class),
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "cid": "I11.9",
+                                      "justificativaClinica": "Complemento: paciente com HAS estagio 3, sem resposta a 3 anti-hipertensivos.",
+                                      "crmProfissional": "CRM/SP 12345"
+                                    }""")
+                    )
+            )
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Solicitação complementada com sucesso",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = SolicitacaoStatusResponseDTO.class))),
+            @ApiResponse(responseCode = "401", description = "Token ausente ou inválido", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Perfil sem permissão (requer ROLE_SOLICITANTE)", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Solicitação não encontrada", content = @Content),
+            @ApiResponse(responseCode = "422", description = "Status da solicitação não permite complementação — apenas DEVOLVIDA", content = @Content)
+    })
+    @Transactional
+    public ResponseEntity<SolicitacaoStatusResponseDTO> complementar(
+            @PathVariable UUID id,
+            @Valid @RequestBody ComplementarSolicitacaoRequestDTO request) {
+        Solicitacao solicitacao = complementarSolicitacaoUseCase.execute(request.toCommand(id));
+        return ResponseEntity.ok(SolicitacaoStatusResponseDTO.fromDomain(solicitacao));
     }
 }

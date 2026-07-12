@@ -1,9 +1,11 @@
 package br.com.morbus.queueservice.infrastructure.http.controller;
 
 import br.com.morbus.queueservice.domain.entity.Procedure;
+import br.com.morbus.queueservice.domain.repository.ProcedurePageResult;
 import br.com.morbus.queueservice.domain.usecase.GetProcedureByCodigo;
 import br.com.morbus.queueservice.domain.usecase.GetProcedureById;
 import br.com.morbus.queueservice.domain.usecase.ListProcedures;
+import br.com.morbus.queueservice.domain.usecase.dto.PageResponseDTO;
 import br.com.morbus.queueservice.domain.usecase.dto.ProcedureResponseDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -51,11 +53,14 @@ public class ProcedureController {
             @ApiResponse(responseCode = "401", description = "Token ausente ou inválido", content = @Content),
             @ApiResponse(responseCode = "403", description = "Acesso negado", content = @Content)
     })
-    public ResponseEntity<List<ProcedureResponseDTO>> listAllProcedures(
-            @RequestParam(value = "page", defaultValue = "1") Integer page,
+    public ResponseEntity<PageResponseDTO<ProcedureResponseDTO>> listAllProcedures(
+            @RequestParam(value = "page", defaultValue = "0") Integer page,
             @RequestParam(value = "size", defaultValue = "20") Integer size) {
-        List<Procedure> procedures = listProcedures.run(page, size);
-        return ResponseEntity.ok(procedures.stream().map(ProcedureResponseDTO::fromEntity).toList());
+        ProcedurePageResult result = listProcedures.run(page, size);
+        List<ProcedureResponseDTO> content = result.content().stream()
+                .map(ProcedureResponseDTO::fromEntity)
+                .toList();
+        return ResponseEntity.ok(PageResponseDTO.of(content, page, size, result.totalElements()));
     }
 
     @GetMapping(params = "codigo")

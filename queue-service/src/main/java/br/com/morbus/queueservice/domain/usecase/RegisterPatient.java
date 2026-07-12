@@ -26,6 +26,10 @@ public class RegisterPatient {
             throw new PatientAlreadyExistsException("Paciente com CPF " + dto.cpf() + " já existe");
         }
 
+        if (dto.cns() != null && !dto.cns().isBlank() && patientRepository.findByCns(dto.cns()).isPresent()) {
+            throw new PatientAlreadyExistsException("Paciente com CNS " + dto.cns() + " já existe");
+        }
+
         Patient patient = Patient.builder()
                 .id(UUID.randomUUID())
                 .cpf(dto.cpf())

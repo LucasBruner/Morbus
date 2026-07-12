@@ -21,10 +21,21 @@ public record RegisterQueueRequestDTO(
         ERiskColor riskColor,
 
         @Schema(description = "Tipo de fila. FILA_REGULADA (padrão) ou FILA_ESPERA.", example = "FILA_REGULADA")
-        EDestino tipoFila
+        EDestino tipoFila,
+
+        @Schema(description = "ID da solicitação de origem (regulacao-service), quando aplicável")
+        UUID solicitacaoId,
+
+        @Schema(description = "ID da unidade de execução preferida, quando aplicável")
+        UUID preferredUnitId
 ) {
     /** Construtor de compatibilidade que mantém tipoFila como FILA_REGULADA por padrão. */
     public RegisterQueueRequestDTO(UUID patientId, UUID procedureId, ERiskColor riskColor) {
-        this(patientId, procedureId, riskColor, EDestino.FILA_REGULADA);
+        this(patientId, procedureId, riskColor, EDestino.FILA_REGULADA, null, null);
+    }
+
+    /** Construtor de compatibilidade sem solicitacaoId/preferredUnitId. */
+    public RegisterQueueRequestDTO(UUID patientId, UUID procedureId, ERiskColor riskColor, EDestino tipoFila) {
+        this(patientId, procedureId, riskColor, tipoFila, null, null);
     }
 }

@@ -3,6 +3,7 @@ package br.com.morbus.regulacao.adapters.out.jpa;
 import br.com.morbus.regulacao.adapters.out.jpa.quota.IQuotaJpaRepository;
 import br.com.morbus.regulacao.adapters.out.jpa.quota.QuotaEntity;
 import br.com.morbus.regulacao.adapters.out.jpa.quota.QuotaJpaAdapter;
+import br.com.morbus.regulacao.domain.dto.PageResult;
 import br.com.morbus.regulacao.domain.model.Quota;
 import br.com.morbus.regulacao.ports.in.dto.ConsultarCotasQuery;
 import org.junit.jupiter.api.BeforeEach;
@@ -223,10 +224,10 @@ class QuotaJpaAdapterTest {
             when(jpaRepository.findAll(any(Specification.class), any(Pageable.class)))
                     .thenReturn(new PageImpl<>(List.of(entity)));
 
-            Page<Quota> result = adapter.listar(query);
+            PageResult<Quota> result = adapter.listar(query);
 
-            assertThat(result.getContent()).hasSize(1);
-            assertThat(result.getContent().getFirst().getId()).isEqualTo(entity.getId());
+            assertThat(result.content()).hasSize(1);
+            assertThat(result.content().getFirst().getId()).isEqualTo(entity.getId());
         }
 
         @Test
@@ -237,9 +238,9 @@ class QuotaJpaAdapterTest {
             when(jpaRepository.findAll(any(Specification.class), any(Pageable.class)))
                     .thenReturn(Page.empty());
 
-            Page<Quota> result = adapter.listar(query);
+            PageResult<Quota> result = adapter.listar(query);
 
-            assertThat(result.getContent()).isEmpty();
+            assertThat(result.content()).isEmpty();
         }
     }
 }

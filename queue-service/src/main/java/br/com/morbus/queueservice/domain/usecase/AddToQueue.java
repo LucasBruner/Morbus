@@ -19,9 +19,11 @@ public class AddToQueue {
         return new AddToQueue(registerPatientInQueue);
     }
 
-    public QueueEntry execute(UUID patientId, UUID procedureId, EDestino tipoFila, ERiskColor riskColor) {
+    public QueueEntry execute(UUID patientId, UUID procedureId, EDestino tipoFila, ERiskColor riskColor,
+                              UUID solicitacaoId, UUID preferredUnitId) {
         ERiskColor effectiveRiskColor = tipoFila == EDestino.FILA_ESPERA ? ERiskColor.AZUL : riskColor;
         return registerPatientInQueue.execute(
-                new RegisterQueueRequestDTO(patientId, procedureId, effectiveRiskColor, tipoFila));
+                new RegisterQueueRequestDTO(patientId, procedureId, effectiveRiskColor, tipoFila,
+                        solicitacaoId, preferredUnitId));
     }
 }

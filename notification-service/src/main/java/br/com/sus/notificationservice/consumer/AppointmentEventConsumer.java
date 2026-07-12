@@ -1,7 +1,10 @@
 package br.com.sus.notificationservice.consumer;
 
+import br.com.sus.notificationservice.model.dto.AppointmentCancelledEventDTO;
 import br.com.sus.notificationservice.model.dto.AppointmentConfirmedEventDTO;
+import br.com.sus.notificationservice.model.dto.AppointmentExpiredEventDTO;
 import br.com.sus.notificationservice.model.dto.AppointmentNoSlotEventDTO;
+import br.com.sus.notificationservice.model.dto.AppointmentRescheduledEventDTO;
 import br.com.sus.notificationservice.service.NotificationService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -34,6 +37,36 @@ public class AppointmentEventConsumer {
             notificationService.processAppointmentNoSlot(event);
         } catch (Exception e) {
             log.error("[CONSUMER] Erro ao processar appointment.no_slot", e);
+        }
+    }
+
+    @Incoming("appointment-rescheduled-events")
+    public void consumeRescheduled(AppointmentRescheduledEventDTO event) {
+        try {
+            log.info("[CONSUMER] appointment.rescheduled recebido: {}", event);
+            notificationService.processAppointmentRescheduled(event);
+        } catch (Exception e) {
+            log.error("[CONSUMER] Erro ao processar appointment.rescheduled", e);
+        }
+    }
+
+    @Incoming("appointment-cancelled-events")
+    public void consumeCancelled(AppointmentCancelledEventDTO event) {
+        try {
+            log.info("[CONSUMER] appointment.cancelled recebido: {}", event);
+            notificationService.processAppointmentCancelled(event);
+        } catch (Exception e) {
+            log.error("[CONSUMER] Erro ao processar appointment.cancelled", e);
+        }
+    }
+
+    @Incoming("appointment-expired-events")
+    public void consumeExpired(AppointmentExpiredEventDTO event) {
+        try {
+            log.info("[CONSUMER] appointment.expired recebido: {}", event);
+            notificationService.processAppointmentExpired(event);
+        } catch (Exception e) {
+            log.error("[CONSUMER] Erro ao processar appointment.expired", e);
         }
     }
 }

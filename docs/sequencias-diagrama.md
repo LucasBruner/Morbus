@@ -29,20 +29,23 @@ sequenceDiagram
 
     Cliente->>AuthService: POST /auth/register<br/>{ username, email, password,<br/>role: MEDICO|PACIENTE|SOLICITANTE|REGULADOR|EXECUTANTE }
 
-    AuthService->>AuthService: Valida campos obrigatórios,<br/>formato do e-mail e role permitida
+    alt role com valor fora do enum UserRole
+        AuthService-->>Cliente: 400 Bad Request (application/problem+json)<br/>{ type: ".../invalid-request-body",<br/>title: "Requisição inválida",<br/>detail: "Valor inválido para 'role'. Valores aceitos: MEDICO, PACIENTE, SOLICITANTE, REGULADOR, EXECUTANTE",<br/>status: 400 }
+    else senha não atende à política de complexidade
+        AuthService->>AuthService: validatePassword(password)<br/>regex: ao menos 1 minúscula, 1 maiúscula,<br/>1 caractere não-alfanumérico e 9+ caracteres
+        AuthService-->>Cliente: 422 Unprocessable Entity (application/problem+json)<br/>{ type: ".../invalid-password",<br/>title: "Senha inválida",<br/>status: 422 }
+    else demais validações (campos obrigatórios, formato do e-mail)
+        AuthService->>DB: SELECT * FROM users WHERE username = ?<br/>OR email = ?
+        DB-->>AuthService: resultado
 
-    AuthService->>DB: SELECT * FROM users WHERE username = ?<br/>OR email = ?
-    DB-->>AuthService: resultado
-
-    alt username ou email já existem
-        AuthService-->>Cliente: 409 Conflict (application/problem+json)<br/>{ type: ".../user-already-exists",<br/>title: "Conflito de dados",<br/>detail: "Username ou e-mail já cadastrado",<br/>status: 409 }
-    else role inválida
-        AuthService-->>Cliente: 422 Unprocessable Entity (application/problem+json)<br/>{ type: ".../invalid-role",<br/>title: "Regra de negócio violada",<br/>detail: "Role informada não é permitida",<br/>status: 422 }
-    else dados válidos e únicos
-        AuthService->>AuthService: bcrypt.hash(password, 10)
-        AuthService->>DB: INSERT INTO users (id, username, email, password_hash, role, created_at)
-        DB-->>AuthService: OK
-        AuthService-->>Cliente: 201 Created<br/>{ id, username, email, role, createdAt }
+        alt username ou email já existem
+            AuthService-->>Cliente: 409 Conflict (application/problem+json)<br/>{ type: ".../user-already-exists",<br/>title: "Conflito de dados",<br/>detail: "Username ou e-mail já cadastrado",<br/>status: 409 }
+        else dados válidos e únicos
+            AuthService->>AuthService: bcrypt.hash(password, 10)
+            AuthService->>DB: INSERT INTO users (id, username, email, password_hash, role, created_at)
+            DB-->>AuthService: OK
+            AuthService-->>Cliente: 201 Created<br/>{ id, username, email, role, createdAt }
+        end
     end
 ```
 
@@ -64,20 +67,18 @@ sequenceDiagram
     DB-->>AuthService: User { passwordHash, role }
 
     alt usuário não encontrado
-        AuthService-->>Cliente: 401 Unauthorized<br/>{ error: "Credenciais inválidas" }
+        AuthService-->>Cliente: 401 Unauthorized (application/problem+json)<br/>{ type: ".../invalid-credentials",<br/>title: "Credenciais inválidas",<br/>detail: "Usuário ou senha incorretos!",<br/>status: 401 }
     else usuário encontrado
         AuthService->>AuthService: bcrypt.compare(password, passwordHash)
 
         alt senha incorreta
-            AuthService-->>Cliente: 401 Unauthorized<br/>{ error: "Credenciais inválidas" }
+            AuthService-->>Cliente: 401 Unauthorized (application/problem+json)<br/>{ type: ".../invalid-credentials",<br/>title: "Credenciais inválidas",<br/>detail: "Usuário ou senha incorretos!",<br/>status: 401 }
         else senha correta
-            AuthService->>AuthService: JWT.sign({ sub: username, role: ROLE_<ROLE_DO_USUARIO> },<br/>JWT_SECRET, { expiresIn: 24h })
+            AuthService->>AuthService: JWT.sign({ sub: username, role: <ROLE_DO_USUARIO> },<br/>JWT_SECRET, { expiresIn: 24h })
             AuthService-->>Cliente: 200 OK<br/>{ token, type: "Bearer", expiresIn, role }
         end
     end
 ```
-
-> O token gerado contém a **role** do usuário no payload e é **validado localmente** pelo queue-service a cada request, sem round-trip ao auth-service.
 
 ---
 
@@ -172,13 +173,13 @@ sequenceDiagram
     UC->>DB: INSERT INTO queue_entries<br/>{ riskColor: AZUL, status: AGUARDANDO }
     DB-->>UC: QueueEntry { id, position }
 
-    UC->>Publisher: publishPatientRegistered(QueueEventDTO)
+    UC->>Publisher: publishPatientRegistered(QueueEntry)
     Publisher->>MQ: Exchange: sus.queue.exchange<br/>Routing key: patient.registered<br/>Payload: { eventType, patientName, patientContact,<br/>procedureName, riskColor: AZUL, timestamp }
 
     UC-->>QS: QueueEntryResponse
     QS-->>Medico: 201 Created<br/>{ id, riskColor: AZUL, position, status: AGUARDANDO, ... }
 
-    MQ-->>NS: Entrega mensagem na fila<br/>queue.patient.registered
+    MQ-->>NS: Entrega mensagem na fila<br/>notification.queue.events
 
     NS->>NS: QueueEventConsumer.consume(event)
     NS->>NS: NotificationService.process(event)<br/>Monta: "Você foi cadastrado na fila para<br/>[procedimento]. Classificação: AZUL."
@@ -220,23 +221,22 @@ sequenceDiagram
 
     Note over UC,DB: Paciente encontrado: Maria, VERMELHO, IDOSO
 
-    UC->>DB: UPDATE queue_entries<br/>SET status = 'AGENDADO', updated_at = NOW()<br/>WHERE id = ?
+    UC->>DB: UPDATE queue_entries<br/>SET status = 'CHAMADO', updated_at = NOW()<br/>WHERE id = ?
     DB-->>UC: OK
 
-    UC->>Publisher: publishPatientCalled(QueueEventDTO)
+    UC->>Publisher: publishPatientCalled(QueueEntry)
     Publisher->>MQ: Exchange: sus.queue.exchange<br/>Routing key: patient.called<br/>Payload: { eventType: PATIENT_CALLED,<br/>patientName, patientContact,<br/>procedureName, riskColor, timestamp }
 
     UC-->>QS: CalledPatientResponse
-    QS-->>Medico: 200 OK<br/>{ id, patient, procedure,<br/>riskColor, status: AGENDADO, calledAt }
+    QS-->>Medico: 200 OK<br/>{ id, patient, procedure,<br/>riskColor, status: CHAMADO, calledAt }
 
-    MQ-->>NS: Entrega mensagem na fila<br/>queue.patient.called
+    MQ-->>NS: Entrega mensagem na fila<br/>notification.queue.events
 
     NS->>NS: QueueEventConsumer.consume(event)
     NS->>NS: NotificationService.process(event)<br/>Monta: "É a sua vez! Compareça ao<br/>guichê para [procedimento]."
     NS->>DB: INSERT INTO notifications
     NS->>NS: EmailService.send(...)<br/>[EMAIL SIMULADO] Para: maria@email.com | ...
 ```
-
 ---
 
 ## 6. Reclassificação de Prioridade
@@ -280,13 +280,13 @@ sequenceDiagram
     UC->>DB: SELECT COUNT(*) FROM queue_entries<br/>WHERE status = 'AGUARDANDO'<br/>AND (risk_color < 'AMARELO'<br/>OR (risk_color = 'AMARELO' AND registered_at < ?))
     DB-->>UC: newPosition = 4
 
-    UC->>Publisher: publishPriorityUpdated(QueueEventDTO)
+    UC->>Publisher: publishPriorityUpdated(QueueEntry)
     Publisher->>MQ: Exchange: sus.queue.exchange<br/>Routing key: priority.updated<br/>Payload: { eventType: PRIORITY_UPDATED,<br/>riskColor: AMARELO, ... }
 
     UC-->>QS: ReclassifyResponse
     QS-->>Medico: 200 OK<br/>{ id, riskColor: AMARELO,<br/>newPosition: 4, updatedAt }
 
-    MQ-->>NS: Entrega mensagem na fila<br/>queue.priority.updated
+    MQ-->>NS: Entrega mensagem na fila<br/>notification.queue.events
 
     NS->>NS: QueueEventConsumer.consume(event)
     NS->>NS: NotificationService.process(event)<br/>Monta: "Sua prioridade na fila foi<br/>atualizada para AMARELO."
@@ -334,13 +334,13 @@ sequenceDiagram
     UC->>DB: UPDATE queue_entries<br/>SET status = 'CANCELADO', updated_at = NOW()<br/>WHERE id = ?
     DB-->>UC: OK
 
-    UC->>Publisher: publishPatientCancelled(QueueEventDTO)
+    UC->>Publisher: publishPatientCancelled(QueueEntry)
     Publisher->>MQ: Exchange: sus.queue.exchange<br/>Routing key: patient.cancelled
 
     UC-->>QS: void
     QS-->>Medico: 204 No Content
 
-    MQ-->>NS: Entrega mensagem na fila<br/>queue.patient.cancelled
+    MQ-->>NS: Entrega mensagem na fila<br/>notification.queue.events
 
     NS->>NS: NotificationService.process(event)<br/>Monta: "Seu agendamento para<br/>[procedimento] foi cancelado."
     NS->>DB: INSERT INTO notifications
@@ -550,14 +550,14 @@ Quando o paciente não confirma presença em 72 horas, o job de expiração canc
 
 ```mermaid
 sequenceDiagram
-    participant Job as @Scheduled (a cada hora)
+    participant Job as @Scheduled (a cada 15 min)
     participant AS as agendamento-service :8084
     participant MQ as RabbitMQ
     participant QS as queue-service :8080
     participant NS as notification-service :8081
     actor Paciente
 
-    Note over Job,AS: Job de verificação periódica (a cada hora)
+    Note over Job,AS: Job de verificação periódica (AppointmentExpirationJob, a cada 15 min — cron "0 */15 * * * *")
 
     Job->>AS: verifyExpiredAppointments()
     AS->>AS: SELECT appointments WHERE status = AGUARDANDO_CONFIRMACAO AND expires_at < NOW()
@@ -565,7 +565,7 @@ sequenceDiagram
     AS--)MQ: APPOINTMENT_EXPIRED { queueEntryId, patientId, procedureName }
 
     MQ--)QS: Consome APPOINTMENT_EXPIRED
-    QS->>QS: QueueEntry: CHAMADO → AGUARDANDO (reinserido no fim da fila)
+    QS->>QS: QueueEntry: AGENDADO → AGUARDANDO (reinserido no fim da fila)
     QS--)MQ: PATIENT_REINSTATED { queueEntryId, patientId }
 
     MQ--)NS: Consome APPOINTMENT_EXPIRED

@@ -63,6 +63,24 @@ class RegisterPatientTest {
     }
 
     @Test
+    @DisplayName("Lança PatientAlreadyExistsException quando CNS já existe")
+    void testRunWithExistingCns() {
+        Patient existingPatient = Patient.builder()
+                .cns(patientDTO.cns())
+                .nome("Outro")
+                .build();
+
+        when(patientRepository.findByCpf(patientDTO.cpf())).thenReturn(Optional.empty());
+        when(patientRepository.findByCns(patientDTO.cns())).thenReturn(Optional.of(existingPatient));
+
+        assertThatThrownBy(() -> useCase.run(patientDTO))
+                .isInstanceOf(PatientAlreadyExistsException.class)
+                .hasMessageContaining("já existe");
+
+        verify(patientRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("Retorna Patient quando CPF é único")
     void testRunWithUniqueCpf() {
         when(patientRepository.findByCpf(patientDTO.cpf())).thenReturn(Optional.empty());

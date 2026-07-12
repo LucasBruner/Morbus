@@ -94,14 +94,14 @@ class GlobalExceptionHandlerTest {
         }
 
         @Test
-        @DisplayName("QueueNotExistException → 404 queue-entry-not-found")
+        @DisplayName("QueueNotExistException → 404 queue-not-found")
         void queueNotExist() {
             var ex = new QueueNotExistException("Entrada de fila não existe");
             ResponseEntity<ProblemDetail> response = handler.handleQueueNotExist(ex, request);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
             assertProblemDetail(response.getBody(), HttpStatus.NOT_FOUND,
-                    "queue-entry-not-found", "Entrada de fila não existe");
+                    "queue-not-found", "Entrada de fila não existe");
         }
 
         @Test
@@ -174,36 +174,36 @@ class GlobalExceptionHandlerTest {
     class UnprocessableEntity {
 
         @Test
-        @DisplayName("QueueNotAllowedException → 422 queue-operation-not-allowed")
+        @DisplayName("QueueNotAllowedException → 422 queue-not-allowed")
         void queueNotAllowed() {
             var ex = new QueueNotAllowedException("Status inválido para esta operação");
             ResponseEntity<ProblemDetail> response = handler.handleQueueNotAllowed(ex, request);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
             assertProblemDetail(response.getBody(), HttpStatus.UNPROCESSABLE_ENTITY,
-                    "queue-operation-not-allowed", "Status inválido para esta operação");
+                    "queue-not-allowed", "Status inválido para esta operação");
         }
 
         @Test
-        @DisplayName("PatientAgeNotEligibleException → 422 patient-age-not-eligible")
+        @DisplayName("PatientAgeNotEligibleException → 422 age-not-eligible")
         void patientAgeNotEligible() {
             var ex = new PatientAgeNotEligibleException("Paciente fora da faixa etária do procedimento");
             ResponseEntity<ProblemDetail> response = handler.handlePatientAgeNotEligible(ex, request);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
             assertProblemDetail(response.getBody(), HttpStatus.UNPROCESSABLE_ENTITY,
-                    "patient-age-not-eligible", "Paciente fora da faixa etária do procedimento");
+                    "age-not-eligible", "Paciente fora da faixa etária do procedimento");
         }
 
         @Test
-        @DisplayName("PatientNotEligibleForProcedureException → 422 patient-not-eligible-for-procedure")
+        @DisplayName("PatientNotEligibleForProcedureException → 422 patient-not-eligible")
         void patientNotEligibleForProcedure() {
             var ex = new PatientNotEligibleForProcedureException("Paciente não elegível para o procedimento");
             ResponseEntity<ProblemDetail> response = handler.handlePatientNotEligibleForProcedure(ex, request);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
             assertProblemDetail(response.getBody(), HttpStatus.UNPROCESSABLE_ENTITY,
-                    "patient-not-eligible-for-procedure", "Paciente não elegível para o procedimento");
+                    "patient-not-eligible", "Paciente não elegível para o procedimento");
         }
 
         @Test

@@ -7,7 +7,6 @@ import br.com.morbus.regulacao.ports.in.ITransicionarParaAgendadaUseCase;
 import br.com.morbus.regulacao.ports.in.dto.AppointmentCreatedCommand;
 import br.com.morbus.regulacao.ports.out.ISolicitacaoRepository;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 public class TransicionarParaAgendadaUseCase implements ITransicionarParaAgendadaUseCase {
@@ -19,7 +18,6 @@ public class TransicionarParaAgendadaUseCase implements ITransicionarParaAgendad
     }
 
     @Override
-    @Transactional
     public void execute(AppointmentCreatedCommand appointmentCreatedCommand) {
         Solicitacao solicitacao;
 

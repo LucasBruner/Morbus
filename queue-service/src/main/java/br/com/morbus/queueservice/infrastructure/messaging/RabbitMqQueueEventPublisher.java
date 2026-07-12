@@ -57,10 +57,15 @@ public class RabbitMqQueueEventPublisher implements IQueueEventPublisher {
         String fullName = queueEntry.getPatient().getNome() + " " + queueEntry.getPatient().getSobrenome();
         return new QueueEventPayload(eventType,
                 queueEntry.getId(),
+                queueEntry.getPatient().getId(),
                 fullName,
                 queueEntry.getPatient().getContato(),
                 queueEntry.getProcedure().getNoProcedimento(),
+                queueEntry.getProcedure().getId(),
+                queueEntry.getPreferredUnitId(),
+                queueEntry.getSolicitacaoId(),
                 queueEntry.getRiskColor(),
+                queueEntry.getTipoFila(),
                 null,
                 LocalDateTime.now());
     }
@@ -69,10 +74,15 @@ public class RabbitMqQueueEventPublisher implements IQueueEventPublisher {
         String fullName = queueEntry.getPatient().getNome() + " " + queueEntry.getPatient().getSobrenome();
         return new QueueEventPayload("PATIENT_CANCELLED",
                 queueEntry.getId(),
+                queueEntry.getPatient().getId(),
                 fullName,
                 queueEntry.getPatient().getContato(),
                 queueEntry.getProcedure().getNoProcedimento(),
+                queueEntry.getProcedure().getId(),
+                queueEntry.getPreferredUnitId(),
+                queueEntry.getSolicitacaoId(),
                 queueEntry.getRiskColor(),
+                queueEntry.getTipoFila(),
                 reason,
                 LocalDateTime.now());
     }

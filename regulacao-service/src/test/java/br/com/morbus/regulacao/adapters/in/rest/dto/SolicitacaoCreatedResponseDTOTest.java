@@ -28,7 +28,7 @@ class SolicitacaoCreatedResponseDTOTest {
         Solicitacao s = new Solicitacao(id, patientId, procedureId, unidadeId, null,
                 EStatusSolicitacao.AGUARDANDO, ERiscoSolicitado.AZUL,
                 "I10", "Hipertensao grave", "Dr. Silva", null,
-                EDestino.FILA_REGULADA, null, solicitadoPor, createdAt, createdAt, null);
+                EDestino.FILA_REGULADA, null, solicitadoPor, createdAt, createdAt, null, null);
 
         SolicitacaoCreatedResponseDTO dto = SolicitacaoCreatedResponseDTO.fromDomain(s);
 

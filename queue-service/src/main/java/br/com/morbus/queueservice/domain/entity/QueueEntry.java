@@ -1,6 +1,7 @@
 package br.com.morbus.queueservice.domain.entity;
 
 import br.com.morbus.queueservice.domain.enums.EDestino;
+import br.com.morbus.queueservice.domain.enums.EPriorityGroup;
 import br.com.morbus.queueservice.domain.enums.EQueueStatus;
 import br.com.morbus.queueservice.domain.enums.ERiskColor;
 import lombok.Builder;
@@ -21,6 +22,9 @@ public class QueueEntry {
     private LocalDateTime registeredAt;
     private LocalDateTime updatedAt;
     private int scorePosicaoCalculada;
+    private UUID solicitacaoId;
+    private UUID preferredUnitId;
+    private EPriorityGroup priorityGroup;
 
     public void calculatePriorityScore() {
         int colorScore = this.riskColor != null
@@ -35,6 +39,11 @@ public class QueueEntry {
     }
 
     public void call() {
+        this.queueStatus = EQueueStatus.CHAMADO;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void confirmAppointment() {
         this.queueStatus = EQueueStatus.AGENDADO;
         this.updatedAt = LocalDateTime.now();
     }

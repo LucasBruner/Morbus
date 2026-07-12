@@ -7,7 +7,6 @@ import br.com.morbus.regulacao.ports.in.ITransicionarParaFaltouUseCase;
 import br.com.morbus.regulacao.ports.in.dto.AppointmentNoShowCommand;
 import br.com.morbus.regulacao.ports.out.ISolicitacaoRepository;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 public class TransicionarParaFaltouUseCase implements ITransicionarParaFaltouUseCase {
@@ -18,7 +17,6 @@ public class TransicionarParaFaltouUseCase implements ITransicionarParaFaltouUse
     }
 
     @Override
-    @Transactional
     public void execute(AppointmentNoShowCommand appointmentNoShowCommand) {
         Solicitacao solicitacao;
         try {

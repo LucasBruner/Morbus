@@ -22,7 +22,9 @@ A classificação de risco determina a urgência clínica do paciente e é o cri
 | `VERDE`    | 2       | Eletivo     | ≤ 6 meses             | Condição estável, procedimento indicado               |
 | `AZUL`     | 3       | Rotina      | ≤ 12 meses            | Entrada padrão — toda entrada nova começa em AZUL     |
 
-> **Regra de entrada:** toda solicitação é criada com cor `AZUL`. O regulador pode elevar a cor no ato da avaliação. O médico pode reclassificar uma entrada existente em `FILA_REGULADA` via `PATCH /api/v1/queue/{id}/priority`.
+> **Regra de entrada (queue-service):** o cadastro manual via `POST /api/v1/queue` (`QueueController` → `RegisterPatientInQueue`) sempre cria a `QueueEntry` com cor `AZUL`, hardcoded, independente do `tipoFila` informado. Já o usecase `AddToQueue` — usado exclusivamente pelo `SolicitationApprovedConsumer` ao consumir `SOLICITATION_APPROVED` — só força `AZUL` quando `tipoFila == FILA_ESPERA`; para `FILA_REGULADA` ele preserva a cor recebida no evento, que é a cor definitiva escolhida pelo regulador (ver nota abaixo). O médico pode reclassificar uma entrada existente em `FILA_REGULADA` via `PATCH /api/v1/queue/{id}/priority`.
+>
+> **Regra de entrada (regulacao-service):** a `Solicitacao` também nasce com cor `AZUL` — o construtor de `Solicitacao` define `riskColor = ERiscoSolicitado.AZUL` explicitamente na criação (não fica `NULL`). O regulador substitui essa cor pela definitiva ao avaliar (`POST /api/v1/regulacao/{id}/avaliar`, decisão `AUTORIZAR`/`FILA_ESPERA`, via `Solicitacao.aprovar(riskColor, ...)`), e é essa cor definitiva que a `QueueEntry` resultante recebe ao consumir `SOLICITATION_APPROVED`.
 >
 > **Restrição de FILA_ESPERA:** entradas em `FILA_ESPERA` são sempre `AZUL` e não admitem reclassificação de cor.
 
@@ -43,17 +45,15 @@ A prioridade legal é o segundo critério de ordenação dentro da `FILA_REGULAD
 
 ### 3.1 Detecção automática de IDOSO
 
-O `PriorityCalculator.getPriorityGroup(Patient patient)` verifica a idade do paciente em tempo real:
+O `PriorityCalculator.getPriorityGroup(Patient patient)` calcula a idade do paciente no momento em que é chamado:
 
 ```java
-// Paciente com 60+ anos → IDOSO (sobrescreve grupoLegal cadastrado)
+// Paciente com 60+ anos → IDOSO (sobrescreve grupoLegal informado)
 if (Period.between(patient.getDataNascimento(), LocalDate.now()).getYears() >= 60) {
     return EPriorityGroup.IDOSO;
 }
-return patient.getGrupoLegal();
+return patient.getGrupoLegal() != null ? patient.getGrupoLegal() : EPriorityGroup.GERAL;
 ```
-
-> Isso garante que um paciente que completou 60 anos após o cadastro seja automaticamente promovido ao grupo `IDOSO` na próxima ordenação, sem necessidade de recadastro.
 
 ---
 
@@ -114,7 +114,7 @@ IDOSO (1) < GESTANTE (2) < DEFICIENTE (3) < LACTANTE (4) < OBESO (5) < GERAL (6)
       │  AUTORIZAR → publica SOLICITATION_APPROVED            │
       │  NEGAR     → publica SOLICITATION_DENIED              │
       │  DEVOLVER  → UBS complementa → volta para AGUARDANDO  │
-      │  PENDENTE  → aprovado sem vaga (aguarda cota)         │
+      │  PENDENTE  → regulador escolhe explicitamente aguardar (não é automático por cota) │
       ▼
 [queue-service] ── cria QueueEntry (status: AGUARDANDO, riskColor = regulador)
       │
@@ -146,7 +146,7 @@ Appointment: ATENDIDO → QueueEntry: ATENDIDO
 
 ### 5.2 Controle de Cotas (FILA_ESPERA)
 
-A tabela `unit_procedure_quotas` controla quantas inserções em `FILA_ESPERA` cada UBS pode fazer por procedimento dentro de um período. Ao atingir `max_per_period`, novas solicitações dessa combinação UBS + procedimento recebem status `PENDENTE` até abertura de nova vaga.
+A tabela `unit_procedure_quotas` controla quantas inserções em `FILA_ESPERA` cada UBS pode fazer por procedimento dentro de um período. Ao atingir `max_per_period`, a solicitação é **rejeitada** — `CriarSolicitacaoUseCase` e `AvaliarSolicitacaoUseCase` lançam `CotaExcedidaException`, mapeada para `422 quota-exceeded` (`GlobalExceptionHandler.handleCotaExcedida`). Não há transição automática para `PENDENTE`: esse status só é alcançado se o regulador escolher explicitamente `decisao: PENDENTE` em `POST /avaliar`.
 
 ---
 
@@ -156,12 +156,10 @@ A tabela `unit_procedure_quotas` controla quantas inserções em `FILA_ESPERA` c
 
 | Transição                       | Gatilho                                          |
 |---------------------------------|--------------------------------------------------|
-| AGUARDANDO → AGENDADO           | `CallNextPatient` (POST /call-next)              |
-| AGUARDANDO → CANCELADO          | `CancelQueueEntry` (DELETE /queue/{id})          |
-| AGENDADO → ATENDIDO             | Evento `appointment.attended` do agendamento     |
-| AGENDADO → FALTOU               | Evento `appointment.no_show` do agendamento      |
-| FALTOU → DEVOLVIDO → AGUARDANDO | Evento `patient.reinstated` (reinserção)         |
-| AGUARDANDO_VAGA → AGUARDANDO    | Evento `appointment.expired` (sem slot disponível)|
+| AGUARDANDO → CHAMADO            | `CallNextPatient` (POST /call-next)              |
+| CHAMADO → AGENDADO              | Evento `appointment.confirmed` do agendamento-service (`AppointmentConfirmedConsumer`) |
+| AGUARDANDO / AGENDADO → CANCELADO | `CancelQueueEntry` (DELETE /queue/{id})        |
+| AGENDADO → AGUARDANDO           | Evento `appointment.expired` ou `patient.no_show` do agendamento-service (reinserção no fim da fila, via `ReinstatePatientInQueue`) |
 
 ### Solicitação (regulacao-service)
 
@@ -170,9 +168,9 @@ A tabela `unit_procedure_quotas` controla quantas inserções em `FILA_ESPERA` c
 | AGUARDANDO → APROVADA             | Regulador emite parecer AUTORIZAR      |
 | AGUARDANDO → NEGADA               | Regulador emite parecer NEGAR          |
 | AGUARDANDO → DEVOLVIDA            | Regulador emite parecer DEVOLVER       |
-| AGUARDANDO → PENDENTE             | Regulador aprova mas sem vaga na cota  |
+| AGUARDANDO → PENDENTE             | Regulador escolhe explicitamente a decisão PENDENTE (não é automático por esgotamento de cota — cota esgotada rejeita a solicitação com `422 quota-exceeded`, ver §5.2) |
 | DEVOLVIDA → AGUARDANDO            | UBS complementa a solicitação          |
-| PENDENTE → APROVADA               | Cota disponível — geração de QueueEntry|
+| PENDENTE → APROVADA               | Não há mecanismo automático (sem `@Scheduled` nem listener de "cota liberada"). Só ocorre por nova chamada manual do regulador a `POST /api/v1/regulacao/{id}/avaliar` |
 | APROVADA → AGENDADA               | Evento `appointment.created`           |
 | AGENDADA → ATENDIDA               | Evento `appointment.attended`          |
 | AGENDADA → FALTOU                 | Evento `appointment.no_show`           |
@@ -186,7 +184,7 @@ A tabela `unit_procedure_quotas` controla quantas inserções em `FILA_ESPERA` c
 | Reclassificação de cor | `ReclassifyPriority` | Só permitida em status `AGUARDANDO` ou `DEVOLVIDO`, apenas em `FILA_REGULADA` |
 | Cancelamento | `CancelQueueEntry` | Só permitido em status `AGUARDANDO` ou `AGENDADO` |
 | FILA_ESPERA sempre AZUL | `AddToQueue` | Ao criar entrada em FILA_ESPERA, cor é forçada para AZUL |
-| Unicidade na fila | `AddToQueue` | Paciente não pode ter duas entradas ativas (`AGUARDANDO`/`DEVOLVIDO`) para o mesmo procedimento |
+| Unicidade na fila | `RegisterPatientInQueue` | Paciente não pode ter duas entradas ativas (`AGUARDANDO`/`CHAMADO`/`AGENDADO`) para o mesmo procedimento |
 | Elegibilidade etária | `AddToQueue` | Paciente deve estar dentro da faixa `idadeMinima`-`idadeMaxima` do procedimento |
 | IDOSO automático | `PriorityCalculator` | Idade ≥ 60 anos na data da ordenação → grupo IDOSO, independente do cadastro |
 | Cota por UBS | `CheckAndEnforceQuota` | Somente para FILA_ESPERA; bloqueia inserção se `current_count >= max_per_period` |

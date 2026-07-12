@@ -2,8 +2,10 @@ package br.com.morbus.queueservice.infrastructure.database.persistence;
 
 import br.com.morbus.queueservice.domain.entity.Procedure;
 import br.com.morbus.queueservice.domain.repository.IProcedureRepository;
+import br.com.morbus.queueservice.domain.repository.ProcedurePageResult;
 import br.com.morbus.queueservice.infrastructure.database.entity.ProcedureEntity;
 import br.com.morbus.queueservice.infrastructure.database.repository.ProcedureJpaRepository;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
@@ -39,12 +41,12 @@ public class ProcedureRepositoryImpl implements IProcedureRepository {
     }
 
     @Override
-    public List<Procedure> findAll(PageRequest pageRequest) {
-        List<ProcedureEntity> procedureList = repository.findAll();
-
-        return procedureList.stream()
+    public ProcedurePageResult findAll(int page, int size) {
+        Page<ProcedureEntity> pageResult = repository.findAll(PageRequest.of(page, size));
+        List<Procedure> content = pageResult.getContent().stream()
                 .map(this::mapToDomainProcedure)
                 .toList();
+        return new ProcedurePageResult(content, pageResult.getTotalElements());
     }
 
     Procedure mapToDomainProcedure(ProcedureEntity procedure) {

@@ -18,6 +18,7 @@ import br.com.morbus.queueservice.domain.exception.QueueNotAllowedException;
 import br.com.morbus.queueservice.domain.repository.IPatientRepository;
 import br.com.morbus.queueservice.domain.repository.IProcedureRepository;
 import br.com.morbus.queueservice.domain.repository.IQueueEntryRepository;
+import br.com.morbus.queueservice.domain.repository.IUnitProcedureQuotaRepository;
 import br.com.morbus.queueservice.domain.usecase.dto.RegisterQueueRequestDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -51,6 +52,9 @@ class RegisterPatientInQueueUseCaseTest {
     @Mock
     private IQueueEventPublisher eventPublisher;
 
+    @Mock
+    private IUnitProcedureQuotaRepository quotaRepository;
+
     private RegisterPatientInQueue useCase;
     private UUID patientId;
     private UUID procedureId;
@@ -59,7 +63,8 @@ class RegisterPatientInQueueUseCaseTest {
 
     @BeforeEach
     void setUp() {
-        useCase = RegisterPatientInQueue.create(patientRepository, procedureRepository, queueEntryRepository, eventPublisher);
+        CheckAndEnforceQuota checkAndEnforceQuota = CheckAndEnforceQuota.create(quotaRepository, queueEntryRepository);
+        useCase = RegisterPatientInQueue.create(patientRepository, procedureRepository, queueEntryRepository, eventPublisher, checkAndEnforceQuota);
         patientId = UUID.randomUUID();
         procedureId = UUID.randomUUID();
 
@@ -271,6 +276,27 @@ class RegisterPatientInQueueUseCaseTest {
 
         verify(queueEntryRepository, never()).save(any());
         verify(eventPublisher, never()).publishPatientRegistered(any());
+    }
+
+    @Test
+    @DisplayName("Verifica duplicidade considerando AGUARDANDO, CHAMADO e AGENDADO")
+    void testValidateIfPatientInQueueIncludesChamado() {
+        RegisterQueueRequestDTO dto = new RegisterQueueRequestDTO(patient.getId(), procedureId, ERiskColor.AZUL);
+
+        when(patientRepository.findById(patientId)).thenReturn(Optional.of(patient));
+        when(procedureRepository.findById(procedureId)).thenReturn(Optional.of(procedure));
+        when(queueEntryRepository.existsByPatientAndProcedureAndStatusIn(
+                eq(patient), eq(procedure), any(List.class)
+        )).thenReturn(false);
+
+        useCase.execute(dto);
+
+        org.mockito.ArgumentCaptor<List<EQueueStatus>> statusesCaptor = org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(queueEntryRepository).existsByPatientAndProcedureAndStatusIn(
+                eq(patient), eq(procedure), statusesCaptor.capture());
+
+        assertThat(statusesCaptor.getValue())
+                .containsExactlyInAnyOrder(EQueueStatus.AGUARDANDO, EQueueStatus.CHAMADO, EQueueStatus.AGENDADO);
     }
 
     @Test

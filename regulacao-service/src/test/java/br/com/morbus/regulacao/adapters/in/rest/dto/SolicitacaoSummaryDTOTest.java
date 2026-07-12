@@ -27,7 +27,7 @@ class SolicitacaoSummaryDTOTest {
         Solicitacao s = new Solicitacao(id, patientId, procedureId, unidadeId, null,
                 EStatusSolicitacao.AGUARDANDO, ERiscoSolicitado.AZUL,
                 "I10", "Hipertensao grave", "Dr. Silva", null,
-                EDestino.FILA_REGULADA, null, UUID.randomUUID(), createdAt, createdAt, null);
+                EDestino.FILA_REGULADA, null, UUID.randomUUID(), createdAt, createdAt, null, null);
 
         SolicitacaoSummaryDTO dto = SolicitacaoSummaryDTO.fromDomain(s);
 

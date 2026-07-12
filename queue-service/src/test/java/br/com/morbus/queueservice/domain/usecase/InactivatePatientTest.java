@@ -7,6 +7,7 @@ import br.com.morbus.queueservice.domain.enums.EPriorityGroup;
 import br.com.morbus.queueservice.domain.enums.EQueueStatus;
 import br.com.morbus.queueservice.domain.enums.ERiskColor;
 import br.com.morbus.queueservice.domain.exception.PatientAlreadyInactiveException;
+import br.com.morbus.queueservice.domain.exception.PatientHasActiveQueueEntriesException;
 import br.com.morbus.queueservice.domain.exception.PatientNotFoundException;
 import br.com.morbus.queueservice.domain.repository.IPatientRepository;
 import br.com.morbus.queueservice.domain.repository.IQueueEntryRepository;
@@ -121,8 +122,8 @@ class InactivatePatientTest {
     }
 
     @Test
-    @DisplayName("Deve cancelar todas as filas do paciente com status AGUARDANDO")
-    void testCancelAllAguardandoQueueEntries() {
+    @DisplayName("Lança PatientHasActiveQueueEntriesException quando há entradas AGUARDANDO na fila")
+    void testBlocksInactivationWhenAguardandoQueueEntriesExist() {
         QueueEntry entry1 = QueueEntry.builder()
                 .id(UUID.randomUUID())
                 .patient(activePatient)
@@ -147,17 +148,18 @@ class InactivatePatientTest {
         when(queueEntryRepository.findByPatientAndStatusIn(activePatient, List.of(EQueueStatus.AGUARDANDO, EQueueStatus.AGENDADO)))
                 .thenReturn(pendingEntries);
 
-        useCase.run(patientId);
+        assertThatThrownBy(() -> useCase.run(patientId))
+                .isInstanceOf(PatientHasActiveQueueEntriesException.class);
 
         verify(patientRepository, times(1)).findById(patientId);
         verify(queueEntryRepository, times(1)).findByPatientAndStatusIn(activePatient, List.of(EQueueStatus.AGUARDANDO, EQueueStatus.AGENDADO));
-        verify(queueEntryRepository, times(2)).save(any(QueueEntry.class));
-        verify(patientRepository, times(1)).save(any(Patient.class));
+        verify(queueEntryRepository, never()).save(any());
+        verify(patientRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("Deve cancelar todas as filas do paciente com status AGENDADO")
-    void testCancelAllAgendadoQueueEntries() {
+    @DisplayName("Lança PatientHasActiveQueueEntriesException quando há entrada AGENDADO na fila")
+    void testBlocksInactivationWhenAgendadoQueueEntryExists() {
         QueueEntry agendadoEntry = QueueEntry.builder()
                 .id(UUID.randomUUID())
                 .patient(activePatient)
@@ -171,14 +173,11 @@ class InactivatePatientTest {
         when(queueEntryRepository.findByPatientAndStatusIn(activePatient, List.of(EQueueStatus.AGUARDANDO, EQueueStatus.AGENDADO)))
                 .thenReturn(List.of(agendadoEntry));
 
-        useCase.run(patientId);
+        assertThatThrownBy(() -> useCase.run(patientId))
+                .isInstanceOf(PatientHasActiveQueueEntriesException.class);
 
-        verify(queueEntryRepository, times(1)).save(any(QueueEntry.class));
-        ArgumentCaptor<QueueEntry> captor = ArgumentCaptor.forClass(QueueEntry.class);
-        verify(queueEntryRepository).save(captor.capture());
-        
-        QueueEntry savedEntry = captor.getValue();
-        assertThat(savedEntry.getQueueStatus()).isEqualTo(EQueueStatus.CANCELADO);
+        verify(queueEntryRepository, never()).save(any());
+        verify(patientRepository, never()).save(any());
     }
 
     @Test
@@ -243,8 +242,8 @@ class InactivatePatientTest {
     }
 
     @Test
-    @DisplayName("Deve lidar com múltiplas filas pendentes corretamente")
-    void testHandleMultiplePendingEntries() {
+    @DisplayName("Bloqueia inativação quando há múltiplas filas pendentes")
+    void testBlocksInactivationWithMultiplePendingEntries() {
         List<QueueEntry> multipleEntries = List.of(
                 QueueEntry.builder()
                         .id(UUID.randomUUID())
@@ -270,9 +269,10 @@ class InactivatePatientTest {
         when(queueEntryRepository.findByPatientAndStatusIn(activePatient, List.of(EQueueStatus.AGUARDANDO, EQueueStatus.AGENDADO)))
                 .thenReturn(multipleEntries);
 
-        useCase.run(patientId);
+        assertThatThrownBy(() -> useCase.run(patientId))
+                .isInstanceOf(PatientHasActiveQueueEntriesException.class);
 
-        verify(queueEntryRepository, times(3)).save(any(QueueEntry.class));
-        verify(patientRepository, times(1)).save(any(Patient.class));
+        verify(queueEntryRepository, never()).save(any());
+        verify(patientRepository, never()).save(any());
     }
 }

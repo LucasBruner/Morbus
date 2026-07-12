@@ -159,7 +159,7 @@ class ReclassifyPriorityTest {
 
             QueueEntryRiskQueuePosition result = useCase.run(dto);
 
-            assertThat(result.posicaoCalculada()).isEqualTo(4);
+            assertThat(result.totalAhead()).isEqualTo(4);
             assertThat(result.queueEntry()).isEqualTo(entry);
         }
     }

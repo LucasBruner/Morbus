@@ -30,7 +30,7 @@ public record AgendamentosPacienteResponseDTO(UUID id,
                 hu.getCnes(),
                 hu.getNome(),
                 hu.getMunicipio() + " - " + hu.getUf(),
-                null
+                hu.getTelefone()
         );
 
         AgendamentoDetalheResponseDTO.ProviderDTO providerDTO = p != null

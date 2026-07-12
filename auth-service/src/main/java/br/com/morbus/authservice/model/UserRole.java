@@ -2,5 +2,8 @@ package br.com.morbus.authservice.model;
 
 public enum UserRole {
     MEDICO,
-    PACIENTE
+    PACIENTE,
+    SOLICITANTE,
+    REGULADOR,
+    EXECUTANTE
 }

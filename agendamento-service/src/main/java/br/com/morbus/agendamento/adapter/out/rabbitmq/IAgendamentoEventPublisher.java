@@ -11,6 +11,10 @@ public interface IAgendamentoEventPublisher {
                                      UUID patientId,
                                      LocalDateTime agendadoEm);
 
+    void publishAppointmentCreated(UUID solicitacaoId,
+                                   UUID appointmentId,
+                                   UUID slotId);
+
     void publishAppointmentNoSlot(UUID queueEntryId,
                                   UUID patientId,
                                   UUID procedureId);
@@ -29,4 +33,16 @@ public interface IAgendamentoEventPublisher {
                                    UUID queueEntryId,
                                    UUID patientId,
                                    LocalDateTime expirouEm);
+
+    void publishAppointmentRescheduled(UUID appointmentId,
+                                       UUID slotId,
+                                       UUID queueEntryId,
+                                       UUID patientId,
+                                       LocalDateTime reagendadoEm);
+
+    void publishAppointmentCancelled(UUID appointmentId,
+                                     UUID queueEntryId,
+                                     UUID patientId,
+                                     String motivo,
+                                     LocalDateTime canceladoEm);
 }

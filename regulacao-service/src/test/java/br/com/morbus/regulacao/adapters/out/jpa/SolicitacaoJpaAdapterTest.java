@@ -3,7 +3,9 @@ package br.com.morbus.regulacao.adapters.out.jpa;
 import br.com.morbus.regulacao.adapters.out.jpa.solicitacao.ISolicitacaoJpaRepository;
 import br.com.morbus.regulacao.adapters.out.jpa.solicitacao.SolicitacaoEntity;
 import br.com.morbus.regulacao.adapters.out.jpa.solicitacao.SolicitacaoJpaAdapter;
+import br.com.morbus.regulacao.domain.dto.ESortDirection;
 import br.com.morbus.regulacao.domain.dto.ListarSolicitacoesQuery;
+import br.com.morbus.regulacao.domain.dto.PageResult;
 import br.com.morbus.regulacao.domain.enums.EDestino;
 import br.com.morbus.regulacao.domain.enums.ERiscoSolicitado;
 import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
@@ -171,7 +173,7 @@ class SolicitacaoJpaAdapterTest {
         @Test
         @DisplayName("deve ordenar por createdAt ASC quando informado na query")
         void deveOrdenarAscQuandoInformado() {
-            ListarSolicitacoesQuery query = new ListarSolicitacoesQuery(null, null, null, 0, 20, Sort.Direction.ASC);
+            ListarSolicitacoesQuery query = new ListarSolicitacoesQuery(null, null, null, 0, 20, ESortDirection.ASC);
             when(jpaRepository.findAll(any(Specification.class), any(Pageable.class)))
                     .thenReturn(Page.empty());
 
@@ -191,10 +193,10 @@ class SolicitacaoJpaAdapterTest {
             when(jpaRepository.findAll(any(Specification.class), any(Pageable.class)))
                     .thenReturn(new PageImpl<>(List.of(entity)));
 
-            Page<Solicitacao> result = adapter.listar(query);
+            PageResult<Solicitacao> result = adapter.listar(query);
 
-            assertThat(result.getContent()).hasSize(1);
-            assertThat(result.getContent().getFirst().getId()).isEqualTo(entity.getId());
+            assertThat(result.content()).hasSize(1);
+            assertThat(result.content().getFirst().getId()).isEqualTo(entity.getId());
         }
     }
 }

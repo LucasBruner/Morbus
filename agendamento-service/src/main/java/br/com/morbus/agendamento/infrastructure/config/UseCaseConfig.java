@@ -14,12 +14,15 @@ import br.com.morbus.agendamento.domain.port.in.ICriarAgendamentoUseCase;
 import br.com.morbus.agendamento.domain.port.in.ICriarScheduleUseCase;
 import br.com.morbus.agendamento.domain.port.in.IConsultarGradeUseCase;
 import br.com.morbus.agendamento.domain.port.in.IDetalharAgendamentoUseCase;
+import br.com.morbus.agendamento.domain.port.in.IReagendarAgendamentoUseCase;
+import br.com.morbus.agendamento.domain.port.in.IAtualizarScheduleUseCase;
 import br.com.morbus.agendamento.domain.port.in.IUnblockSlotUseCase;
 import br.com.morbus.agendamento.domain.port.out.IAgendamentoRepository;
 import br.com.morbus.agendamento.domain.port.out.IHealthUnitRepository;
 import br.com.morbus.agendamento.domain.port.out.IProviderRepository;
 import br.com.morbus.agendamento.domain.port.out.IScheduleRepository;
 import br.com.morbus.agendamento.domain.port.out.ISlotRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -34,8 +37,9 @@ public class UseCaseConfig {
     @Bean
     public IAlocarPacienteEmSlotUseCase alocarPacienteEmSlotUseCase(IAgendamentoRepository agendamentoRepository,
                                                                     ISlotRepository slotRepository,
-                                                                    IAgendamentoEventPublisher eventPublisher) {
-        return new AlocarPacienteEmSlotUseCase(agendamentoRepository, slotRepository, eventPublisher);
+                                                                    IAgendamentoEventPublisher eventPublisher,
+                                                                    @Value("${agendamento.expiracao-horas}") long expiracaoHoras) {
+        return new AlocarPacienteEmSlotUseCase(agendamentoRepository, slotRepository, eventPublisher, expiracaoHoras);
     }
 
     @Bean
@@ -58,8 +62,10 @@ public class UseCaseConfig {
 
     @Bean
     public IConfirmarAgendamentoUseCase confirmarAgendamentoUseCase(IAgendamentoRepository agendamentoRepository,
-                                                                    ISlotRepository slotRepository) {
-        return new ConfirmarAgendamentoUseCase(agendamentoRepository, slotRepository);
+                                                                    ISlotRepository slotRepository,
+                                                                    IScheduleRepository scheduleRepository,
+                                                                    IHealthUnitRepository healthUnitRepository) {
+        return new ConfirmarAgendamentoUseCase(agendamentoRepository, slotRepository, scheduleRepository, healthUnitRepository);
     }
 
     @Bean
@@ -82,19 +88,36 @@ public class UseCaseConfig {
     public ExpirarAgendamentosUseCase expirarAgendamentosUseCase(IAgendamentoRepository agendamentoRepository,
                                                                  ISlotRepository slotRepository,
                                                                  IScheduleRepository scheduleRepository,
-                                                                 IAgendamentoEventPublisher eventPublisher) {
-        return new ExpirarAgendamentosUseCase(agendamentoRepository, slotRepository, scheduleRepository, eventPublisher);
+                                                                 IAgendamentoEventPublisher eventPublisher,
+                                                                 @Value("${agendamento.expiracao-horas}") long expiracaoHoras) {
+        return new ExpirarAgendamentosUseCase(agendamentoRepository, slotRepository, scheduleRepository, eventPublisher, expiracaoHoras);
     }
 
     @Bean
     public ICancelarAgendamentoUseCase cancelarAgendamentoUseCase(IAgendamentoRepository agendamentoRepository,
-                                                                  ISlotRepository slotRepository) {
-        return new CancelarAgendamentoUseCase(agendamentoRepository, slotRepository);
+                                                                  ISlotRepository slotRepository,
+                                                                  IAgendamentoEventPublisher eventPublisher) {
+        return new CancelarAgendamentoUseCase(agendamentoRepository, slotRepository, eventPublisher);
     }
 
     @Bean
-    public IConsultarDisponibilidadeUseCase consultarDisponibilidadeUseCase(ISlotRepository slotRepository) {
-        return new ConsultarDisponibilidadeUseCase(slotRepository);
+    public IReagendarAgendamentoUseCase reagendarAgendamentoUseCase(IAgendamentoRepository agendamentoRepository,
+                                                                    ISlotRepository slotRepository,
+                                                                    IAgendamentoEventPublisher eventPublisher) {
+        return new ReagendarAgendamentoUseCase(agendamentoRepository, slotRepository, eventPublisher);
+    }
+
+    @Bean
+    public IAtualizarScheduleUseCase atualizarScheduleUseCase(IScheduleRepository scheduleRepository) {
+        return new AtualizarScheduleUseCase(scheduleRepository);
+    }
+
+    @Bean
+    public IConsultarDisponibilidadeUseCase consultarDisponibilidadeUseCase(ISlotRepository slotRepository,
+                                                                            IScheduleRepository scheduleRepository,
+                                                                            IHealthUnitRepository healthUnitRepository,
+                                                                            IProviderRepository providerRepository) {
+        return new ConsultarDisponibilidadeUseCase(slotRepository, scheduleRepository, healthUnitRepository, providerRepository);
     }
 
     @Bean

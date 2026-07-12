@@ -1,5 +1,6 @@
 package br.com.morbus.regulacao.domain;
 
+import br.com.morbus.regulacao.domain.dto.PageResult;
 import br.com.morbus.regulacao.domain.model.Quota;
 import br.com.morbus.regulacao.domain.usecase.quota.ConsultarCotasUseCase;
 import br.com.morbus.regulacao.ports.in.dto.ConsultarCotasQuery;
@@ -11,8 +12,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -45,7 +44,7 @@ class ConsultarCotasUseCaseTest {
         void deveDelegarQueryParaRepositorio() {
             ConsultarCotasQuery query = new ConsultarCotasQuery(
                     UUID.randomUUID(), UUID.randomUUID(), LocalDate.of(2026, 7, 1), 0, 20);
-            when(quotaRepository.listar(query)).thenReturn(Page.empty());
+            when(quotaRepository.listar(query)).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
 
             useCase.execute(query);
 
@@ -56,11 +55,11 @@ class ConsultarCotasUseCaseTest {
         @DisplayName("deve funcionar com filtros opcionais nulos")
         void deveFuncionarComFiltrosNulos() {
             ConsultarCotasQuery query = new ConsultarCotasQuery(null, null, null, 0, 20);
-            when(quotaRepository.listar(query)).thenReturn(Page.empty());
+            when(quotaRepository.listar(query)).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
 
-            Page<Quota> result = useCase.execute(query);
+            PageResult<Quota> result = useCase.execute(query);
 
-            assertThat(result).isEmpty();
+            assertThat(result.content()).isEmpty();
             verify(quotaRepository).listar(query);
         }
 
@@ -70,13 +69,13 @@ class ConsultarCotasUseCaseTest {
             Quota quota = new Quota(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
                     10, 3, LocalDate.of(2026, 7, 1));
             ConsultarCotasQuery query = new ConsultarCotasQuery(null, null, null, 0, 20);
-            Page<Quota> pagina = new PageImpl<>(List.of(quota));
+            PageResult<Quota> pagina = new PageResult<>(List.of(quota), 0, 20, 1, 1);
             when(quotaRepository.listar(query)).thenReturn(pagina);
 
-            Page<Quota> result = useCase.execute(query);
+            PageResult<Quota> result = useCase.execute(query);
 
-            assertThat(result.getContent()).hasSize(1);
-            assertThat(result.getContent().getFirst().getId()).isEqualTo(quota.getId());
+            assertThat(result.content()).hasSize(1);
+            assertThat(result.content().getFirst().getId()).isEqualTo(quota.getId());
         }
     }
 }

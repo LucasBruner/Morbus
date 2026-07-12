@@ -1,5 +1,6 @@
 package br.com.morbus.agendamento.application.usecase;
 
+import br.com.morbus.agendamento.adapter.out.rabbitmq.IAgendamentoEventPublisher;
 import br.com.morbus.agendamento.domain.enums.EStatusAgendamento;
 import br.com.morbus.agendamento.domain.exception.AgendamentoNotFoundException;
 import br.com.morbus.agendamento.domain.exception.CancelamentoNaoPermitidoException;
@@ -19,11 +20,14 @@ public class CancelarAgendamentoUseCase implements ICancelarAgendamentoUseCase {
 
     private final IAgendamentoRepository agendamentoRepository;
     private final ISlotRepository slotRepository;
+    private final IAgendamentoEventPublisher eventPublisher;
 
     public CancelarAgendamentoUseCase(IAgendamentoRepository agendamentoRepository,
-                                      ISlotRepository slotRepository) {
+                                      ISlotRepository slotRepository,
+                                      IAgendamentoEventPublisher eventPublisher) {
         this.agendamentoRepository = agendamentoRepository;
         this.slotRepository = slotRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -56,6 +60,14 @@ public class CancelarAgendamentoUseCase implements ICancelarAgendamentoUseCase {
         slot.releaseOne();
         slotRepository.save(slot);
 
-        agendamentoRepository.save(agendamento);
+        Agendamento saved = agendamentoRepository.save(agendamento);
+
+        eventPublisher.publishAppointmentCancelled(
+                saved.getId(),
+                saved.getQueueEntryId(),
+                saved.getPacienteId(),
+                motivo,
+                LocalDateTime.now(ZoneId.systemDefault())
+        );
     }
 }

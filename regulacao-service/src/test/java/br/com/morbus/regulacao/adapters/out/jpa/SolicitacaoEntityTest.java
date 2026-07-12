@@ -35,6 +35,7 @@ class SolicitacaoEntityTest {
                 UUID.randomUUID(),
                 LocalDateTime.now().minusHours(2),
                 LocalDateTime.now().minusHours(1),
+                null,
                 null
         );
     }

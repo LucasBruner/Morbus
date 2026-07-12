@@ -82,7 +82,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             HttpStatusCode status, WebRequest request) {
 
         String detail = ex.getMessage() != null && ex.getMessage().contains("UserRole")
-                ? "Valor inválido para 'role'. Valores aceitos: MEDICO, PACIENTE"
+                ? "Valor inválido para 'role'. Valores aceitos: MEDICO, PACIENTE, SOLICITANTE, REGULADOR, EXECUTANTE"
                 : "Corpo da requisição ausente ou malformado";
 
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);

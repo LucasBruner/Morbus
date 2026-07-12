@@ -50,13 +50,13 @@ class QueueEntryTest {
     class Call {
 
         @Test
-        @DisplayName("deve alterar o status para AGENDADO")
-        void deveAlterarStatusParaAgendado() {
+        @DisplayName("deve alterar o status para CHAMADO")
+        void deveAlterarStatusParaChamado() {
             QueueEntry entry = buildEntry(ERiskColor.AZUL, EQueueStatus.AGUARDANDO);
 
             entry.call();
 
-            assertThat(entry.getQueueStatus()).isEqualTo(EQueueStatus.AGENDADO);
+            assertThat(entry.getQueueStatus()).isEqualTo(EQueueStatus.CHAMADO);
         }
 
         @Test
@@ -80,6 +80,48 @@ class QueueEntryTest {
             QueueEntry entry = buildEntry(ERiskColor.VERMELHO, EQueueStatus.AGUARDANDO);
 
             entry.call();
+
+            assertThat(entry.getRiskColor()).isEqualTo(ERiskColor.VERMELHO);
+        }
+    }
+
+    // ── confirmAppointment() ─────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("confirmAppointment()")
+    class ConfirmAppointment {
+
+        @Test
+        @DisplayName("deve alterar o status para AGENDADO")
+        void deveAlterarStatusParaAgendado() {
+            QueueEntry entry = buildEntry(ERiskColor.AZUL, EQueueStatus.CHAMADO);
+
+            entry.confirmAppointment();
+
+            assertThat(entry.getQueueStatus()).isEqualTo(EQueueStatus.AGENDADO);
+        }
+
+        @Test
+        @DisplayName("deve preencher updatedAt com o momento atual")
+        void devePreencherUpdatedAt() {
+            QueueEntry entry = buildEntry(ERiskColor.AZUL, EQueueStatus.CHAMADO);
+
+            LocalDateTime antes = LocalDateTime.now();
+            entry.confirmAppointment();
+            LocalDateTime depois = LocalDateTime.now();
+
+            assertThat(entry.getUpdatedAt())
+                    .isNotNull()
+                    .isAfterOrEqualTo(antes)
+                    .isBeforeOrEqualTo(depois);
+        }
+
+        @Test
+        @DisplayName("não deve alterar a riskColor")
+        void naoDeveAlterarRiskColor() {
+            QueueEntry entry = buildEntry(ERiskColor.VERMELHO, EQueueStatus.CHAMADO);
+
+            entry.confirmAppointment();
 
             assertThat(entry.getRiskColor()).isEqualTo(ERiskColor.VERMELHO);
         }

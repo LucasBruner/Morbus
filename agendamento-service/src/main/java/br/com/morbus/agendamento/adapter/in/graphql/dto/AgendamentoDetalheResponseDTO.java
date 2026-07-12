@@ -3,6 +3,7 @@ package br.com.morbus.agendamento.adapter.in.graphql.dto;
 import br.com.morbus.agendamento.domain.enums.EStatusAgendamento;
 import br.com.morbus.agendamento.domain.enums.EStatusSlots;
 import br.com.morbus.agendamento.domain.model.Agendamento;
+import br.com.morbus.agendamento.domain.model.AgendamentoComDetalhes;
 import br.com.morbus.agendamento.domain.model.HealthUnit;
 import br.com.morbus.agendamento.domain.model.Provider;
 import br.com.morbus.agendamento.domain.model.Schedule;
@@ -60,7 +61,7 @@ public record AgendamentoDetalheResponseDTO(
             String especialidade
     ) {}
 
-    public static AgendamentoDetalheResponseDTO fromDetalhe(AgendamentoDetalheRequestDTO detalhe) {
+    public static AgendamentoDetalheResponseDTO fromDetalhe(AgendamentoComDetalhes detalhe) {
         Agendamento a = detalhe.agendamento();
         Slot s = detalhe.slot();
         ScheduleDTO scheduleDTO = getScheduleDTO(detalhe);
@@ -88,7 +89,7 @@ public record AgendamentoDetalheResponseDTO(
         );
     }
 
-    private static ScheduleDTO getScheduleDTO(AgendamentoDetalheRequestDTO detalhe) {
+    private static ScheduleDTO getScheduleDTO(AgendamentoComDetalhes detalhe) {
         Schedule sc = detalhe.schedule();
         HealthUnit hu = detalhe.unit();
         Provider p = detalhe.provider();
@@ -98,7 +99,7 @@ public record AgendamentoDetalheResponseDTO(
                 hu.getCnes(),
                 hu.getNome(),
                 hu.getMunicipio() + " - " + hu.getUf(),
-                null
+                hu.getTelefone()
         );
 
         ProviderDTO providerDTO = p != null

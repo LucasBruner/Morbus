@@ -1,6 +1,7 @@
 package br.com.morbus.regulacao.domain;
 
 import br.com.morbus.regulacao.domain.dto.ListarSolicitacoesQuery;
+import br.com.morbus.regulacao.domain.dto.PageResult;
 import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
 import br.com.morbus.regulacao.domain.model.Solicitacao;
 import br.com.morbus.regulacao.domain.usecase.solicitacao.ListarSolicitacoesUseCase;
@@ -12,8 +13,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 
 import java.util.List;
 import java.util.UUID;
@@ -46,7 +45,7 @@ class ListarSolicitacoesUseCaseTest {
         @DisplayName("deve delegar ao repositório com a mesma query")
         void deveDelegarAoRepositorio() {
             ListarSolicitacoesQuery query = new ListarSolicitacoesQuery(UUID.randomUUID(), EStatusSolicitacao.AGUARDANDO, UUID.randomUUID(), 0, 20);
-            when(repository.listar(query)).thenReturn(Page.empty());
+            when(repository.listar(query)).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
 
             useCase.execute(query);
 
@@ -57,10 +56,10 @@ class ListarSolicitacoesUseCaseTest {
         @DisplayName("deve retornar a página devolvida pelo repositório")
         void deveRetornarPaginaDoRepositorio() {
             ListarSolicitacoesQuery query = new ListarSolicitacoesQuery(null, null, null, 0, 20);
-            Page<Solicitacao> pagina = new PageImpl<>(List.of());
+            PageResult<Solicitacao> pagina = new PageResult<>(List.of(), 0, 20, 0, 0);
             when(repository.listar(query)).thenReturn(pagina);
 
-            Page<Solicitacao> result = useCase.execute(query);
+            PageResult<Solicitacao> result = useCase.execute(query);
 
             assertThat(result).isSameAs(pagina);
         }
@@ -69,11 +68,11 @@ class ListarSolicitacoesUseCaseTest {
         @DisplayName("deve retornar página vazia quando repositório não encontra resultados")
         void deveRetornarPaginaVazia() {
             ListarSolicitacoesQuery query = new ListarSolicitacoesQuery(UUID.randomUUID(), null, null, 0, 20);
-            when(repository.listar(query)).thenReturn(Page.empty());
+            when(repository.listar(query)).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
 
-            Page<Solicitacao> result = useCase.execute(query);
+            PageResult<Solicitacao> result = useCase.execute(query);
 
-            assertThat(result.getContent()).isEmpty();
+            assertThat(result.content()).isEmpty();
         }
     }
 }

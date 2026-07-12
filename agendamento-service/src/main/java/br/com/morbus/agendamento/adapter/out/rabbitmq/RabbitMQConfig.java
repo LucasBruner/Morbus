@@ -22,16 +22,8 @@ public class RabbitMQConfig {
     // Exchange publicado pelo queue-service (agendamento-service consome)
     public static final String SUS_QUEUE_EXCHANGE = "sus.queue.exchange";
 
-    // Filas publicadas pelo agendamento-service → sus.agendamento.exchange
-    public static final String QUEUE_APPOINTMENT_CONFIRMED   = "queue.appointment.confirmed";
-    public static final String QUEUE_APPOINTMENT_CANCELLED   = "queue.appointment.cancelled";
-    public static final String QUEUE_APPOINTMENT_RESCHEDULED = "queue.appointment.rescheduled";
-    public static final String QUEUE_APPOINTMENT_ATTENDED    = "queue.appointment.attended";
-    public static final String QUEUE_APPOINTMENT_NO_SLOT     = "queue.appointment.no_slot";
-    public static final String QUEUE_APPOINTMENT_EXPIRED     = "queue.appointment.expired";
-    public static final String QUEUE_PATIENT_NO_SHOW         = "queue.patient.no_show";
-
     // Routing keys publicadas pelo agendamento-service
+    public static final String RK_APPOINTMENT_CREATED     = "appointment.created";
     public static final String RK_APPOINTMENT_CONFIRMED   = "appointment.confirmed";
     public static final String RK_APPOINTMENT_CANCELLED   = "appointment.cancelled";
     public static final String RK_APPOINTMENT_RESCHEDULED = "appointment.rescheduled";
@@ -60,99 +52,6 @@ public class RabbitMQConfig {
     @Bean
     public DirectExchange susQueueExchange() {
         return new DirectExchange(SUS_QUEUE_EXCHANGE, true, false);
-    }
-
-    // ─── Filas publicadas (sus.agendamento.exchange) ──────────────────────────
-
-    @Bean
-    public Queue appointmentConfirmedQueue() {
-        return QueueBuilder.durable(QUEUE_APPOINTMENT_CONFIRMED).build();
-    }
-
-    @Bean
-    public Queue appointmentCancelledQueue() {
-        return QueueBuilder.durable(QUEUE_APPOINTMENT_CANCELLED).build();
-    }
-
-    @Bean
-    public Queue appointmentRescheduledQueue() {
-        return QueueBuilder.durable(QUEUE_APPOINTMENT_RESCHEDULED).build();
-    }
-
-    @Bean
-    public Queue appointmentAttendedQueue() {
-        return QueueBuilder.durable(QUEUE_APPOINTMENT_ATTENDED).build();
-    }
-
-    @Bean
-    public Queue appointmentNoSlotQueue() {
-        return QueueBuilder.durable(QUEUE_APPOINTMENT_NO_SLOT).build();
-    }
-
-    @Bean
-    public Queue appointmentExpiredQueue() {
-        return QueueBuilder.durable(QUEUE_APPOINTMENT_EXPIRED).build();
-    }
-
-    @Bean
-    public Queue patientNoShowQueue() {
-        return QueueBuilder.durable(QUEUE_PATIENT_NO_SHOW).build();
-    }
-
-    @Bean
-    public Binding bindingAppointmentConfirmed(Queue appointmentConfirmedQueue,
-                                               DirectExchange agendamentoExchange) {
-        return BindingBuilder.bind(appointmentConfirmedQueue)
-                .to(agendamentoExchange)
-                .with(RK_APPOINTMENT_CONFIRMED);
-    }
-
-    @Bean
-    public Binding bindingAppointmentCancelled(Queue appointmentCancelledQueue,
-                                               DirectExchange agendamentoExchange) {
-        return BindingBuilder.bind(appointmentCancelledQueue)
-                .to(agendamentoExchange)
-                .with(RK_APPOINTMENT_CANCELLED);
-    }
-
-    @Bean
-    public Binding bindingAppointmentRescheduled(Queue appointmentRescheduledQueue,
-                                                 DirectExchange agendamentoExchange) {
-        return BindingBuilder.bind(appointmentRescheduledQueue)
-                .to(agendamentoExchange)
-                .with(RK_APPOINTMENT_RESCHEDULED);
-    }
-
-    @Bean
-    public Binding bindingAppointmentAttended(Queue appointmentAttendedQueue,
-                                              DirectExchange agendamentoExchange) {
-        return BindingBuilder.bind(appointmentAttendedQueue)
-                .to(agendamentoExchange)
-                .with(RK_APPOINTMENT_ATTENDED);
-    }
-
-    @Bean
-    public Binding bindingAppointmentNoSlot(Queue appointmentNoSlotQueue,
-                                            DirectExchange agendamentoExchange) {
-        return BindingBuilder.bind(appointmentNoSlotQueue)
-                .to(agendamentoExchange)
-                .with(RK_APPOINTMENT_NO_SLOT);
-    }
-
-    @Bean
-    public Binding bindingAppointmentExpired(Queue appointmentExpiredQueue,
-                                             DirectExchange agendamentoExchange) {
-        return BindingBuilder.bind(appointmentExpiredQueue)
-                .to(agendamentoExchange)
-                .with(RK_APPOINTMENT_EXPIRED);
-    }
-
-    @Bean
-    public Binding bindingPatientNoShow(Queue patientNoShowQueue,
-                                        DirectExchange agendamentoExchange) {
-        return BindingBuilder.bind(patientNoShowQueue)
-                .to(agendamentoExchange)
-                .with(RK_PATIENT_NO_SHOW);
     }
 
     // ─── Fila consumida (sus.queue.exchange) ─────────────────────────────────

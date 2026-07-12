@@ -135,7 +135,9 @@ public class AgendamentoPersistenceAdapter implements IAgendamentoRepository {
                 entity.getNome(),
                 entity.getCnes(),
                 entity.getMunicipio(),
-                entity.getUf()
+                entity.getUf(),
+                entity.getEndereco(),
+                entity.getTelefone()
         );
     }
 

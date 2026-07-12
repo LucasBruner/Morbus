@@ -39,6 +39,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
                         .requestMatchers("/graphiql", "/graphiql/**").permitAll()
+                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/graphql", "/graphql/**").authenticated()
                         .anyRequest().authenticated()
                 )
@@ -51,6 +52,7 @@ public class SecurityConfig {
         return configureBaseSecurity(http)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
+                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/graphql", "/graphql/**").authenticated()
                         .anyRequest().authenticated()
                 )
@@ -66,13 +68,13 @@ public class SecurityConfig {
                         .authenticationEntryPoint((request, response, authException) ->
                                 writeProblemDetail(response,
                                         HttpServletResponse.SC_UNAUTHORIZED,
-                                        "https://httpstatuses.com/401",
+                                        "https://morbus.sus.gov.br/problems/invalid-credentials",
                                         "Nao autorizado",
                                         "Token JWT ausente ou invalido."))
                         .accessDeniedHandler((request, response, accessDeniedException) ->
                                 writeProblemDetail(response,
                                         HttpServletResponse.SC_FORBIDDEN,
-                                        "https://httpstatuses.com/403",
+                                        "https://morbus.sus.gov.br/problems/access-denied",
                                         "Acesso negado",
                                         "Seu perfil nao tem permissao para esta operacao."))
                 );

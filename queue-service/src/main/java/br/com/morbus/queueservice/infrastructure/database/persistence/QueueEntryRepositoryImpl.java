@@ -15,6 +15,7 @@ import br.com.morbus.queueservice.infrastructure.database.repository.ProcedureJp
 import br.com.morbus.queueservice.infrastructure.database.repository.QueueEntryJpaRepository;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -61,6 +62,9 @@ public class QueueEntryRepositoryImpl implements IQueueEntryRepository {
                             .status(entry.getQueueStatus())
                             .registeredAt(entry.getRegisteredAt())
                             .updatedAt(entry.getUpdatedAt())
+                            .solicitacaoId(entry.getSolicitacaoId())
+                            .preferredUnitId(entry.getPreferredUnitId())
+                            .priorityGroup(entry.getPriorityGroup())
                             .build();
                     repository.save(entity);
                 }
@@ -75,7 +79,7 @@ public class QueueEntryRepositoryImpl implements IQueueEntryRepository {
 
     @Override
     public Optional<QueueEntry> findNextByPriority() {
-        List<QueueEntryEntity> entryList = repository.findByPriority(null, null);
+        List<QueueEntryEntity> entryList = repository.findByPriority(EQueueStatus.AGUARDANDO, null);
         return entryList.isEmpty()
                 ? Optional.empty()
                 : Optional.of(mapToDomainQueue(entryList.getFirst()));
@@ -98,7 +102,17 @@ public class QueueEntryRepositoryImpl implements IQueueEntryRepository {
 
     @Override
     public int countEntriesWithHigherPriority(QueueEntry entry) {
-        return repository.countEntriesWithHigherPriority(entry.getId());
+        List<QueueEntryEntity> orderedEntries = repository.findByProcedureIdAndFilters(
+                entry.getProcedure().getId(), entry.getQueueStatus(), null);
+
+        int count = 0;
+        for (QueueEntryEntity candidate : orderedEntries) {
+            if (candidate.getId().equals(entry.getId())) {
+                break;
+            }
+            count++;
+        }
+        return count;
     }
 
     @Override
@@ -126,6 +140,11 @@ public class QueueEntryRepositoryImpl implements IQueueEntryRepository {
                 .toList();
     }
 
+    @Override
+    public int countActiveFilaEsperaEntries(UUID unitId, UUID procedureId, LocalDateTime from, LocalDateTime to) {
+        return repository.countActiveFilaEsperaEntries(unitId, procedureId, from, to);
+    }
+
     private QueueEntry mapToDomainQueue(QueueEntryEntity entity){
         Patient patient = patientRepositoryImpl.mapToDomainPatient(entity.getPatient());
         Procedure procedure = procedureRepositoryImpl.mapToDomainProcedure(entity.getProcedure());
@@ -139,6 +158,9 @@ public class QueueEntryRepositoryImpl implements IQueueEntryRepository {
                 .queueStatus(entity.getStatus())
                 .registeredAt(entity.getRegisteredAt())
                 .updatedAt(entity.getUpdatedAt())
+                .solicitacaoId(entity.getSolicitacaoId())
+                .preferredUnitId(entity.getPreferredUnitId())
+                .priorityGroup(entity.getPriorityGroup())
                 .build();
     }
 }

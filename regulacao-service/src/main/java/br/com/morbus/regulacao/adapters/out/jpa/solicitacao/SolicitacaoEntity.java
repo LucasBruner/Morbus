@@ -70,6 +70,9 @@ public class SolicitacaoEntity {
     @Column(name = "solicitado_por", nullable = false)
     private UUID solicitadoPor;
 
+    @Column(name = "observacoes", columnDefinition = "TEXT")
+    private String observacoes;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -94,7 +97,8 @@ public class SolicitacaoEntity {
                 this.solicitadoPor,
                 this.createdAt,
                 this.updatedAt,
-                this.appointmentId
+                this.appointmentId,
+                this.observacoes
         );
     }
 
@@ -117,6 +121,7 @@ public class SolicitacaoEntity {
         entity.createdAt = s.getCreatedAt();
         entity.updatedAt = s.getUpdatedAt();
         entity.appointmentId = s.getAppointmentId();
+        entity.observacoes = s.getObservacoes();
         return entity;
     }
 }

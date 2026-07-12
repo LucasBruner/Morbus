@@ -14,8 +14,8 @@ type Query {
         pacienteId: ID
         unitId: ID
         status: AppointmentStatus
-        dateFrom: String
-        dateTo: String
+        dateFrom: String!
+        dateTo: String!
     ): [Appointment!]!
 
     agendamento(id: ID!): Appointment
@@ -71,7 +71,6 @@ type Appointment {
 
 enum SlotStatus {
     DISPONIVEL
-    RESERVADO
     OCUPADO
     INDISPONIVEL
 }

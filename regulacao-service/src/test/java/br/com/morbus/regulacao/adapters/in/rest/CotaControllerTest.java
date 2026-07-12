@@ -4,6 +4,7 @@ import br.com.morbus.regulacao.adapters.out.security.JwtAuthenticationFilter;
 import br.com.morbus.regulacao.adapters.out.security.JwtService;
 import br.com.morbus.regulacao.adapters.out.security.SecurityConfig;
 import br.com.morbus.regulacao.adapters.security.UserPrincipal;
+import br.com.morbus.regulacao.domain.dto.PageResult;
 import br.com.morbus.regulacao.domain.model.Quota;
 import br.com.morbus.regulacao.ports.in.IConsultarCotasUseCase;
 import br.com.morbus.regulacao.ports.in.IGerenciarCotaUseCase;
@@ -15,8 +16,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -153,7 +152,7 @@ class CotaControllerTest {
         @Test
         @DisplayName("deve retornar 200 quando REGULADOR consulta sem filtros")
         void deveRetornar200SemFiltros() throws Exception {
-            when(consultarCotasUseCase.execute(any())).thenReturn(Page.empty());
+            when(consultarCotasUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
 
             mockMvc.perform(get(BASE_URL)
                             .with(authentication(principalToken("ROLE_REGULADOR"))))
@@ -171,7 +170,7 @@ class CotaControllerTest {
         @Test
         @DisplayName("deve aceitar filtros unitId, procedureId e mes")
         void deveAceitarFiltros() throws Exception {
-            when(consultarCotasUseCase.execute(any())).thenReturn(Page.empty());
+            when(consultarCotasUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
 
             mockMvc.perform(get(BASE_URL)
                             .param("unitId", UUID.randomUUID().toString())
@@ -194,7 +193,7 @@ class CotaControllerTest {
         @DisplayName("deve retornar a lista de cotas devolvida pelo use case")
         void deveRetornarListaDeCotas() throws Exception {
             Quota quota = buildQuota(10, 4);
-            when(consultarCotasUseCase.execute(any())).thenReturn(new PageImpl<>(List.of(quota)));
+            when(consultarCotasUseCase.execute(any())).thenReturn(new PageResult<>(List.of(quota), 0, 20, 1, 1));
 
             mockMvc.perform(get(BASE_URL)
                             .with(authentication(principalToken("ROLE_REGULADOR"))))

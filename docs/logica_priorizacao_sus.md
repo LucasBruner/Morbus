@@ -2,11 +2,46 @@
 
 ## Resumo
 
-O `PriorityCalculator` implementa o algoritmo de ordenação da fila ambulatorial do SUS, com suporte a dois tipos de fila — `FILA_REGULADA` e `FILA_ESPERA` — que seguem regras de ordenação distintas.
+O algoritmo de ordenação da fila ambulatorial do SUS, com suporte a dois tipos de fila — `FILA_REGULADA` e `FILA_ESPERA` — que seguem regras de ordenação distintas, é implementado de duas formas que **não são idênticas**: a query JPQL usada pela API (fonte de verdade em runtime) e a classe `PriorityCalculator` (domínio puro, mas não conectada à ordenação real).
 
 ---
 
-## Tipos de Fila (ETipoFila)
+## 0. Onde a ordenação realmente acontece
+
+`QueueEntryJpaRepository` (`findByPriority`, `findAllOrderedByPriority`, `findByProcedureIdAndFilters`) define a ordenação com uma query JPQL:
+
+```jpql
+ORDER BY
+    CASE q.tipoFila WHEN FILA_REGULADA THEN 0 ELSE 1 END ASC,
+    q.riskColor ASC,
+    <EFFECTIVE_PRIORITY_GROUP> ASC,
+    q.registeredAt ASC
+```
+
+Isso cobre os 4 critérios documentados (tipoFila → cor → grupo → chegada). `<EFFECTIVE_PRIORITY_GROUP>` é uma constante JPQL (`QueueEntryJpaRepository.EFFECTIVE_PRIORITY_GROUP`) que **recalcula a idade do paciente a cada consulta** — não lê `patients.grupo_legal` diretamente para decidir `IDOSO`:
+
+```jpql
+CASE WHEN (
+    YEAR(CURRENT_DATE) - YEAR(q.patient.dataNascimento) -
+    CASE WHEN (MONTH(CURRENT_DATE) < MONTH(q.patient.dataNascimento))
+           OR (MONTH(CURRENT_DATE) = MONTH(q.patient.dataNascimento) AND DAY(CURRENT_DATE) < DAY(q.patient.dataNascimento))
+         THEN 1 ELSE 0 END
+) >= 60 THEN 0 ELSE
+    CASE q.patient.grupoLegal
+        WHEN EPriorityGroup.IDOSO THEN 0 WHEN EPriorityGroup.GESTANTE THEN 1
+        WHEN EPriorityGroup.DEFICIENTE THEN 2 WHEN EPriorityGroup.LACTANTE THEN 3
+        WHEN EPriorityGroup.OBESO THEN 4 ELSE 5
+    END
+END
+```
+
+- Se a idade calculada em SQL (`CURRENT_DATE` vs `patients.data_nascimento`) já é ≥ 60, a entrada conta como `IDOSO` (ordinal 0) **mesmo que `patients.grupo_legal` ainda esteja gravado como outro grupo** — não depende de um `PATCH /api/v1/patients/{id}` prévio. `patients.grupo_legal` só é usado como fallback para os grupos que não são detectáveis por idade (`GESTANTE`/`DEFICIENTE`/`LACTANTE`/`OBESO`).
+- `PriorityCalculator.compare()`, por outro lado, **não implementa o Critério 1** (tipoFila) — ele compara apenas riskColor → priorityGroup → registeredAt. Como esse método não é chamado por nenhum usecase, essa diferença hoje não afeta o comportamento da API, mas o texto do método é enganoso se lido como "o algoritmo que roda em produção".
+- Coberto por testes de integração em `QueueFlowIntegrationTest.OrdenacaoDinamicaPorIdade` (H2) — um paciente registrado com menos de 60 anos, cujo cadastro nunca é atualizado, é corretamente promovido a `IDOSO` na ordenação assim que sua idade real cruza os 60 anos.
+
+---
+
+## Tipos de Fila (EDestino)
 
 | Tipo            | Descrição                                                        |
 |-----------------|------------------------------------------------------------------|
@@ -33,12 +68,12 @@ Toda entrada regulada ocupa posição antes de qualquer entrada de espera. Esse 
 
 Aplicado apenas quando as duas entradas são do mesmo tipo `FILA_REGULADA`. Em `FILA_ESPERA` este critério é ignorado (todos são `AZUL`).
 
-| Cor        | Prioridade numérica | Tempo máximo de espera |
-|------------|---------------------|------------------------|
-| `VERMELHO` | 1 (maior urgência)  | 1 mês                  |
-| `AMARELO`  | 2                   | 3 meses                |
-| `VERDE`    | 3                   | 6 meses                |
-| `AZUL`     | 4 (menor urgência)  | 1 ano                  |
+| Cor        | Prioridade numérica |
+|------------|---------------------|
+| `VERMELHO` | 1 (maior urgência)  |
+| `AMARELO`  | 2                   |
+| `VERDE`    | 3                   |
+| `AZUL`     | 4 (menor urgência)  |
 
 ### Critério 3 — Grupo de prioridade (somente FILA_REGULADA)
 
@@ -61,41 +96,11 @@ Aplicado em qualquer situação onde os critérios anteriores empatam. Quem entr
 
 ---
 
-## Implementação — PriorityCalculator.java
-
-**Localização:** `queue-service/src/main/java/br/com/morbus/queueservice/domain/service/`
-
-### compare(QueueEntry a, QueueEntry b)
-
-```java
-public static int compare(QueueEntry a, QueueEntry b) {
-
-    // Critério 1: FILA_REGULADA (0) precede FILA_ESPERA (1)
-    int tipoComp = a.getTipoFila().ordinal() - b.getTipoFila().ordinal();
-    if (tipoComp != 0) return tipoComp;
-
-    // Critérios 2 e 3: apenas dentro de FILA_REGULADA
-    if (a.getTipoFila() == ETipoFila.FILA_REGULADA) {
-
-        // Critério 2: cor de risco
-        int colorComp = a.getRiskColor().getNumericPriority()
-                      - b.getRiskColor().getNumericPriority();
-        if (colorComp != 0) return colorComp;
-
-        // Critério 3: grupo de prioridade
-        int groupComp = getPriorityGroup(a.getPatient()).getNumericPriority()
-                      - getPriorityGroup(b.getPatient()).getNumericPriority();
-        if (groupComp != 0) return groupComp;
-    }
-
-    // Critério 4: timestamp de chegada (desempate final — válido para ambos os tipos)
-    return a.getRegisteredAt().compareTo(b.getRegisteredAt());
-}
-```
-
 ### getPriorityGroup(Patient patient)
 
 Retorna o grupo de prioridade efetivo do paciente. Idosos (≥ 60 anos) recebem `IDOSO` automaticamente.
+
+> Chamado em `RegisterPatient`, `UpdatePatient` e `RegisterPatientInQueue` para gravar um *snapshot* em `patients.grupo_legal`. A ordenação da fila (seção 0), porém, **não depende apenas desse snapshot** para o grupo `IDOSO`: a query JPQL recalcula a idade a cada consulta via `EFFECTIVE_PRIORITY_GROUP`, espelhando esta mesma lógica em SQL. Um paciente cadastrado aos 58 anos com `grupoLegal = GERAL` é automaticamente tratado como `IDOSO` na fila assim que sua idade real atinge 60 — sem precisar de um novo `PATCH /api/v1/patients/{id}`.
 
 ```java
 public static EPriorityGroup getPriorityGroup(Patient patient) {
@@ -123,17 +128,15 @@ public static boolean isPriorityGroup(Patient patient) {
 ```java
 List<QueueEntry> fila = repository.findAll();
 fila.sort(PriorityCalculator::compare);
-// Resultado: FILA_REGULADA primeiro, depois FILA_ESPERA
-// Dentro de cada tipo: regras específicas se aplicam
 ```
 
 ### Verificar tipo de fila antes de reclassificar
 
 ```java
 // ReclassifyPriority use case — bloqueio para FILA_ESPERA
-if (queueEntry.getTipoFila() == ETipoFila.FILA_ESPERA) {
+if (queueEntry.getTipoFila() == EDestino.FILA_ESPERA) {
     throw new QueueNotAllowedException(
-        "Entradas em FILA_ESPERA não podem ter a cor de risco alterada (sempre AZUL)"
+        "Entradas em FILA_ESPERA não podem ter a cor de risco reclassificada"
     );
 }
 ```
@@ -154,7 +157,7 @@ EPriorityGroup grupo = PriorityCalculator.getPriorityGroup(patient);
 | Regra             | Descrição                                                                                      |
 |-------------------|------------------------------------------------------------------------------------------------|
 | Cor de risco      | Deve ser obrigatoriamente `AZUL`. Qualquer outra cor é rejeitada com `422`.                   |
-| Cota da UBS       | `CheckAndEnforceQuota` verifica `currentCount < maxPerPeriod`. Lança `QuotaExceededException` se esgotada. |
+| Cota da UBS       | `CheckAndEnforceQuota` verifica `used >= quota.getMaxPerDay()` (campo real da entidade `UnitProcedureQuota` é `maxPerDay`, não `maxPerPeriod`). Lança `QuotaExceededException` se esgotada. |
 | Reclassificação   | Proibida. Apenas `FILA_REGULADA` pode ter a cor alterada via `PATCH /priority`.               |
 
 ### Inserção em FILA_REGULADA
@@ -179,7 +182,7 @@ Dada a fila abaixo (antes da ordenação):
 | Joana            | FILA_REGULADA   | AMARELO   | GERAL      | 2026-01-02 07:00 |
 | Marcos           | FILA_ESPERA     | AZUL      | GERAL      | 2026-01-04 11:00 |
 
-Após `fila.sort(PriorityCalculator::compare)`:
+Após a ordenação real da API (query JPQL da seção 0 — não `PriorityCalculator.compare()`, que não teria aplicado o critério de tipoFila):
 
 | Pos. | Paciente         | Motivo                                                      |
 |------|------------------|-------------------------------------------------------------|
@@ -190,23 +193,33 @@ Após `fila.sort(PriorityCalculator::compare)`:
 | 5    | Marcos           | FILA_ESPERA + chegou depois (04/01)                         |
 
 > Carlos tem 72 anos mas está em `FILA_ESPERA`, onde somente o timestamp importa. Ele não ocupa posição 1 apenas por ser idoso — toda `FILA_REGULADA` precede `FILA_ESPERA`.
+>
+> `IDOSO` para Pedro e Carlos vale independentemente de quando seus cadastros foram feitos: a ordenação recalcula a idade a cada consulta, então mesmo que `patients.grupo_legal` estivesse desatualizado (ex: gravado como `GERAL` antes de completarem 60 anos), a query já os trataria como `IDOSO` hoje.
 
 ---
 
 ## Testes Unitários — PriorityCalculatorTest
 
-| Cenário                                                     | Resultado esperado                       |
-|-------------------------------------------------------------|------------------------------------------|
-| FILA_REGULADA vs FILA_ESPERA (mesma cor, mesmo grupo)       | FILA_REGULADA sempre antes               |
-| FILA_REGULADA: VERMELHO vs AMARELO                          | VERMELHO antes                           |
-| FILA_REGULADA: mesma cor, IDOSO vs GERAL                    | IDOSO antes                              |
-| FILA_REGULADA: mesma cor, mesmo grupo, timestamps distintos | Quem chegou antes                        |
-| FILA_ESPERA: ignora cor e grupo, ordena por timestamp       | Cronológico puro                         |
-| Paciente com 60+ anos e grupoLegal = GERAL                  | `getPriorityGroup` retorna `IDOSO`       |
-| Paciente com 59 anos                                        | `getPriorityGroup` retorna `grupoLegal`  |
-| `patient = null` em `getPriorityGroup`                      | Retorna `GERAL` sem NPE                  |
-| `dataNascimento = null` em `isPriorityGroup`                | Retorna `false` sem NPE                  |
+| Cenário                                                            | Resultado esperado                       |
+|---------------------------------------------------------------------|-------------------------------------------|
+| Risco Vermelho vs Azul                                             | Vermelho antes                           |
+| Ordem completa de cores: Vermelho > Amarelo > Verde > Azul         | Ordem respeitada                         |
+| Mesma cor, Idoso vs Geral                                          | Idoso antes                              |
+| Idoso vermelho vs Geral vermelho                                   | Idoso antes                              |
+| Timestamps distintos, mesmo tudo o mais                            | Quem chegou antes                        |
+| Múltiplos pacientes no mesmo timestamp                              | Comparação estável (sem exceção)         |
+| Gestante vs Idoso (ambos prioritários)                              | Conforme prioridade numérica do grupo    |
+| Mesmo tudo (cor, grupo, timestamp)                                  | `compare()` retorna 0 (empate)           |
+| `isPriorityGroup`: paciente com 60 anos exatos                     | Retorna `true`                           |
+| `isPriorityGroup`: paciente com 60+ anos                           | Retorna `true`                           |
+| `isPriorityGroup`: paciente com menos de 60 anos                   | Retorna `false`                          |
+| `isPriorityGroup`: paciente nulo                                   | Retorna `false`                          |
+| `getPriorityGroup`: paciente com 60+ anos                          | Retorna `IDOSO`                          |
+| `getPriorityGroup`: paciente com menos de 60 anos (testado com 30) | Retorna `grupoLegal`                     |
+| `getPriorityGroup`: paciente sem grupo legal definido              | Retorna `GERAL`                          |
+| Integração: ordem correta com múltiplas filas                      | Ordem esperada respeitada                |
+
 
 ---
 
-*Documento atualizado em: junho/2026*
+*Documento atualizado em: julho/2026 — revisado contra `PriorityCalculator.java` e `QueueEntryJpaRepository.java` reais.*

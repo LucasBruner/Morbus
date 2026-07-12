@@ -1,6 +1,7 @@
 package br.com.morbus.queueservice.infrastructure.database.entity;
 
 import br.com.morbus.queueservice.domain.enums.EDestino;
+import br.com.morbus.queueservice.domain.enums.EPriorityGroup;
 import br.com.morbus.queueservice.domain.enums.EQueueStatus;
 import br.com.morbus.queueservice.domain.enums.ERiskColor;
 import jakarta.persistence.*;
@@ -52,4 +53,14 @@ public class QueueEntryEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "procedure_id", nullable = false)
     private ProcedureEntity procedure;
+
+    @Column(name = "solicitacao_id")
+    private UUID solicitacaoId;
+
+    @Column(name = "preferred_unit_id")
+    private UUID preferredUnitId;
+
+    @Enumerated(EnumType.ORDINAL)
+    @Column(name = "priority_group")
+    private EPriorityGroup priorityGroup;
 }

@@ -4,6 +4,7 @@ import br.com.morbus.regulacao.adapters.out.security.JwtAuthenticationFilter;
 import br.com.morbus.regulacao.adapters.out.security.JwtService;
 import br.com.morbus.regulacao.adapters.out.security.SecurityConfig;
 import br.com.morbus.regulacao.adapters.security.UserPrincipal;
+import br.com.morbus.regulacao.domain.dto.PageResult;
 import br.com.morbus.regulacao.domain.enums.EDecisaoRegulador;
 import br.com.morbus.regulacao.domain.exception.CampoObrigatorioException;
 import br.com.morbus.regulacao.domain.exception.SolicitacaoNaoEncontradaException;
@@ -25,7 +26,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.data.domain.Page;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -80,7 +80,7 @@ class RegulacaoControllerTest {
                 UUID.randomUUID(), UUID.randomUUID(), EStatusSolicitacao.APROVADA,
                 ERiscoSolicitado.AMARELO, "I10", "Hipertensao grave", "Dr. Silva",
                 null, EDestino.FILA_REGULADA, null, UUID.randomUUID(),
-                LocalDateTime.now(), LocalDateTime.now(), null
+                LocalDateTime.now(), LocalDateTime.now(), null, null
         );
     }
 
@@ -100,7 +100,7 @@ class RegulacaoControllerTest {
         @Test
         @DisplayName("deve retornar 200 quando REGULADOR lista")
         void deveRetornar200() throws Exception {
-            when(listarUseCase.execute(any())).thenReturn(Page.empty());
+            when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
 
             mockMvc.perform(get(BASE_URL + "/pendentes")
                             .with(authentication(principalToken("ROLE_REGULADOR"))))
@@ -125,7 +125,7 @@ class RegulacaoControllerTest {
         @Test
         @DisplayName("deve retornar 200 quando REGULADOR lista")
         void deveRetornar200() throws Exception {
-            when(listarUseCase.execute(any())).thenReturn(Page.empty());
+            when(listarUseCase.execute(any())).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
 
             mockMvc.perform(get(BASE_URL + "/pendentes-vaga")
                             .with(authentication(principalToken("ROLE_REGULADOR"))))
@@ -186,8 +186,8 @@ class RegulacaoControllerTest {
         }
 
         @Test
-        @DisplayName("deve retornar 400 quando riskColorDefinido esta ausente para AUTORIZAR")
-        void deveRetornar400SemRiskColor() throws Exception {
+        @DisplayName("deve retornar 422 quando riskColorDefinido esta ausente para AUTORIZAR")
+        void deveRetornar422SemRiskColor() throws Exception {
             when(avaliarUseCase.execute(any()))
                     .thenThrow(new CampoObrigatorioException("riskColorDefinido e obrigatorio"));
 
@@ -197,8 +197,8 @@ class RegulacaoControllerTest {
                             .content("""
                                     { "decisao": "AUTORIZAR" }
                                     """))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.status").value(400));
+                    .andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.status").value(422));
         }
 
         @Test

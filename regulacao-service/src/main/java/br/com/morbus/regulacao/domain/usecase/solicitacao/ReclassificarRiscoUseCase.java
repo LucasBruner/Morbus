@@ -8,7 +8,6 @@ import br.com.morbus.regulacao.ports.in.IReclassificarRiscoUseCase;
 import br.com.morbus.regulacao.ports.in.dto.ReclassificarRiscoCommand;
 import br.com.morbus.regulacao.ports.out.IRegulacaoEventPublisher;
 import br.com.morbus.regulacao.ports.out.ISolicitacaoRepository;
-import org.springframework.transaction.annotation.Transactional;
 
 public class ReclassificarRiscoUseCase implements IReclassificarRiscoUseCase {
 
@@ -22,7 +21,6 @@ public class ReclassificarRiscoUseCase implements IReclassificarRiscoUseCase {
     }
 
     @Override
-    @Transactional
     public Solicitacao execute(ReclassificarRiscoCommand command) {
         Solicitacao solicitacao = solicitacaoRepository.findById(command.solicitacaoId());
 

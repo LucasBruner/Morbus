@@ -25,16 +25,18 @@ public class RegisterPatientInQueue {
     private final IProcedureRepository procedureRepository;
     private final IQueueEntryRepository queueEntryRepository;
     private final IQueueEventPublisher eventPublisher;
+    private final CheckAndEnforceQuota checkAndEnforceQuota;
 
-    private RegisterPatientInQueue(IPatientRepository patientRepository, IProcedureRepository procedureRepository, IQueueEntryRepository queueEntryRepository, IQueueEventPublisher eventPublisher) {
+    private RegisterPatientInQueue(IPatientRepository patientRepository, IProcedureRepository procedureRepository, IQueueEntryRepository queueEntryRepository, IQueueEventPublisher eventPublisher, CheckAndEnforceQuota checkAndEnforceQuota) {
         this.patientRepository = patientRepository;
         this.procedureRepository = procedureRepository;
         this.queueEntryRepository = queueEntryRepository;
         this.eventPublisher = eventPublisher;
+        this.checkAndEnforceQuota = checkAndEnforceQuota;
     }
 
-    public static RegisterPatientInQueue create(IPatientRepository patientRepository, IProcedureRepository procedureRepository, IQueueEntryRepository queueEntryRepository, IQueueEventPublisher eventPublisher) {
-        return new RegisterPatientInQueue(patientRepository, procedureRepository, queueEntryRepository, eventPublisher);
+    public static RegisterPatientInQueue create(IPatientRepository patientRepository, IProcedureRepository procedureRepository, IQueueEntryRepository queueEntryRepository, IQueueEventPublisher eventPublisher, CheckAndEnforceQuota checkAndEnforceQuota) {
+        return new RegisterPatientInQueue(patientRepository, procedureRepository, queueEntryRepository, eventPublisher, checkAndEnforceQuota);
     }
 
     public QueueEntry execute(RegisterQueueRequestDTO patientDTO) {
@@ -58,7 +60,11 @@ public class RegisterPatientInQueue {
         ERiskColor riskColor = patientDTO.riskColor() == null ? ERiskColor.AZUL : patientDTO.riskColor();
         validateTipoFilaRiskColor(tipoFila, riskColor);
 
-        QueueEntry queueEntry = buildQueueEntry(patient, procedure, riskColor, tipoFila);
+        if (tipoFila == EDestino.FILA_ESPERA) {
+            checkAndEnforceQuota.execute(patientDTO.preferredUnitId(), procedure.getId());
+        }
+
+        QueueEntry queueEntry = buildQueueEntry(patient, procedure, riskColor, tipoFila, patientDTO, priorityGroup);
 
         queueEntryRepository.save(queueEntry);
         eventPublisher.publishPatientRegistered(queueEntry);
@@ -94,7 +100,7 @@ public class RegisterPatientInQueue {
         boolean existsActiveEntry = queueEntryRepository.existsByPatientAndProcedureAndStatusIn(
                 patient,
                 procedure,
-                java.util.List.of(EQueueStatus.AGUARDANDO, EQueueStatus.AGENDADO)
+                java.util.List.of(EQueueStatus.AGUARDANDO, EQueueStatus.CHAMADO, EQueueStatus.AGENDADO)
         );
 
         if (existsActiveEntry) {
@@ -110,7 +116,8 @@ public class RegisterPatientInQueue {
         }
     }
 
-    private QueueEntry buildQueueEntry(Patient patient, Procedure procedure, ERiskColor riskColor, EDestino tipoFila) {
+    private QueueEntry buildQueueEntry(Patient patient, Procedure procedure, ERiskColor riskColor, EDestino tipoFila,
+                                       RegisterQueueRequestDTO patientDTO, EPriorityGroup priorityGroup) {
         return QueueEntry.builder()
                 .id(UUID.randomUUID())
                 .patient(patient)
@@ -120,6 +127,9 @@ public class RegisterPatientInQueue {
                 .queueStatus(EQueueStatus.AGUARDANDO)
                 .registeredAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
+                .solicitacaoId(patientDTO.solicitacaoId())
+                .preferredUnitId(patientDTO.preferredUnitId())
+                .priorityGroup(priorityGroup)
                 .build();
     }
 }

@@ -28,11 +28,6 @@ public class RabbitMQConfig {
     public static final String RK_APPOINTMENT_ATTENDED = "appointment.attended";
     public static final String RK_APPOINTMENT_NO_SHOW  = "appointment.no_show";
 
-    public static final String QUEUE_SOLICITACAO_APROVADA      = "regulacao.solicitacao.aprovada";
-    public static final String QUEUE_SOLICITACAO_NEGADA        = "regulacao.solicitacao.negada";
-    public static final String QUEUE_SOLICITACAO_DEVOLVIDA     = "regulacao.solicitacao.devolvida";
-    public static final String QUEUE_SOLICITACAO_RECLASSIFICADA = "regulacao.solicitacao.reclassificada";
-
     public static final String QUEUE_APPOINTMENT_CREATED  = "regulacao.appointment.created";
     public static final String QUEUE_APPOINTMENT_ATTENDED = "regulacao.appointment.attended";
     public static final String QUEUE_APPOINTMENT_NO_SHOW  = "regulacao.appointment.no_show";
@@ -54,26 +49,6 @@ public class RabbitMQConfig {
     @Bean
     public DirectExchange regulacaoDlx() {
         return new DirectExchange(REGULACAO_DLX, true, false);
-    }
-
-    @Bean
-    public Queue solicitacaoAprovadaQueue() {
-        return QueueBuilder.durable(QUEUE_SOLICITACAO_APROVADA).build();
-    }
-
-    @Bean
-    public Queue solicitacaoNegadaQueue() {
-        return QueueBuilder.durable(QUEUE_SOLICITACAO_NEGADA).build();
-    }
-
-    @Bean
-    public Queue solicitacaoDevolvadaQueue() {
-        return QueueBuilder.durable(QUEUE_SOLICITACAO_DEVOLVIDA).build();
-    }
-
-    @Bean
-    public Queue solicitacaoReclassificadaQueue() {
-        return QueueBuilder.durable(QUEUE_SOLICITACAO_RECLASSIFICADA).build();
     }
 
     @Bean
@@ -113,38 +88,6 @@ public class RabbitMQConfig {
     @Bean
     public Queue appointmentNoShowDlq() {
         return QueueBuilder.durable(DLQ_APPOINTMENT_NO_SHOW).build();
-    }
-
-    @Bean
-    public Binding bindingSolicitacaoAprovada(Queue solicitacaoAprovadaQueue,
-                                              DirectExchange regulacaoExchange) {
-        return BindingBuilder.bind(solicitacaoAprovadaQueue)
-                .to(regulacaoExchange)
-                .with(RK_SOLICITACAO_APROVADA);
-    }
-
-    @Bean
-    public Binding bindingSolicitacaoNegada(Queue solicitacaoNegadaQueue,
-                                             DirectExchange regulacaoExchange) {
-        return BindingBuilder.bind(solicitacaoNegadaQueue)
-                .to(regulacaoExchange)
-                .with(RK_SOLICITACAO_NEGADA);
-    }
-
-    @Bean
-    public Binding bindingSolicitacaoDevolvida(Queue solicitacaoDevolvadaQueue,
-                                                DirectExchange regulacaoExchange) {
-        return BindingBuilder.bind(solicitacaoDevolvadaQueue)
-                .to(regulacaoExchange)
-                .with(RK_SOLICITACAO_DEVOLVIDA);
-    }
-
-    @Bean
-    public Binding bindingSolicitacaoReclassificada(Queue solicitacaoReclassificadaQueue,
-                                                     DirectExchange regulacaoExchange) {
-        return BindingBuilder.bind(solicitacaoReclassificadaQueue)
-                .to(regulacaoExchange)
-                .with(RK_SOLICITACAO_RECLASSIFICADA);
     }
 
     @Bean

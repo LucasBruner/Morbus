@@ -50,7 +50,7 @@ class ReclassificarRiscoUseCaseTest {
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
                 status, ERiscoSolicitado.AZUL, "I10", "justificativa clinica", "Dr. Silva", null,
                 destino, null, UUID.randomUUID(),
-                LocalDateTime.now().minusHours(1), LocalDateTime.now().minusHours(1), null
+                LocalDateTime.now().minusHours(1), LocalDateTime.now().minusHours(1), null, null
         );
     }
 

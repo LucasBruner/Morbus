@@ -36,6 +36,18 @@ public class AgendamentoEventPublisher implements IAgendamentoEventPublisher {
     }
 
     @Override
+    public void publishAppointmentCreated(UUID solicitacaoId,
+                                          UUID appointmentId,
+                                          UUID slotId) {
+        AppointmentCreatedEvent event = new AppointmentCreatedEvent(solicitacaoId, appointmentId, slotId);
+        rabbitTemplate.convertAndSend(
+                RabbitMQConfig.AGENDAMENTO_EXCHANGE,
+                RabbitMQConfig.RK_APPOINTMENT_CREATED,
+                event
+        );
+    }
+
+    @Override
     public void publishAppointmentNoSlot(UUID queueEntryId,
                                          UUID patientId,
                                          UUID procedureId) {
@@ -97,6 +109,46 @@ public class AgendamentoEventPublisher implements IAgendamentoEventPublisher {
         rabbitTemplate.convertAndSend(
                 RabbitMQConfig.AGENDAMENTO_EXCHANGE,
                 RabbitMQConfig.RK_APPOINTMENT_EXPIRED,
+                event
+        );
+    }
+
+    @Override
+    public void publishAppointmentRescheduled(UUID appointmentId,
+                                              UUID slotId,
+                                              UUID queueEntryId,
+                                              UUID patientId,
+                                              LocalDateTime reagendadoEm) {
+        AppointmentRescheduledEvent event = new AppointmentRescheduledEvent(
+                appointmentId,
+                slotId,
+                queueEntryId,
+                patientId,
+                reagendadoEm
+        );
+        rabbitTemplate.convertAndSend(
+                RabbitMQConfig.AGENDAMENTO_EXCHANGE,
+                RabbitMQConfig.RK_APPOINTMENT_RESCHEDULED,
+                event
+        );
+    }
+
+    @Override
+    public void publishAppointmentCancelled(UUID appointmentId,
+                                            UUID queueEntryId,
+                                            UUID patientId,
+                                            String motivo,
+                                            LocalDateTime canceladoEm) {
+        AppointmentCancelledEvent event = new AppointmentCancelledEvent(
+                appointmentId,
+                queueEntryId,
+                patientId,
+                motivo,
+                canceladoEm
+        );
+        rabbitTemplate.convertAndSend(
+                RabbitMQConfig.AGENDAMENTO_EXCHANGE,
+                RabbitMQConfig.RK_APPOINTMENT_CANCELLED,
                 event
         );
     }

@@ -88,7 +88,7 @@ class GetQueuePositionTest {
 
             QueueEntryRiskQueuePosition result = useCase.run(entry.getId());
 
-            assertThat(result.posicaoCalculada()).isEqualTo(5);
+            assertThat(result.totalAhead()).isEqualTo(5);
         }
 
         @Test
@@ -112,7 +112,7 @@ class GetQueuePositionTest {
 
             QueueEntryRiskQueuePosition result = useCase.run(entry.getId());
 
-            assertThat(result.posicaoCalculada()).isZero();
+            assertThat(result.totalAhead()).isZero();
         }
     }
 

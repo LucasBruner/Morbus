@@ -1,9 +1,8 @@
 package br.com.morbus.agendamento.application.usecase;
 
-import br.com.morbus.agendamento.adapter.in.graphql.dto.AgendamentoDetalheRequestDTO;
-import br.com.morbus.agendamento.adapter.security.UserPrincipal;
 import br.com.morbus.agendamento.domain.exception.AgendamentoNotFoundException;
 import br.com.morbus.agendamento.domain.model.Agendamento;
+import br.com.morbus.agendamento.domain.model.AgendamentoComDetalhes;
 import br.com.morbus.agendamento.domain.model.HealthUnit;
 import br.com.morbus.agendamento.domain.model.Provider;
 import br.com.morbus.agendamento.domain.model.Schedule;
@@ -14,7 +13,6 @@ import br.com.morbus.agendamento.domain.port.out.IHealthUnitRepository;
 import br.com.morbus.agendamento.domain.port.out.IProviderRepository;
 import br.com.morbus.agendamento.domain.port.out.IScheduleRepository;
 import br.com.morbus.agendamento.domain.port.out.ISlotRepository;
-import org.springframework.security.core.Authentication;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -40,11 +38,11 @@ public class DetalharAgendamentoUseCase implements IDetalharAgendamentoUseCase {
     }
 
     @Override
-    public Optional<AgendamentoDetalheRequestDTO> execute(UUID id, Authentication authentication) {
+    public Optional<AgendamentoComDetalhes> execute(UUID id, UUID requesterId, String requesterRole) {
         Agendamento agendamento = agendamentoRepository.findById(id)
                 .orElseThrow(() -> new AgendamentoNotFoundException("Agendamento nao encontrado: " + id));
 
-        if(!isAccessAllowed(authentication, agendamento)){
+        if(!isAccessAllowed(requesterId, requesterRole, agendamento)){
             return Optional.empty();
         }
 
@@ -55,31 +53,19 @@ public class DetalharAgendamentoUseCase implements IDetalharAgendamentoUseCase {
                 ? providerRepository.findById(schedule.getProviderId()).orElse(null)
                 : null;
 
-        return Optional.of(new AgendamentoDetalheRequestDTO(agendamento, slot, schedule, unit, provider));
+        return Optional.of(new AgendamentoComDetalhes(agendamento, slot, schedule, unit, provider));
     }
 
-    private boolean isAccessAllowed(Authentication authentication, Agendamento agendamento) {
-        if (authentication == null) {
+    private boolean isAccessAllowed(UUID requesterId, String requesterRole, Agendamento agendamento) {
+        if (requesterId == null) {
             return true;
         }
 
-        boolean isPaciente = authentication.getAuthorities().stream()
-                .anyMatch(a -> "ROLE_PACIENTE".equals(a.getAuthority()));
+        boolean isPaciente = "ROLE_PACIENTE".equals(requesterRole);
         if (!isPaciente) {
             return true;
         }
 
-        Object principal = authentication.getPrincipal();
-        UUID jwtUserId;
-        if (principal instanceof UserPrincipal userPrincipal) {
-            jwtUserId = userPrincipal.userId();
-        } else {
-            try {
-                jwtUserId = UUID.fromString(authentication.getName());
-            } catch (IllegalArgumentException ex) {
-                return false;
-            }
-        }
-        return agendamento.getPacienteId().equals(jwtUserId);
+        return agendamento.getPacienteId().equals(requesterId);
     }
 }
