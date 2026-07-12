@@ -70,12 +70,14 @@ Toda entrada regulada ocupa posição antes de qualquer entrada de espera. Esse 
 
 Aplicado apenas quando as duas entradas são do mesmo tipo `FILA_REGULADA`. Em `FILA_ESPERA` este critério é ignorado (todos são `AZUL`).
 
-| Cor        | Prioridade numérica | Tempo máximo de espera |
-|------------|---------------------|------------------------|
-| `VERMELHO` | 1 (maior urgência)  | 1 mês                  |
-| `AMARELO`  | 2                   | 3 meses                |
-| `VERDE`    | 3                   | 6 meses                |
-| `AZUL`     | 4 (menor urgência)  | 1 ano                  |
+| Cor        | Prioridade numérica |
+|------------|---------------------|
+| `VERMELHO` | 1 (maior urgência)  |
+| `AMARELO`  | 2                   |
+| `VERDE`    | 3                   |
+| `AZUL`     | 4 (menor urgência)  |
+
+> ⚠️ Uma versão anterior desta tabela incluía uma coluna de "tempo máximo de espera" por cor (1 mês/3 meses/6 meses/1 ano). Isso é uma referência clínica do protocolo de risco, mas **não existe implementação alguma** no código (`queue-service` nem `regulacao-service`) que leia, calcule ou aplique SLA de tempo máximo de espera por `riskColor` — nenhum job, listener ou validação usa esse dado hoje.
 
 ### Critério 3 — Grupo de prioridade (somente FILA_REGULADA)
 
@@ -174,7 +176,7 @@ fila.sort(PriorityCalculator::compare);
 // ReclassifyPriority use case — bloqueio para FILA_ESPERA
 if (queueEntry.getTipoFila() == EDestino.FILA_ESPERA) {
     throw new QueueNotAllowedException(
-        "Entradas em FILA_ESPERA não podem ter a cor de risco alterada (sempre AZUL)"
+        "Entradas em FILA_ESPERA não podem ter a cor de risco reclassificada"
     );
 }
 ```
@@ -195,7 +197,7 @@ EPriorityGroup grupo = PriorityCalculator.getPriorityGroup(patient);
 | Regra             | Descrição                                                                                      |
 |-------------------|------------------------------------------------------------------------------------------------|
 | Cor de risco      | Deve ser obrigatoriamente `AZUL`. Qualquer outra cor é rejeitada com `422`.                   |
-| Cota da UBS       | `CheckAndEnforceQuota` verifica `currentCount < maxPerPeriod`. Lança `QuotaExceededException` se esgotada. |
+| Cota da UBS       | `CheckAndEnforceQuota` verifica `used >= quota.getMaxPerDay()` (campo real da entidade `UnitProcedureQuota` é `maxPerDay`, não `maxPerPeriod`). Lança `QuotaExceededException` se esgotada. |
 | Reclassificação   | Proibida. Apenas `FILA_REGULADA` pode ter a cor alterada via `PATCH /priority`.               |
 
 ### Inserção em FILA_REGULADA
@@ -238,17 +240,28 @@ Após a ordenação real da API (query JPQL da seção 0 — não `PriorityCalcu
 
 ## Testes Unitários — PriorityCalculatorTest
 
-| Cenário                                                     | Resultado esperado                       |
-|-------------------------------------------------------------|------------------------------------------|
-| FILA_REGULADA vs FILA_ESPERA (mesma cor, mesmo grupo)       | FILA_REGULADA sempre antes               |
-| FILA_REGULADA: VERMELHO vs AMARELO                          | VERMELHO antes                           |
-| FILA_REGULADA: mesma cor, IDOSO vs GERAL                    | IDOSO antes                              |
-| FILA_REGULADA: mesma cor, mesmo grupo, timestamps distintos | Quem chegou antes                        |
-| FILA_ESPERA: ignora cor e grupo, ordena por timestamp       | Cronológico puro                         |
-| Paciente com 60+ anos e grupoLegal = GERAL                  | `getPriorityGroup` retorna `IDOSO`       |
-| Paciente com 59 anos                                        | `getPriorityGroup` retorna `grupoLegal`  |
-| `patient = null` em `getPriorityGroup`                      | Retorna `GERAL` sem NPE                  |
-| `dataNascimento = null` em `isPriorityGroup`                | Retorna `false` sem NPE                  |
+> `PriorityCalculator.compare()` não implementa o Critério 1 (tipoFila) — ver seção 0. Por isso não existem (nem poderiam existir, com esse resultado) testes que comparem `FILA_REGULADA` vs `FILA_ESPERA` dentro de `compare()`; esse critério só é coberto pela query JPQL, testada em `QueueFlowIntegrationTest`.
+
+| Cenário                                                            | Resultado esperado                       |
+|---------------------------------------------------------------------|-------------------------------------------|
+| Risco Vermelho vs Azul                                             | Vermelho antes                           |
+| Ordem completa de cores: Vermelho > Amarelo > Verde > Azul         | Ordem respeitada                         |
+| Mesma cor, Idoso vs Geral                                          | Idoso antes                              |
+| Idoso vermelho vs Geral vermelho                                   | Idoso antes                              |
+| Timestamps distintos, mesmo tudo o mais                            | Quem chegou antes                        |
+| Múltiplos pacientes no mesmo timestamp                              | Comparação estável (sem exceção)         |
+| Gestante vs Idoso (ambos prioritários)                              | Conforme prioridade numérica do grupo    |
+| Mesmo tudo (cor, grupo, timestamp)                                  | `compare()` retorna 0 (empate)           |
+| `isPriorityGroup`: paciente com 60 anos exatos                     | Retorna `true`                           |
+| `isPriorityGroup`: paciente com 60+ anos                           | Retorna `true`                           |
+| `isPriorityGroup`: paciente com menos de 60 anos                   | Retorna `false`                          |
+| `isPriorityGroup`: paciente nulo                                   | Retorna `false`                          |
+| `getPriorityGroup`: paciente com 60+ anos                          | Retorna `IDOSO`                          |
+| `getPriorityGroup`: paciente com menos de 60 anos (testado com 30) | Retorna `grupoLegal`                     |
+| `getPriorityGroup`: paciente sem grupo legal definido              | Retorna `GERAL`                          |
+| Integração: ordem correta com múltiplas filas                      | Ordem esperada respeitada                |
+
+> Não há teste cobrindo `dataNascimento = null` em `isPriorityGroup` — o helper `criarPaciente()` usado pelos testes sempre define `dataNascimento`. O código trata esse caso (`PriorityCalculator.java`, retorna `false` sem NPE), mas não há teste unitário exercitando-o.
 
 ---
 

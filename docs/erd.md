@@ -5,6 +5,9 @@
 
 ## Diagrama
 
+> **Topologia física:** as entidades abaixo estão distribuídas em 3 bancos PostgreSQL e 5 schemas — `sus_queue_db` (schemas `queue`, `auth`, `notification`, compartilhado por queue-service/auth-service/notification-service), `regulacao_db` (schema `regulacao`) e `agendamento_db` (schema `agendamento`). Não há foreign keys entre schemas/bancos; consistência entre serviços é via eventos (ver `arquitetura-sistema-sus.md`). As migrations Flyway reais qualificam as tabelas com o schema (ex. `regulacao.solicitacoes`), omitido nos scripts SQL reproduzidos ao final deste documento por brevidade.
+
+
 ```mermaid
 erDiagram
 
@@ -28,7 +31,7 @@ erDiagram
         DATE         data_nascimento    "NOT NULL"
         VARCHAR(10)  sexo               "MASCULINO|FEMININO|OUTROS, nullable"
         VARCHAR(255) contato            "e-mail ou telefone, nullable"
-        SMALLINT     grupo_legal        "ordinal: 1=IDOSO,2=GESTANTE,3=DEFICIENTE,4=LACTANTE,5=OBESO,6=GERAL"
+        SMALLINT     grupo_legal        "ordinal: 0=IDOSO,1=GESTANTE,2=DEFICIENTE,3=LACTANTE,4=OBESO,5=GERAL"
         BOOLEAN      ativo              "NOT NULL, DEFAULT TRUE"
     }
 
@@ -231,7 +234,7 @@ erDiagram
 | `data_nascimento` | DATE         | NOT NULL               | Usada para calcular automaticamente o grupo `IDOSO` (≥ 60 anos)       |
 | `sexo`            | VARCHAR(10)  | nullable               | `MASCULINO`, `FEMININO` ou `OUTROS`                                   |
 | `contato`         | VARCHAR(255) | nullable               | E-mail ou telefone para notificações                                   |
-| `grupo_legal`     | SMALLINT     | NOT NULL               | Ordinal do `EPriorityGroup`: 1=IDOSO, 2=GESTANTE, 3=DEFICIENTE, 4=LACTANTE, 5=OBESO, 6=GERAL |
+| `grupo_legal`     | SMALLINT     | NOT NULL               | Ordinal do `EPriorityGroup` (`@Enumerated(EnumType.ORDINAL)`, 0-based): 0=IDOSO, 1=GESTANTE, 2=DEFICIENTE, 3=LACTANTE, 4=OBESO, 5=GERAL |
 | `ativo`           | BOOLEAN      | NOT NULL, DEFAULT TRUE | Indica se o paciente está ativo no sistema                             |
 
 ---
@@ -339,6 +342,8 @@ Tabela de junção que vincula procedimentos SUS a pacientes, controlando elegib
 ### NOTIFICATIONS *(notification-service)*
 
 `Notification` estende `PanacheEntity` (Quarkus/Hibernate ORM), cujo `id` é `Long` autogerado — não UUID. É o único identificador não-UUID do sistema (ver Convenções em `api-contract.md`).
+
+> ⚠️ Diferente dos outros 4 serviços, `notification-service` **não usa Flyway**. O schema é gerado/atualizado automaticamente pelo Hibernate ORM do Quarkus (`quarkus.hibernate-orm.database.generation=update`) — não há migrations versionadas para esta tabela.
 
 | Coluna              | Tipo         | Restrições   | Descrição                                         |
 |---------------------|--------------|--------------|---------------------------------------------------|

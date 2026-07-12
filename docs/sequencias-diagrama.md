@@ -29,22 +29,27 @@ sequenceDiagram
 
     Cliente->>AuthService: POST /auth/register<br/>{ username, email, password,<br/>role: MEDICO|PACIENTE|SOLICITANTE|REGULADOR|EXECUTANTE }
 
-    AuthService->>AuthService: Valida campos obrigatórios,<br/>formato do e-mail e role permitida
+    alt role com valor fora do enum UserRole
+        AuthService-->>Cliente: 400 Bad Request (application/problem+json)<br/>{ type: ".../invalid-request-body",<br/>title: "Requisição inválida",<br/>detail: "Valor inválido para 'role'. Valores aceitos: MEDICO, PACIENTE, SOLICITANTE, REGULADOR, EXECUTANTE",<br/>status: 400 }
+    else senha não atende à política de complexidade
+        AuthService->>AuthService: validatePassword(password)<br/>regex: ao menos 1 minúscula, 1 maiúscula,<br/>1 caractere não-alfanumérico e 9+ caracteres
+        AuthService-->>Cliente: 422 Unprocessable Entity (application/problem+json)<br/>{ type: ".../invalid-password",<br/>title: "Senha inválida",<br/>status: 422 }
+    else demais validações (campos obrigatórios, formato do e-mail)
+        AuthService->>DB: SELECT * FROM users WHERE username = ?<br/>OR email = ?
+        DB-->>AuthService: resultado
 
-    AuthService->>DB: SELECT * FROM users WHERE username = ?<br/>OR email = ?
-    DB-->>AuthService: resultado
-
-    alt username ou email já existem
-        AuthService-->>Cliente: 409 Conflict (application/problem+json)<br/>{ type: ".../user-already-exists",<br/>title: "Conflito de dados",<br/>detail: "Username ou e-mail já cadastrado",<br/>status: 409 }
-    else role inválida
-        AuthService-->>Cliente: 422 Unprocessable Entity (application/problem+json)<br/>{ type: ".../invalid-role",<br/>title: "Regra de negócio violada",<br/>detail: "Role informada não é permitida",<br/>status: 422 }
-    else dados válidos e únicos
-        AuthService->>AuthService: bcrypt.hash(password, 10)
-        AuthService->>DB: INSERT INTO users (id, username, email, password_hash, role, created_at)
-        DB-->>AuthService: OK
-        AuthService-->>Cliente: 201 Created<br/>{ id, username, email, role, createdAt }
+        alt username ou email já existem
+            AuthService-->>Cliente: 409 Conflict (application/problem+json)<br/>{ type: ".../user-already-exists",<br/>title: "Conflito de dados",<br/>detail: "Username ou e-mail já cadastrado",<br/>status: 409 }
+        else dados válidos e únicos
+            AuthService->>AuthService: bcrypt.hash(password, 10)
+            AuthService->>DB: INSERT INTO users (id, username, email, password_hash, role, created_at)
+            DB-->>AuthService: OK
+            AuthService-->>Cliente: 201 Created<br/>{ id, username, email, role, createdAt }
+        end
     end
 ```
+
+> `role` com valor fora do enum `UserRole` quebra a desserialização Jackson **antes** de qualquer validação de negócio — cai em `GlobalExceptionHandler.handleHttpMessageNotReadable`, que devolve **400** com `type: invalid-request-body` (não existe o tipo `invalid-role`/422 documentado em versões anteriores deste diagrama). A validação de complexidade de senha (`AuthService.validatePassword`) roda antes da checagem de unicidade.
 
 ---
 
@@ -64,12 +69,12 @@ sequenceDiagram
     DB-->>AuthService: User { passwordHash, role }
 
     alt usuário não encontrado
-        AuthService-->>Cliente: 401 Unauthorized<br/>{ error: "Credenciais inválidas" }
+        AuthService-->>Cliente: 401 Unauthorized (application/problem+json)<br/>{ type: ".../invalid-credentials",<br/>title: "Credenciais inválidas",<br/>detail: "Usuário ou senha incorretos!",<br/>status: 401 }
     else usuário encontrado
         AuthService->>AuthService: bcrypt.compare(password, passwordHash)
 
         alt senha incorreta
-            AuthService-->>Cliente: 401 Unauthorized<br/>{ error: "Credenciais inválidas" }
+            AuthService-->>Cliente: 401 Unauthorized (application/problem+json)<br/>{ type: ".../invalid-credentials",<br/>title: "Credenciais inválidas",<br/>detail: "Usuário ou senha incorretos!",<br/>status: 401 }
         else senha correta
             AuthService->>AuthService: JWT.sign({ sub: username, role: <ROLE_DO_USUARIO> },<br/>JWT_SECRET, { expiresIn: 24h })
             AuthService-->>Cliente: 200 OK<br/>{ token, type: "Bearer", expiresIn, role }

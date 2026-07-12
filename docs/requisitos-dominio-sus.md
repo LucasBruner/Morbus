@@ -116,7 +116,7 @@ IDOSO (1) < GESTANTE (2) < DEFICIENTE (3) < LACTANTE (4) < OBESO (5) < GERAL (6)
       │  AUTORIZAR → publica SOLICITATION_APPROVED            │
       │  NEGAR     → publica SOLICITATION_DENIED              │
       │  DEVOLVER  → UBS complementa → volta para AGUARDANDO  │
-      │  PENDENTE  → aprovado sem vaga (aguarda cota)         │
+      │  PENDENTE  → regulador escolhe explicitamente aguardar (não é automático por cota) │
       ▼
 [queue-service] ── cria QueueEntry (status: AGUARDANDO, riskColor = regulador)
       │
@@ -148,7 +148,7 @@ Appointment: ATENDIDO → QueueEntry: ATENDIDO
 
 ### 5.2 Controle de Cotas (FILA_ESPERA)
 
-A tabela `unit_procedure_quotas` controla quantas inserções em `FILA_ESPERA` cada UBS pode fazer por procedimento dentro de um período. Ao atingir `max_per_period`, novas solicitações dessa combinação UBS + procedimento recebem status `PENDENTE` até abertura de nova vaga.
+A tabela `unit_procedure_quotas` controla quantas inserções em `FILA_ESPERA` cada UBS pode fazer por procedimento dentro de um período. Ao atingir `max_per_period`, a solicitação é **rejeitada** — `CriarSolicitacaoUseCase` e `AvaliarSolicitacaoUseCase` lançam `CotaExcedidaException`, mapeada para `422 quota-exceeded` (`GlobalExceptionHandler.handleCotaExcedida`). Não há transição automática para `PENDENTE`: esse status só é alcançado se o regulador escolher explicitamente `decisao: PENDENTE` em `POST /avaliar`.
 
 ---
 
@@ -172,9 +172,9 @@ A tabela `unit_procedure_quotas` controla quantas inserções em `FILA_ESPERA` c
 | AGUARDANDO → APROVADA             | Regulador emite parecer AUTORIZAR      |
 | AGUARDANDO → NEGADA               | Regulador emite parecer NEGAR          |
 | AGUARDANDO → DEVOLVIDA            | Regulador emite parecer DEVOLVER       |
-| AGUARDANDO → PENDENTE             | Regulador aprova mas sem vaga na cota  |
+| AGUARDANDO → PENDENTE             | Regulador escolhe explicitamente a decisão PENDENTE (não é automático por esgotamento de cota — cota esgotada rejeita a solicitação com `422 quota-exceeded`, ver §5.2) |
 | DEVOLVIDA → AGUARDANDO            | UBS complementa a solicitação          |
-| PENDENTE → APROVADA               | Cota disponível — geração de QueueEntry|
+| PENDENTE → APROVADA               | Não há mecanismo automático (sem `@Scheduled` nem listener de "cota liberada"). Só ocorre por nova chamada manual do regulador a `POST /api/v1/regulacao/{id}/avaliar` |
 | APROVADA → AGENDADA               | Evento `appointment.created`           |
 | AGENDADA → ATENDIDA               | Evento `appointment.attended`          |
 | AGENDADA → FALTOU                 | Evento `appointment.no_show`           |

@@ -10,6 +10,7 @@ import br.com.morbus.regulacao.domain.exception.UnidadeSolicitanteNaoEncontradaE
 import br.com.morbus.regulacao.domain.exception.DuplicateSolicitacaoException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -46,6 +47,16 @@ public class GlobalExceptionHandler {
         problem.setTitle("Dados inválidos");
         problem.setDetail("Um ou mais campos são inválidos");
         problem.setProperty("violations", violations);
+        problem.setInstance(URI.create(request.getRequestURI()));
+        return problem;
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ProblemDetail handleHttpMessageNotReadable(HttpMessageNotReadableException ex, HttpServletRequest request) {
+        ProblemDetail problem = ProblemDetail.forStatus(400);
+        problem.setType(URI.create(TYPE_BASE + "invalid-request-body"));
+        problem.setTitle("Requisição inválida");
+        problem.setDetail("Corpo da requisição ausente ou malformado");
         problem.setInstance(URI.create(request.getRequestURI()));
         return problem;
     }

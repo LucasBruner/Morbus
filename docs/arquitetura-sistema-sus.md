@@ -495,6 +495,8 @@ sus.agendamento.exchange (direct)      publicado por: agendamento-service
 >
 > O queue-service tinha o mesmo problema: `RabbitMQConfig.java` declarava um `DirectExchange` extra, `sus.queue.priority.exchange` (nunca referenciado em nenhum binding ou publisher — resquício do commit inicial `configure rabbitmq`, anterior a qualquer consumer real), e uma fila `queue.patient.registered` vinculada ao próprio `sus.queue.exchange` com a routing key `patient.registered` (mesma routing key que `notification.queue.events` já consome), sem nenhum `@RabbitListener`. Ambos foram removidos.
 
+> ⚠️ **agendamento-service ainda tem o problema equivalente, não corrigido.** Seu `RabbitMQConfig.java` declara 7 filas vinculadas ao próprio `sus.agendamento.exchange` (`appointmentConfirmedQueue`, `appointmentCancelledQueue`, `appointmentRescheduledQueue`, `appointmentAttendedQueue`, `appointmentNoSlotQueue`, `appointmentExpiredQueue`, `patientNoShowQueue`), mas o único `@RabbitListener` do serviço é `PatientCalledConsumer` (consumindo de `sus.queue.exchange`, não desses). Duas dessas filas (`queue.appointment.rescheduled`, `queue.appointment.attended`) são órfãs de verdade — nenhum serviço as consome (os eventos equivalentes são recebidos por filas com outro nome em notification-service/regulacao-service). As outras 5 duplicam, com o mesmo nome, filas já declaradas e efetivamente consumidas pelo `queue-service` — mas a declaração do agendamento-service **não** inclui os argumentos de dead-letter (`x-dead-letter-exchange`/`x-dead-letter-routing-key`) que o queue-service usa, o que é uma divergência de argumentos para uma fila de mesmo nome e pode causar `PRECONDITION_FAILED` do RabbitMQ dependendo da ordem de subida dos serviços.
+
 **Dead Letter Exchange (DLX):**
 
 Cada consumer do `queue-service` (`SolicitationApprovedConsumer`, `AppointmentConfirmedConsumer`, `AppointmentExpiredConsumer`, `PatientNoShowConsumer`, `AppointmentCancelledConsumer`, `AppointmentNoSlotConsumer`) tem sua fila principal ligada a um exchange de dead-letter dedicado, `sus.queue.dlx` (`RabbitMQConfig.java`). O regulacao-service segue o mesmo padrão para seus consumers de agendamento, com DLQs próprias. Mensagens que falham repetidamente no processamento (após as tentativas de retry do `spring.rabbitmq.listener.simple.retry.*`) são roteadas para uma fila `.dlq` correspondente (ex.: `queue.solicitation.approved.dlq`) em vez de serem perdidas ou reentregues indefinidamente — permitindo inspeção/reprocessamento manual via RabbitMQ Management.
@@ -641,24 +643,37 @@ queue-service   regulacao-service              agendamento-service  notification
 
 ## 7. Variáveis de Ambiente
 
-### auth-service / queue-service
+> ⚠️ Diferente do que uma versão anterior deste documento afirmava, a env var de conexão RabbitMQ **não** usa o prefixo `SPRING_` — é lida como `RABBITMQ_HOST`/`RABBITMQ_PORT`/`RABBITMQ_USERNAME`/`RABBITMQ_PASSWORD` em `application-docker.properties` (`spring.rabbitmq.host=${RABBITMQ_HOST:...}`) e definida assim no `docker-compose.yml`, em todos os serviços Spring Boot que usam AMQP (queue, regulacao, agendamento). O prefixo `SPRING_` funcionaria via relaxed-binding, mas não é o que o compose de fato configura.
+
+### auth-service
+
+`auth-service` **não usa RabbitMQ** — apenas banco de dados e JWT.
 
 | Variável                    | Descrição                          |
-|-----------------------------|------------------------------------|
+|-----------------------------|-------------------------------------|
 | `SPRING_DATASOURCE_URL`     | URL JDBC do PostgreSQL             |
 | `SPRING_DATASOURCE_USERNAME`| Usuário do banco                   |
 | `SPRING_DATASOURCE_PASSWORD`| Senha do banco                     |
-| `SPRING_RABBITMQ_HOST`      | Host do RabbitMQ (queue-service)   |
-| `SPRING_RABBITMQ_PORT`      | Porta AMQP (queue-service)         |
-| `SPRING_RABBITMQ_USERNAME`  | Usuário RabbitMQ (queue-service)   |
-| `SPRING_RABBITMQ_PASSWORD`  | Senha RabbitMQ (queue-service)     |
 | `JWT_SECRET`                | Chave HMAC-SHA256 ≥ 256 bits       |
 | `JWT_EXPIRATION_MS`         | Validade do token em ms (default: 86400000). Lido via `jwt.expiration-ms=${JWT_EXPIRATION_MS:86400000}` no auth-service. |
+
+### queue-service
+
+| Variável                    | Descrição                          |
+|-----------------------------|-------------------------------------|
+| `SPRING_DATASOURCE_URL`     | URL JDBC do PostgreSQL             |
+| `SPRING_DATASOURCE_USERNAME`| Usuário do banco                   |
+| `SPRING_DATASOURCE_PASSWORD`| Senha do banco                     |
+| `RABBITMQ_HOST`             | Host do RabbitMQ                   |
+| `RABBITMQ_PORT`             | Porta AMQP                         |
+| `RABBITMQ_USERNAME`         | Usuário RabbitMQ                   |
+| `RABBITMQ_PASSWORD`         | Senha RabbitMQ                     |
+| `JWT_SECRET`                | Chave HMAC-SHA256 ≥ 256 bits       |
 
 ### notification-service (Quarkus)
 
 | Variável                         | Descrição              |
-|----------------------------------|------------------------|
+|----------------------------------|-------------------------|
 | `QUARKUS_DATASOURCE_JDBC_URL`    | URL JDBC do PostgreSQL |
 | `QUARKUS_DATASOURCE_USERNAME`    | Usuário do banco       |
 | `QUARKUS_DATASOURCE_PASSWORD`    | Senha do banco         |
@@ -667,21 +682,21 @@ queue-service   regulacao-service              agendamento-service  notification
 ### regulacao-service
 
 | Variável                    | Descrição                    |
-|-----------------------------|------------------------------|
+|-----------------------------|-------------------------------|
 | `SPRING_DATASOURCE_URL`     | URL JDBC do PostgreSQL       |
 | `SPRING_DATASOURCE_USERNAME`| Usuário do banco             |
 | `SPRING_DATASOURCE_PASSWORD`| Senha do banco               |
-| `SPRING_RABBITMQ_*`         | Conexão RabbitMQ             |
+| `RABBITMQ_HOST/PORT/USERNAME/PASSWORD` | Conexão RabbitMQ  |
 | `JWT_SECRET`                | Mesmo valor dos demais       |
 
 ### agendamento-service
 
 | Variável                    | Descrição                              |
-|-----------------------------|----------------------------------------|
+|-----------------------------|------------------------------------------|
 | `SPRING_DATASOURCE_URL`     | URL JDBC do PostgreSQL                 |
 | `SPRING_DATASOURCE_USERNAME`| Usuário do banco                       |
 | `SPRING_DATASOURCE_PASSWORD`| Senha do banco                         |
-| `SPRING_RABBITMQ_*`         | Conexão RabbitMQ                       |
+| `RABBITMQ_HOST/PORT/USERNAME/PASSWORD` | Conexão RabbitMQ           |
 | `JWT_SECRET`                | Mesmo valor dos demais                 |
 | `AGENDAMENTO_EXPIRACAO_HORAS`| Prazo para confirmação em horas (default: 72). Lido via `agendamento.expiracao-horas=${AGENDAMENTO_EXPIRACAO_HORAS:72}`; o job `@Scheduled` que verifica expiração roda a cada 15 min. |
 

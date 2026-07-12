@@ -22,37 +22,35 @@ O sistema é composto por cinco microsserviços independentes e se comunica inte
 ## Arquitetura
 
 ```
-                    ┌─────────────────────┐
-                    │     auth-service     │
-                    │    :8082  (JWT)      │
-                    └──────────┬──────────┘
-                               │ Bearer Token
-                               ▼
-┌──────────────────────────────────────────────────┐
-│                  queue-service                    │
-│                    :8080                          │
-│  ┌────────────┐  ┌──────────────┐               │
-│  │   Domain   │  │ PostgreSQL   │               │
-│  │ (Clean Arch│  │   :5432      │               │
-│  │  + SISREG) │  └──────────────┘               │
-│  └─────┬──────┘                                  │
-└────────┼─────────────────────────────────────────┘
-         │ AMQP (RabbitMQ :5672)
-         ▼
-┌─────────────────────────┐
-│   notification-service   │
-│       :8081              │
-│ (Quarkus + e-mail)       │
-└──────────────────────────┘
+                       ┌──────────────────────┐
+                       │     auth-service      │
+                       │    :8082  (JWT)       │
+                       └───────────┬──────────┘
+                                   │ Bearer Token
+                                   ▼
+┌────────────────┐   ┌────────────────────┐   ┌────────────────────┐
+│  queue-service  │◄─►│ regulacao-service  │◄─►│ agendamento-service│
+│     :8080       │   │      :8083         │   │      :8084         │
+│ (Clean Arch     │   │ (Hexagonal Arch)   │   │ (CQRS + GraphQL)   │
+│  + SISREG)      │   └────────────────────┘   └────────────────────┘
+└────────┬────────┘             │                        │
+         └──────── AMQP (RabbitMQ) ──────────────────────┘
+                                │
+                                ▼
+                    ┌─────────────────────────┐
+                    │   notification-service   │
+                    │        :8081             │
+                    │   (Quarkus + e-mail)     │
+                    └─────────────────────────┘
 ```
 
 | Serviço                | Porta | Stack                                  | Responsabilidade                                            |
 |------------------------|-------|----------------------------------------|-------------------------------------------------------------|
 | `auth-service`         | 8082  | Spring Boot 4, MVC, JWT                | Cadastro de usuários, login, emissão de tokens JWT          |
-| `queue-service`        | 8080  | Spring Boot 4, Clean Arch, JPA, AMQP  | Núcleo do sistema: filas, pacientes, procedimentos          |
+| `queue-service`        | 8080  | Spring Boot 4, Clean Arch, JPA, AMQP  | Núcleo do sistema: filas, pacientes, procedimentos, cotas   |
 | `notification-service` | 8081  | Quarkus, Panache, Mailer               | Consome eventos do RabbitMQ e envia e-mails simulados       |
-| `regulacao-service`    | 8083  | Spring Boot 4, Hexagonal Arch, JPA, AMQP | Avaliação regulatória: aprovação/negação de solicitações (*em desenvolvimento*) |
-| `agendamento-service`  | 8084  | Spring Boot 4, CQRS, GraphQL, JPA, AMQP | Gestão de grades, slots e agendamentos (*em desenvolvimento*) |
+| `regulacao-service`    | 8083  | Spring Boot 4, Hexagonal Arch, JPA, AMQP | Avaliação regulatória: aprovação/negação de solicitações |
+| `agendamento-service`  | 8084  | Spring Boot 4, CQRS, GraphQL, JPA, AMQP | Gestão de grades, slots e agendamentos |
 
 **Comunicação entre serviços:**
 
@@ -108,15 +106,18 @@ JWT_SECRET=sua-chave-secreta-longa-e-aleatoria-aqui
 docker compose up --build
 ```
 
-Isso sobe PostgreSQL, RabbitMQ e os três microsserviços em ordem. Na primeira execução, o Flyway cria automaticamente todas as tabelas.
+Isso sobe PostgreSQL, RabbitMQ e os cinco microsserviços em ordem. Na primeira execução, o Flyway cria automaticamente todas as tabelas (exceto no notification-service, que usa DDL automático do Hibernate/Quarkus).
 
 ### 3. Verificar se está tudo no ar
 
-| Recurso                   | URL                                       |
-|---------------------------|-------------------------------------------|
-| Queue Service — Swagger   | http://localhost:8080/swagger-ui.html     |
-| Auth Service — Swagger    | http://localhost:8082/swagger-ui.html     |
-| RabbitMQ Management       | http://localhost:15672 (admin / admin)    |
+| Recurso                       | URL                                       |
+|--------------------------------|-------------------------------------------|
+| Queue Service — Swagger        | http://localhost:8080/swagger-ui.html     |
+| Notification Service           | http://localhost:8081                     |
+| Auth Service — Swagger         | http://localhost:8082/swagger-ui.html     |
+| Regulação Service — Swagger    | http://localhost:8083/swagger-ui.html     |
+| Agendamento Service — Swagger  | http://localhost:8084/swagger-ui.html     |
+| RabbitMQ Management            | http://localhost:15672 (admin / admin)    |
 
 ### 4. Desenvolvimento local (serviço individual)
 
@@ -160,10 +161,13 @@ No Swagger UI do queue-service, clique em **Authorize** e informe `Bearer <token
 
 ### Roles
 
-| Role       | Permissões                                                                                             |
-|------------|--------------------------------------------------------------------------------------------------------|
-| `MEDICO`   | Cadastrar e consultar pacientes, gerenciar fila (cadastrar, listar, chamar próximo, reclassificar, cancelar), consultar procedimentos |
-| `PACIENTE` | Consultar posição na fila, listar e buscar procedimentos                                               |
+| Role          | Permissões                                                                                             |
+|---------------|--------------------------------------------------------------------------------------------------------|
+| `MEDICO`      | Cadastrar e consultar pacientes, gerenciar fila (cadastrar, listar, chamar próximo, reclassificar, cancelar), consultar procedimentos, gerenciar cotas |
+| `PACIENTE`    | Consultar posição na fila, listar e buscar procedimentos                                               |
+| `SOLICITANTE` | Criar e consultar solicitações de regulação (regulacao-service)                                        |
+| `REGULADOR`   | Avaliar (aprovar/negar) solicitações de regulação (regulacao-service)                                  |
+| `EXECUTANTE`  | Gerenciar grades, slots e agendamentos da própria unidade (agendamento-service)                        |
 
 ---
 
@@ -174,19 +178,18 @@ No Swagger UI do queue-service, clique em **Authorize** e informe `Bearer <token
 #### Fila
 
 ```bash
-# Listar fila ordenada por prioridade
+# Listar fila ordenada por prioridade (procedureId é obrigatório; status, riskColor, page, size são opcionais)
 curl -H "Authorization: Bearer <token>" \
-  http://localhost:8080/api/v1/queue
+  "http://localhost:8080/api/v1/queue?procedureId=uuid-do-procedimento"
 
-# Cadastrar paciente na fila
+# Cadastrar paciente na fila (a cor de entrada é sempre AZUL; não é um campo aceito no body)
 curl -X POST http://localhost:8080/api/v1/queue \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
     "patientId": "uuid-do-paciente",
     "procedureId": "uuid-do-procedimento",
-    "tipoFila": "FILA_REGULADA",
-    "riskColor": "AMARELO"
+    "tipoFila": "FILA_REGULADA"
   }'
 
 # Chamar o próximo paciente
@@ -203,9 +206,25 @@ curl -X PATCH http://localhost:8080/api/v1/queue/{id}/priority \
   -H "Content-Type: application/json" \
   -d '{"riskColor": "VERMELHO"}'
 
-# Cancelar entrada na fila
+# Cancelar entrada na fila (motivoCancelamento é obrigatório)
 curl -X DELETE http://localhost:8080/api/v1/queue/{id} \
-  -H "Authorization: Bearer <token>"
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"motivoCancelamento": "Paciente desistiu"}'
+```
+
+#### Cotas
+
+```bash
+# Criar ou atualizar a cota diária de FILA_ESPERA para uma unidade+procedimento
+curl -X POST http://localhost:8080/api/v1/quotas \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"unitId": "uuid-da-unidade", "procedureId": "uuid-do-procedimento", "maxPerDay": 10}'
+
+# Consultar a cota configurada
+curl -H "Authorization: Bearer <token>" \
+  "http://localhost:8080/api/v1/quotas?unitId=uuid-da-unidade&procedureId=uuid-do-procedimento"
 ```
 
 #### Pacientes
@@ -234,6 +253,20 @@ curl -H "Authorization: Bearer <token>" \
 
 # Atribuir procedimento ao paciente
 curl -X POST http://localhost:8080/api/v1/patients/{patientId}/procedures/{procedureId} \
+  -H "Authorization: Bearer <token>"
+
+# Atualizar dados do paciente
+curl -X PATCH http://localhost:8080/api/v1/patients/{id} \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"nome": "Maria", "sobrenome": "Silva", "dataNascimento": "1960-05-10", "gender": "FEMININO"}'
+
+# Inativar paciente (bloqueado se houver entradas ativas na fila)
+curl -X PATCH http://localhost:8080/api/v1/patients/{id}/inactivate \
+  -H "Authorization: Bearer <token>"
+
+# Desvincular procedimento do paciente
+curl -X DELETE http://localhost:8080/api/v1/patients/{patientId}/procedures/{procedureId} \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -267,12 +300,14 @@ A fila é ordenada por **4 critérios em cascata**. Na prática, quem aplica ess
 
 ### Critério 2 — Cor de risco clínico (somente `FILA_REGULADA`)
 
-| Cor        | Prioridade | Tempo máximo de espera |
-|------------|-----------|------------------------|
-| `VERMELHO` | 1 — urgente | 1 mês                 |
-| `AMARELO`  | 2          | 3 meses                |
-| `VERDE`    | 3          | 6 meses                |
-| `AZUL`     | 4 — rotina | 1 ano                  |
+| Cor        | Prioridade |
+|------------|-----------|
+| `VERMELHO` | 1 — urgente |
+| `AMARELO`  | 2          |
+| `VERDE`    | 3          |
+| `AZUL`     | 4 — rotina |
+
+> Os "tempos máximos de espera" por cor de risco (referência clínica do Protocolo de Manchester) fazem parte da regra de negócio documentada, mas **não há nenhum mecanismo no código** que calcule ou aplique SLA por tempo de espera — nenhum job, listener ou validação usa esse dado hoje.
 
 ### Critério 3 — Grupo de prioridade legal (somente `FILA_REGULADA`, mesmo cor)
 
@@ -327,16 +362,35 @@ Quando todos os critérios anteriores empatam, quem entrou na fila primeiro tem 
 | `JWT_SECRET`       | —         | **Obrigatório.** Deve ser igual ao do queue-service |
 | `JWT_EXPIRATION_MS`| `86400000`| Expiração do token em ms (padrão: 24h)       |
 
+### regulacao-service / agendamento-service
+
+| Variável                     | Padrão (docker)                                                     | Descrição                          |
+|-------------------------------|----------------------------------------------------------------------|-------------------------------------|
+| `JWT_SECRET`                 | —                                                                    | **Obrigatório.** Deve ser igual aos demais serviços |
+| `SPRING_DATASOURCE_URL`      | `jdbc:postgresql://postgres:5432/regulacao_db` (ou `agendamento_db`) | URL do PostgreSQL |
+| `SPRING_DATASOURCE_USERNAME` | `sus_user`                                                           | Usuário do banco                    |
+| `SPRING_DATASOURCE_PASSWORD` | `sus_pass`                                                           | Senha do banco                      |
+| `RABBITMQ_HOST`              | `rabbitmq`                                                           | Host do RabbitMQ                    |
+| `RABBITMQ_PORT`              | `5672`                                                               | Porta AMQP                          |
+| `RABBITMQ_USERNAME`          | `admin`                                                              | Usuário RabbitMQ                    |
+| `RABBITMQ_PASSWORD`          | `admin`                                                              | Senha RabbitMQ                      |
+
+> A env var é `RABBITMQ_HOST` (sem prefixo `SPRING_`) em todos os serviços que usam AMQP — é o nome efetivamente lido em `application-docker.properties` e definido no `docker-compose.yml`.
+
 ---
 
 ## Banco de Dados
 
-Um único PostgreSQL com dois schemas isolados (gerenciados pelo Flyway):
+Três bancos PostgreSQL físicos, com cinco schemas isolados no total (gerenciados pelo Flyway, exceto notification):
 
-- `queue` — tabelas do queue-service (`patients`, `queue_entries`, `procedures`, `patient_procedures`)
-- `auth` — tabelas do auth-service (`users`)
+- `sus_queue_db` — banco compartilhado por três serviços, cada um com seu próprio schema:
+  - `queue` — tabelas do queue-service (`patients`, `queue_entries`, `procedures`, `patient_procedures`, `unit_procedure_quotas`)
+  - `auth` — tabelas do auth-service (`users`)
+  - `notification` — tabelas do notification-service (schema gerado automaticamente via DDL do Hibernate/Quarkus, **não** versionado por migration)
+- `regulacao_db` — schema `regulacao`, tabelas do regulacao-service
+- `agendamento_db` — schema `agendamento`, tabelas do agendamento-service
 
-O script `init.sql` cria os schemas e concede permissões ao usuário `sus_user`.
+O script `init.sql` cria os bancos, os schemas e concede permissões ao usuário `sus_user`.
 
 ---
 
