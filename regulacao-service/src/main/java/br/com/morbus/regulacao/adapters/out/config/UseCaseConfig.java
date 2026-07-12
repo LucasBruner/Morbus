@@ -64,8 +64,9 @@ public class UseCaseConfig {
     @Bean
     public IAvaliarSolicitacaoUseCase avaliarSolicitacaoUseCase(ISolicitacaoRepository solicitacaoRepository,
                                                                  IParecerRepository parecerRepository,
-                                                                 IRegulacaoEventPublisher eventPublisher) {
-        return new AvaliarSolicitacaoUseCase(solicitacaoRepository, parecerRepository, eventPublisher);
+                                                                 IRegulacaoEventPublisher eventPublisher,
+                                                                 IQuotaRepository quotaRepository) {
+        return new AvaliarSolicitacaoUseCase(solicitacaoRepository, parecerRepository, eventPublisher, quotaRepository);
     }
 
     @Bean

@@ -126,7 +126,8 @@ erDiagram
         VARCHAR(255) nome               "NOT NULL"
         VARCHAR(150) municipio          "NOT NULL — não documentado antes"
         CHAR(2)      uf                 "NOT NULL — não documentado antes"
-        VARCHAR(255) endereco           "nullable — coluna real é endereco (V9), não address; não existe coluna phone/telefone"
+        VARCHAR(255) endereco           "nullable — coluna real é endereco (V9), não address"
+        VARCHAR(20)  telefone           "nullable (V10)"
         BOOLEAN      ativo              "NOT NULL, DEFAULT TRUE — não documentado antes"
     }
 
@@ -158,7 +159,7 @@ erDiagram
         TIMESTAMP    data_hora          "NOT NULL — data e hora do slot"
         INTEGER      capacidade         "herdado da grade"
         INTEGER      reservados         "quantidade já alocada, default 0"
-        VARCHAR(20)  status             "DISPONIVEL | RESERVADO | OCUPADO | INDISPONIVEL"
+        VARCHAR(20)  status             "DISPONIVEL | OCUPADO | INDISPONIVEL"
     }
 
     QUOTAS {
@@ -423,7 +424,7 @@ Cadastro das UBS que podem criar solicitações no sistema.
 
 > Implementado em: **V4** (`create_quotas`) — não documentada em versões anteriores deste arquivo.
 >
-> ⚠️ Esta é a cota *própria* do regulacao-service — informativa, usada como referência para o regulador decidir `PENDENTE`, **sem enforcement automático** em `AvaliarSolicitacaoUseCase` (o contador é incrementado em `CriarSolicitacaoUseCase` quando `destino = FILA_ESPERA`, mas nada bloqueia a avaliação com base nele). É um mecanismo totalmente distinto de `UNIT_PROCEDURE_QUOTAS` (queue-service), que é diária, opt-in e automaticamente enforçada para `FILA_ESPERA` — ver aviso em `arquitetura-sistema-sus.md` §2.4.
+> ⚠️ Esta é a cota *própria* do regulacao-service, distinta de `UNIT_PROCEDURE_QUOTAS` (queue-service, diária/opt-in, exclusiva de `FILA_ESPERA` — ver aviso em `arquitetura-sistema-sus.md` §2.4). O contador é verificado/incrementado em `CriarSolicitacaoUseCase` quando `destino = FILA_ESPERA` na criação, e também em `AvaliarSolicitacaoUseCase` quando o regulador redireciona uma solicitação `FILA_REGULADA` para `FILA_ESPERA` na decisão (`CotaExcedidaException` bloqueia a aprovação nesse caso). Solicitações já criadas com `destino = FILA_ESPERA` não são re-verificadas na avaliação — a cota já foi consumida na criação.
 
 | Coluna          | Tipo    | Restrições                                          | Descrição                                       |
 |-----------------|---------|----------------------------------------------------------|-----------------------------------------------------|
@@ -440,7 +441,7 @@ Cadastro das UBS que podem criar solicitações no sistema.
 
 ### HEALTH_UNITS *(agendamento-service)*
 
-> Implementado em: **V1** (`create_health_units`) + **V9** (`add_health_unit_endereco`). Não existe coluna de telefone; `municipio`/`uf` não documentados antes.
+> Implementado em: **V1** (`create_health_units`) + **V9** (`add_health_unit_endereco`) + **V10** (`add_health_unit_telefone`). `municipio`/`uf` não documentados antes.
 
 Unidades executantes que realizam os procedimentos agendados.
 
@@ -452,9 +453,10 @@ Unidades executantes que realizam os procedimentos agendados.
 | `municipio` | VARCHAR(150) | NOT NULL     | Não documentado antes                                         |
 | `uf`        | CHAR(2)      | NOT NULL     | Não documentado antes, CHECK de 2 caracteres                  |
 | `endereco`  | VARCHAR(255) | nullable     | Adicionada em V9; coluna real é `endereco`, não `address`     |
+| `telefone`  | VARCHAR(20)  | nullable     | Adicionada em V10 — populada no GraphQL `HealthUnit.phone`    |
 | `ativo`     | BOOLEAN      | NOT NULL, DEFAULT TRUE | Não documentado antes                               |
 
-**Não existe coluna de telefone.** O tipo GraphQL `HealthUnit` (ver `api-contract.md`) expõe campos `address`/`phone`, mas o resolver popula `address` com `"{municipio} - {uf}"` (não com `endereco`) e `phone` sempre `null` — só o endpoint REST `PATCH /api/v1/appointments/{id}/confirmar` usa `endereco` de fato, no campo `unitAddress`.
+O tipo GraphQL `HealthUnit` (ver `api-contract.md`) expõe `address`/`phone`: `address` continua montado no resolver como `"{municipio} - {uf}"` (não usa a coluna `endereco` — só o endpoint REST `PATCH /api/v1/appointments/{id}/confirmar` usa `endereco` de fato, no campo `unitAddress`), enquanto `phone` agora reflete a coluna `telefone`.
 
 ---
 
@@ -498,7 +500,7 @@ Grade semanal de atendimento de uma unidade para um procedimento.
 
 ### SLOTS *(agendamento-service)*
 
-> Implementado em: **V4** (`create_slots`)
+> Implementado em: **V4** (`create_slots`) + **V11** (`remove_reservado_slot_status`)
 
 Horários individuais gerados a partir de uma grade semanal.
 
@@ -509,11 +511,9 @@ Horários individuais gerados a partir de uma grade semanal.
 | `data_hora`   | TIMESTAMP   | NOT NULL                              | Data e hora exata do slot                                    |
 | `capacidade`  | INTEGER     | NOT NULL                              | Coluna real: `capacidade` (não `capacity`); herdado da grade |
 | `reservados`  | INTEGER     | NOT NULL, DEFAULT 0                   | Coluna real: `reservados` (não `booked`)                     |
-| `status`      | VARCHAR(20) | NOT NULL, DEFAULT `DISPONIVEL`        | `DISPONIVEL`, `RESERVADO`, `OCUPADO`, `INDISPONIVEL`         |
+| `status`      | VARCHAR(20) | NOT NULL, DEFAULT `DISPONIVEL`        | `DISPONIVEL`, `OCUPADO`, `INDISPONIVEL`                      |
 
 Restrição `UNIQUE (schedule_id, data_hora)`. O schema GraphQL expõe estas mesmas colunas como `capacity`/`booked`/`remainingCapacity` (tradução feita no resolver, não no banco).
-
-> `RESERVADO` está no `CHECK` da tabela e no schema GraphQL, mas é um estado morto no domínio Java hoje — `EStatusSlots` só tem `DISPONIVEL`/`OCUPADO`/`INDISPONIVEL`, nenhum fluxo o produz.
 
 ---
 
@@ -703,7 +703,7 @@ CREATE TABLE pareceres (
 -- regulador é gravada em solicitacoes.risco_solicitado.
 
 -- ── agendamento-service ────────────────────────────────────────────────────
--- V1__create_health_units.sql + V9__add_health_unit_endereco.sql
+-- V1__create_health_units.sql + V9__add_health_unit_endereco.sql + V10__add_health_unit_telefone.sql
 CREATE TABLE health_units (
     id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     nome       VARCHAR(255) NOT NULL,
@@ -711,9 +711,9 @@ CREATE TABLE health_units (
     municipio  VARCHAR(150) NOT NULL,
     uf         CHAR(2)      NOT NULL CHECK (char_length(trim(uf)) = 2),
     ativo      BOOLEAN      NOT NULL DEFAULT TRUE,
-    endereco   VARCHAR(255)
+    endereco   VARCHAR(255),
+    telefone   VARCHAR(20)
 );
--- Nota: não existe coluna de telefone.
 
 -- V2__create_providers.sql
 CREATE TABLE providers (
@@ -740,7 +740,7 @@ CREATE TABLE schedules (
     ativo                 BOOLEAN     NOT NULL DEFAULT TRUE
 );
 
--- V4__create_slots.sql (colunas em português — não capacity/booked)
+-- V4__create_slots.sql (colunas em português — não capacity/booked) + V11__remove_reservado_slot_status.sql
 CREATE TABLE slots (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     schedule_id UUID        NOT NULL REFERENCES schedules(id) ON DELETE CASCADE,
@@ -748,7 +748,7 @@ CREATE TABLE slots (
     capacidade  INTEGER     NOT NULL,
     reservados  INTEGER     NOT NULL DEFAULT 0,
     status      VARCHAR(20) NOT NULL DEFAULT 'DISPONIVEL'
-                    CHECK (status IN ('DISPONIVEL','RESERVADO','OCUPADO','INDISPONIVEL')),
+                    CHECK (status IN ('DISPONIVEL','OCUPADO','INDISPONIVEL')),
     UNIQUE (schedule_id, data_hora)
 );
 

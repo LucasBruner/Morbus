@@ -329,7 +329,7 @@ O domínio não conhece Spring, JPA, RabbitMQ nem os adapters — inclusive a pa
 
 **Eventos publicados em `sus.regulacao.exchange`:** além de `solicitation.approved`/`denied`/`devolved`, também publica `solicitation.reclassified` quando a cor de risco de uma solicitação já aprovada é alterada.
 
-> ⚠️ **Duas cotas distintas no sistema, não confundir:** o regulacao-service tem seu próprio conceito de `Quota` (`maxPerPeriod`/`currentCount`/`periodStart` por unidade+procedimento, gerenciável via `CotaController`), usado como referência informativa para o regulador decidir `PENDENTE` ("aprovado mas sem vaga") — não há enforcement automático hoje em `AvaliarSolicitacaoUseCase`. Já a `UnitProcedureQuota` do **queue-service** (seção 2.2) é um mecanismo diferente e independente: um limite diário, opt-in e automaticamente enforçado, exclusivo de `FILA_ESPERA`.
+> ⚠️ **Duas cotas distintas no sistema, não confundir:** o regulacao-service tem seu próprio conceito de `Quota` (`maxPerPeriod`/`currentCount`/`periodStart` por unidade+procedimento, gerenciável via `CotaController`). Ela é verificada/incrementada em `CriarSolicitacaoUseCase` quando `destino = FILA_ESPERA`, e também em `AvaliarSolicitacaoUseCase` quando o regulador decide `FILA_ESPERA` para uma solicitação que não nasceu com esse destino (`CotaExcedidaException` bloqueia a aprovação nesse caso). Já a `UnitProcedureQuota` do **queue-service** (seção 2.2) é um mecanismo diferente e independente: um limite diário, opt-in e automaticamente enforçado, exclusivo de `FILA_ESPERA`.
 
 ---
 
@@ -419,7 +419,7 @@ type Query {
 
 > `AgendamentoGraphqlController` usa `@Argument` com nome explícito (`@Argument("dataInicio")`, `@Argument("pacienteId")`) nos dois pontos onde o schema usa um nome em português diferente do parâmetro Java interno — sem isso, o binding por nome de parâmetro divergia do schema e os filtros de data/paciente ficavam silenciosamente `null`.
 
-`HealthUnit.address` é montado no resolver da query `grade` como `"{municipio} - {uf}"` (não é a coluna `endereco`) e `HealthUnit.phone` é sempre `null` (não existe coluna de telefone em `health_units`). Ver `erd.md`.
+`HealthUnit.address` é montado no resolver da query `grade` como `"{municipio} - {uf}"` (não é a coluna `endereco`); `HealthUnit.phone` reflete a coluna `telefone` (V10). Ver `erd.md`.
 
 **Endpoints REST (commands):**
 

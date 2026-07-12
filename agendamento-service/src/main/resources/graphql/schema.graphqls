@@ -71,7 +71,6 @@ type Appointment {
 
 enum SlotStatus {
     DISPONIVEL
-    RESERVADO
     OCUPADO
     INDISPONIVEL
 }

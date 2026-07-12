@@ -1,19 +1,24 @@
 package br.com.morbus.regulacao.domain.usecase.solicitacao;
 
 import br.com.morbus.regulacao.domain.enums.EDecisaoRegulador;
+import br.com.morbus.regulacao.domain.enums.EDestino;
 import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
 import br.com.morbus.regulacao.domain.exception.CampoObrigatorioException;
+import br.com.morbus.regulacao.domain.exception.CotaExcedidaException;
 import br.com.morbus.regulacao.domain.exception.SolicitacaoNaoPendenteException;
 import br.com.morbus.regulacao.domain.model.Parecer;
+import br.com.morbus.regulacao.domain.model.Quota;
 import br.com.morbus.regulacao.domain.model.Solicitacao;
 import br.com.morbus.regulacao.ports.in.IAvaliarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.in.dto.AvaliarSolicitacaoCommand;
 import br.com.morbus.regulacao.ports.in.dto.AvaliarSolicitacaoResult;
 import br.com.morbus.regulacao.ports.out.IParecerRepository;
+import br.com.morbus.regulacao.ports.out.IQuotaRepository;
 import br.com.morbus.regulacao.ports.out.IRegulacaoEventPublisher;
 import br.com.morbus.regulacao.ports.out.ISolicitacaoRepository;
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.LocalDate;
 import java.util.Set;
 
 @Slf4j
@@ -25,13 +30,16 @@ public class AvaliarSolicitacaoUseCase implements IAvaliarSolicitacaoUseCase {
     private final ISolicitacaoRepository solicitacaoRepository;
     private final IParecerRepository parecerRepository;
     private final IRegulacaoEventPublisher eventPublisher;
+    private final IQuotaRepository quotaRepository;
 
     public AvaliarSolicitacaoUseCase(ISolicitacaoRepository solicitacaoRepository,
                                      IParecerRepository parecerRepository,
-                                     IRegulacaoEventPublisher eventPublisher) {
+                                     IRegulacaoEventPublisher eventPublisher,
+                                     IQuotaRepository quotaRepository) {
         this.solicitacaoRepository = solicitacaoRepository;
         this.parecerRepository = parecerRepository;
         this.eventPublisher = eventPublisher;
+        this.quotaRepository = quotaRepository;
     }
 
     @Override
@@ -55,10 +63,34 @@ public class AvaliarSolicitacaoUseCase implements IAvaliarSolicitacaoUseCase {
     private void aplicarDecisao(Solicitacao solicitacao, AvaliarSolicitacaoCommand command) {
         switch (command.decisao()) {
             case AUTORIZAR -> solicitacao.aprovar(command.riskColorDefinido(), command.unidadeExecutanteId());
-            case FILA_ESPERA -> solicitacao.aprovarParaFilaEspera(command.unidadeExecutanteId());
+            case FILA_ESPERA -> {
+                enforceQuotaSeNecessario(solicitacao);
+                solicitacao.aprovarParaFilaEspera(command.unidadeExecutanteId());
+            }
             case NEGAR -> solicitacao.negar(command.justificativa());
             case DEVOLVER -> solicitacao.devolver(command.justificativa());
             case PENDENTE -> solicitacao.marcarPendente();
+        }
+    }
+
+    /**
+     * Solicitacoes criadas com destino=FILA_ESPERA ja tiveram a cota verificada/consumida
+     * em CriarSolicitacaoUseCase. Aqui so precisamos aplicar o enforcement quando o regulador
+     * esta redirecionando uma solicitacao originalmente FILA_REGULADA para FILA_ESPERA — caminho
+     * que hoje contorna a cota da UBS por completo.
+     */
+    private void enforceQuotaSeNecessario(Solicitacao solicitacao) {
+        if (solicitacao.getDestino() == EDestino.FILA_ESPERA) {
+            return;
+        }
+
+        LocalDate periodStart = LocalDate.now().withDayOfMonth(1);
+        Quota quota = quotaRepository.findOrCreate(
+                solicitacao.getUnidadeSolicitanteId(), solicitacao.getProcedureId(), periodStart);
+
+        if (!quotaRepository.incrementarSeDisponivel(quota.getId())) {
+            throw new CotaExcedidaException("Cota esgotada para unitId=%s, procedureId=%s no periodo %s"
+                    .formatted(solicitacao.getUnidadeSolicitanteId(), solicitacao.getProcedureId(), periodStart));
         }
     }
 

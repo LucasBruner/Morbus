@@ -28,7 +28,8 @@ public class HealthUnitPersistenceAdapter implements IHealthUnitRepository {
                 entity.getCnes(),
                 entity.getMunicipio(),
                 entity.getUf(),
-                entity.getEndereco()
+                entity.getEndereco(),
+                entity.getTelefone()
         );
     }
 }

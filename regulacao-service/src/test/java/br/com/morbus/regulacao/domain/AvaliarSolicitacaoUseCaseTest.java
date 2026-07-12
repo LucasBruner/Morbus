@@ -5,14 +5,17 @@ import br.com.morbus.regulacao.domain.enums.EDestino;
 import br.com.morbus.regulacao.domain.enums.ERiscoSolicitado;
 import br.com.morbus.regulacao.domain.enums.EStatusSolicitacao;
 import br.com.morbus.regulacao.domain.exception.CampoObrigatorioException;
+import br.com.morbus.regulacao.domain.exception.CotaExcedidaException;
 import br.com.morbus.regulacao.domain.exception.SolicitacaoNaoEncontradaException;
 import br.com.morbus.regulacao.domain.exception.SolicitacaoNaoPendenteException;
 import br.com.morbus.regulacao.domain.model.Parecer;
+import br.com.morbus.regulacao.domain.model.Quota;
 import br.com.morbus.regulacao.domain.model.Solicitacao;
 import br.com.morbus.regulacao.domain.usecase.solicitacao.AvaliarSolicitacaoUseCase;
 import br.com.morbus.regulacao.ports.in.dto.AvaliarSolicitacaoCommand;
 import br.com.morbus.regulacao.ports.in.dto.AvaliarSolicitacaoResult;
 import br.com.morbus.regulacao.ports.out.IParecerRepository;
+import br.com.morbus.regulacao.ports.out.IQuotaRepository;
 import br.com.morbus.regulacao.ports.out.IRegulacaoEventPublisher;
 import br.com.morbus.regulacao.ports.out.ISolicitacaoRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,6 +28,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -46,11 +50,14 @@ class AvaliarSolicitacaoUseCaseTest {
     @Mock
     private IRegulacaoEventPublisher eventPublisher;
 
+    @Mock
+    private IQuotaRepository quotaRepository;
+
     private AvaliarSolicitacaoUseCase useCase;
 
     @BeforeEach
     void setUp() {
-        useCase = new AvaliarSolicitacaoUseCase(solicitacaoRepository, parecerRepository, eventPublisher);
+        useCase = new AvaliarSolicitacaoUseCase(solicitacaoRepository, parecerRepository, eventPublisher, quotaRepository);
     }
 
     private Solicitacao buildSolicitacao(EStatusSolicitacao status, EDestino destino) {
@@ -60,6 +67,10 @@ class AvaliarSolicitacaoUseCaseTest {
                 destino, null, UUID.randomUUID(),
                 LocalDateTime.now().minusHours(1), LocalDateTime.now().minusHours(1), null
         );
+    }
+
+    private Quota buildQuota(UUID unitId, UUID procedureId, LocalDate periodStart, int maxPerPeriod, int currentCount) {
+        return new Quota(UUID.randomUUID(), unitId, procedureId, maxPerPeriod, currentCount, periodStart);
     }
 
     private AvaliarSolicitacaoCommand buildCommand(UUID solicitacaoId, EDecisaoRegulador decisao,
@@ -166,6 +177,10 @@ class AvaliarSolicitacaoUseCaseTest {
         void deveAprovarParaFilaEspera() {
             Solicitacao solicitacao = buildSolicitacao(EStatusSolicitacao.AGUARDANDO, EDestino.FILA_REGULADA);
             when(solicitacaoRepository.findById(solicitacao.getId())).thenReturn(solicitacao);
+            Quota quota = buildQuota(solicitacao.getUnidadeSolicitanteId(), solicitacao.getProcedureId(),
+                    LocalDate.now().withDayOfMonth(1), 5, 2);
+            when(quotaRepository.findOrCreate(any(), any(), any())).thenReturn(quota);
+            when(quotaRepository.incrementarSeDisponivel(quota.getId())).thenReturn(true);
             mockPersistencia(solicitacao);
 
             useCase.execute(buildCommand(solicitacao.getId(), EDecisaoRegulador.FILA_ESPERA, ERiscoSolicitado.VERMELHO, null));
@@ -180,11 +195,45 @@ class AvaliarSolicitacaoUseCaseTest {
         void devePublicarEvento() {
             Solicitacao solicitacao = buildSolicitacao(EStatusSolicitacao.AGUARDANDO, EDestino.FILA_REGULADA);
             when(solicitacaoRepository.findById(solicitacao.getId())).thenReturn(solicitacao);
+            Quota quota = buildQuota(solicitacao.getUnidadeSolicitanteId(), solicitacao.getProcedureId(),
+                    LocalDate.now().withDayOfMonth(1), 5, 2);
+            when(quotaRepository.findOrCreate(any(), any(), any())).thenReturn(quota);
+            when(quotaRepository.incrementarSeDisponivel(quota.getId())).thenReturn(true);
             mockPersistencia(solicitacao);
 
             useCase.execute(buildCommand(solicitacao.getId(), EDecisaoRegulador.FILA_ESPERA, ERiscoSolicitado.VERMELHO, null));
 
             verify(eventPublisher).publishSolicitacaoAprovada(solicitacao);
+        }
+
+        @Test
+        @DisplayName("nao deve consultar cota quando a solicitacao ja foi criada com destino FILA_ESPERA")
+        void naoDeveConsultarCotaQuandoJaEraFilaEspera() {
+            Solicitacao solicitacao = buildSolicitacao(EStatusSolicitacao.AGUARDANDO, EDestino.FILA_ESPERA);
+            when(solicitacaoRepository.findById(solicitacao.getId())).thenReturn(solicitacao);
+            mockPersistencia(solicitacao);
+
+            useCase.execute(buildCommand(solicitacao.getId(), EDecisaoRegulador.FILA_ESPERA, ERiscoSolicitado.VERMELHO, null));
+
+            verifyNoInteractions(quotaRepository);
+        }
+
+        @Test
+        @DisplayName("deve lancar CotaExcedidaException quando a cota da unidade esta esgotada")
+        void deveLancarCotaExcedidaQuandoEsgotada() {
+            Solicitacao solicitacao = buildSolicitacao(EStatusSolicitacao.AGUARDANDO, EDestino.FILA_REGULADA);
+            when(solicitacaoRepository.findById(solicitacao.getId())).thenReturn(solicitacao);
+            Quota quota = buildQuota(solicitacao.getUnidadeSolicitanteId(), solicitacao.getProcedureId(),
+                    LocalDate.now().withDayOfMonth(1), 5, 5);
+            when(quotaRepository.findOrCreate(any(), any(), any())).thenReturn(quota);
+            when(quotaRepository.incrementarSeDisponivel(quota.getId())).thenReturn(false);
+
+            assertThatThrownBy(() -> useCase.execute(
+                    buildCommand(solicitacao.getId(), EDecisaoRegulador.FILA_ESPERA, ERiscoSolicitado.VERMELHO, null)))
+                    .isInstanceOf(CotaExcedidaException.class);
+
+            verify(solicitacaoRepository, never()).save(any());
+            verify(parecerRepository, never()).save(any());
         }
     }
 

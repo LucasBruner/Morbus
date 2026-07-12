@@ -99,7 +99,7 @@ public record AgendamentoDetalheResponseDTO(
                 hu.getCnes(),
                 hu.getNome(),
                 hu.getMunicipio() + " - " + hu.getUf(),
-                null
+                hu.getTelefone()
         );
 
         ProviderDTO providerDTO = p != null

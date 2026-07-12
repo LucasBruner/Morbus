@@ -1561,7 +1561,6 @@ type Appointment {
 
 enum SlotStatus {
   DISPONIVEL
-  RESERVADO
   OCUPADO
   INDISPONIVEL
 }
@@ -1659,7 +1658,6 @@ enum AppointmentStatus {
 | Valor          | Descrição                         |
 |----------------|-----------------------------------|
 | `DISPONIVEL`   | Slot disponível para alocação     |
-| `RESERVADO`    | Reservado no banco (`chk_slots_status`) e no schema GraphQL — não é produzido pelo domínio Java hoje (`EStatusSlots` só tem `DISPONIVEL`/`OCUPADO`/`INDISPONIVEL`) |
 | `OCUPADO`      | Capacidade esgotada               |
 | `INDISPONIVEL` | Slot bloqueado (feriado etc.)     |
 
