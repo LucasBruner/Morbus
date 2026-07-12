@@ -26,7 +26,8 @@ class SolicitacaoTest {
                 "Dr. Silva",
                 "CRM/SP 12345",
                 EDestino.FILA_REGULADA,
-                UUID.randomUUID()
+                UUID.randomUUID(),
+                null
         );
     }
 
@@ -52,6 +53,7 @@ class SolicitacaoTest {
                 UUID.randomUUID(),
                 LocalDateTime.now().minusHours(2),
                 LocalDateTime.now().minusHours(1),
+                null,
                 null
         );
     }
@@ -104,7 +106,7 @@ class SolicitacaoTest {
 
             Solicitacao s = new Solicitacao(patientId, procedureId, unidadeId,
                     "J45", "Asma persistente", "Dra. Costa", null,
-                    EDestino.FILA_ESPERA, solicitadoPor);
+                    EDestino.FILA_ESPERA, solicitadoPor, null);
 
             assertThat(s.getPatientId()).isEqualTo(patientId);
             assertThat(s.getProcedureId()).isEqualTo(procedureId);
@@ -235,13 +237,25 @@ class SolicitacaoTest {
         void deveComplementarCamposNaoNulos() {
             Solicitacao s = buildExistente(EStatusSolicitacao.DEVOLVIDA, "documentacao incompleta");
 
-            s.complementar("I11.9", "justificativa complementada", null, "CRM/SP 12345");
+            s.complementar("I11.9", "justificativa complementada", null, "CRM/SP 12345", "revisado com o paciente");
 
             assertThat(s.getCid()).isEqualTo("I11.9");
             assertThat(s.getJustificativaClinica()).isEqualTo("justificativa complementada");
             assertThat(s.getProfissionalSolicitante()).isEqualTo("Dr. Silva");
             assertThat(s.getCrmProfissional()).isEqualTo("CRM/SP 12345");
+            assertThat(s.getObservacoes()).isEqualTo("revisado com o paciente");
             assertThat(s.getStatus()).isEqualTo(EStatusSolicitacao.AGUARDANDO);
+        }
+
+        @Test
+        @DisplayName("deve manter observacoes existentes quando nao informado")
+        void deveManterObservacoesQuandoNaoInformado() {
+            Solicitacao s = buildExistente(EStatusSolicitacao.DEVOLVIDA, "documentacao incompleta");
+            s.complementar(null, null, null, null, "observacao original");
+
+            s.complementar(null, null, null, null, null);
+
+            assertThat(s.getObservacoes()).isEqualTo("observacao original");
         }
 
         @Test
@@ -249,7 +263,7 @@ class SolicitacaoTest {
         void deveLimparJustificativaNegacao() {
             Solicitacao s = buildExistente(EStatusSolicitacao.DEVOLVIDA, "documentacao incompleta");
 
-            s.complementar(null, null, null, null);
+            s.complementar(null, null, null, null, null);
 
             assertThat(s.getJustificativaNegacao()).isNull();
         }

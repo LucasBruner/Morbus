@@ -60,7 +60,8 @@ class CriarSolicitacaoUseCaseTest {
                 "Dr. Silva",
                 "CRM/SP 12345",
                 destino,
-                UUID.randomUUID()
+                UUID.randomUUID(),
+                null
         );
     }
 
@@ -78,7 +79,8 @@ class CriarSolicitacaoUseCaseTest {
                 cmd.profissionalSolicitante(),
                 cmd.crmProfissional(),
                 cmd.destino(),
-                cmd.solicitadoPor()
+                cmd.solicitadoPor(),
+                cmd.observacoes()
         );
     }
 

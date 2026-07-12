@@ -66,13 +66,13 @@ public class SecurityConfig {
                         .authenticationEntryPoint((request, response, authException) ->
                                 writeProblemDetail(response,
                                         HttpServletResponse.SC_UNAUTHORIZED,
-                                        "https://httpstatuses.com/401",
+                                        "https://morbus.sus.gov.br/problems/invalid-credentials",
                                         "Nao autorizado",
                                         "Token JWT ausente ou invalido."))
                         .accessDeniedHandler((request, response, accessDeniedException) ->
                                 writeProblemDetail(response,
                                         HttpServletResponse.SC_FORBIDDEN,
-                                        "https://httpstatuses.com/403",
+                                        "https://morbus.sus.gov.br/problems/access-denied",
                                         "Acesso negado",
                                         "Seu perfil nao tem permissao para esta operacao."))
                 );

@@ -98,6 +98,7 @@ erDiagram
         VARCHAR(20)  destino                    "FILA_ESPERA | FILA_REGULADA"
         TEXT         justificativa_negacao      "nullable — motivo de NEGAR/DEVOLVER; não fica no parecer, fica na própria solicitação"
         UUID         solicitado_por             "NOT NULL — userId do SOLICITANTE (JWT), sem FK cross-service"
+        TEXT         observacoes                "nullable — notas livres do SOLICITANTE, preenchíveis em POST /solicitacoes e POST /solicitacoes/{id}/complementar"
         TIMESTAMP    created_at                 "NOT NULL — coluna real: created_at (não criada_em)"
         TIMESTAMP    updated_at                 "NOT NULL"
     }
@@ -361,6 +362,7 @@ Representa o pedido de inclusão de um paciente em fila ambulatorial, criado pel
 |----------------------------|--------------|--------------------------------------|--------------------------------------------------|
 | `id`                       | UUID         | PK, NOT NULL                         | Identificador único                              |
 | `paciente_id`              | UUID         | NOT NULL                             | Coluna real é `paciente_id`, não `patient_id`. Ref. ao patient no queue-service (sem FK) |
+| `observacoes`               | TEXT         | nullable                             | Notas livres do `SOLICITANTE`. Coluna existe desde **V1**; setável em `POST /api/v1/solicitacoes` (criação) e `POST /api/v1/solicitacoes/{id}/complementar` (só sobrescrita se enviada, mesmo padrão de `cid`/`justificativaClinica`) |
 | `procedure_id`             | UUID         | NOT NULL                             | Ref. ao procedure no queue-service (sem FK)      |
 | `appointment_id`           | UUID         | nullable                             | Não documentado antes. Ref. ao appointment no agendamento-service (sem FK), setado ao consumir `appointment.created` |
 | `cid`                      | VARCHAR(20)  | nullable, sem default fixo           | Código CID-10 — coluna é `VARCHAR(20)`, não `VARCHAR(10)` |
@@ -690,6 +692,7 @@ CREATE TABLE solicitacoes (
     destino                   VARCHAR(20)  CHECK (destino IS NULL OR destino IN ('FILA_REGULADA','FILA_ESPERA')),
     justificativa_negacao     TEXT,
     solicitado_por            UUID         NOT NULL,
+    observacoes               TEXT,
     created_at                TIMESTAMP    NOT NULL DEFAULT NOW(),
     updated_at                TIMESTAMP    NOT NULL DEFAULT NOW()
 );

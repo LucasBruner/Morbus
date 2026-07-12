@@ -12,5 +12,6 @@ public record CriarSolicitacaoCommand(UUID patientId,
                                       String profissionalSolicitante,
                                       String crmProfissional,
                                       EDestino destino,
-                                      UUID solicitadoPor) {
+                                      UUID solicitadoPor,
+                                      String observacoes) {
 }

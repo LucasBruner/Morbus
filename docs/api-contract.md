@@ -944,6 +944,7 @@ Cria uma nova solicitação de inclusão de paciente em fila ambulatorial.
 | `crmProfissional`        | string | ❌          | CRM do profissional                      |
 | `unitSolicitanteId`      | UUID   | ✅          | ID da unidade solicitante cadastrada     |
 | `destino`                | enum   | ✅          | `FILA_REGULADA` \| `FILA_ESPERA`         |
+| `observacoes`            | string | ❌          | Notas livres do solicitante. Não aparece em `SolicitacaoCreatedResponseDTO` (resposta deste endpoint) — só é exposto por `GET /api/v1/solicitacoes/{id}` |
 
 **Response `201 Created`:**
 ```json
@@ -1014,7 +1015,8 @@ Retorna o detalhe de uma solicitação como objeto plano (`SolicitacaoStatusResp
   "status": "APROVADA",
   "criadaEm": "2026-06-12T09:00:00Z",
   "updatedAt": "2026-06-12T11:30:00Z",
-  "justificativaNegacao": null
+  "justificativaNegacao": null,
+  "observacoes": null
 }
 ```
 
@@ -1047,6 +1049,7 @@ Complementa uma solicitação devolvida pelo regulador com informações faltant
 | `justificativaClinica`    | string | ❌          | Nova justificativa clínica                        |
 | `crmProfissional`         | string | ❌          | Novo CRM do profissional                           |
 | `profissionalSolicitante` | string | ❌          | Novo nome do médico solicitante                    |
+| `observacoes`             | string | ❌          | Novas notas livres — mesmo padrão dos demais campos: só sobrescreve se enviado |
 
 > Apenas campos nullable podem ser atualizados. Após a complementação o status volta para `AGUARDANDO`.
 
@@ -2009,7 +2012,7 @@ Todos os serviços seguem o padrão **RFC 7807 — Problem Details for HTTP APIs
 |-----------------------------------------------------------------|--------|---------------------|
 | `.../problems/validation-error`                                 | 400    | todos               |
 | `.../problems/invalid-request-body`                             | 400    | todos               |
-| `.../problems/invalid-credentials`                              | 401    | auth                |
+| `.../problems/invalid-credentials`                              | 401    | auth (login), e todo serviço com `JwtAuthenticationFilter` (queue, regulacao, agendamento) para token ausente/inválido |
 | `.../problems/invalid-password`                                 | 422    | auth                |
 | `.../problems/user-already-exists`                              | 409    | auth                |
 | `.../problems/access-denied`                                    | 403    | todos               |

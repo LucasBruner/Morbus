@@ -58,6 +58,7 @@ class CancelarSolicitacaoUseCaseTest {
                 UUID.randomUUID(),
                 LocalDateTime.now().minusHours(1),
                 LocalDateTime.now().minusHours(1),
+                null,
                 null
         );
     }

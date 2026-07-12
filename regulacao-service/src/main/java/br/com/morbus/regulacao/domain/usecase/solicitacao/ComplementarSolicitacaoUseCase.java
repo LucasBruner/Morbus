@@ -25,7 +25,7 @@ public class ComplementarSolicitacaoUseCase implements IComplementarSolicitacaoU
         }
 
         solicitacao.complementar(command.cid(), command.justificativaClinica(),
-                command.profissionalSolicitante(), command.crmProfissional());
+                command.profissionalSolicitante(), command.crmProfissional(), command.observacoes());
 
         return solicitacaoRepository.save(solicitacao);
     }

@@ -23,7 +23,7 @@ class SolicitacaoRequestDTOTest {
         SolicitacaoRequestDTO dto = new SolicitacaoRequestDTO(
                 patientId, procedureId, "I10",
                 "Hipertensao grave", "Dr. Silva", "CRM/SP 12345",
-                unitSolicitanteId, EDestino.FILA_REGULADA);
+                unitSolicitanteId, EDestino.FILA_REGULADA, "paciente prefere atendimento pela manha");
 
         CriarSolicitacaoCommand cmd = dto.toCommand(solicitadoPor);
 
@@ -36,6 +36,7 @@ class SolicitacaoRequestDTOTest {
         assertThat(cmd.crmProfissional()).isEqualTo("CRM/SP 12345");
         assertThat(cmd.destino()).isEqualTo(EDestino.FILA_REGULADA);
         assertThat(cmd.solicitadoPor()).isEqualTo(solicitadoPor);
+        assertThat(cmd.observacoes()).isEqualTo("paciente prefere atendimento pela manha");
     }
 
     @Test
@@ -45,7 +46,7 @@ class SolicitacaoRequestDTOTest {
         SolicitacaoRequestDTO dto = new SolicitacaoRequestDTO(
                 UUID.randomUUID(), UUID.randomUUID(), "J45",
                 "Asma persistente", "Dra. Costa", null,
-                UUID.randomUUID(), EDestino.FILA_ESPERA);
+                UUID.randomUUID(), EDestino.FILA_ESPERA, null);
 
         CriarSolicitacaoCommand cmd = dto.toCommand(solicitadoPor);
 

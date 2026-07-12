@@ -44,7 +44,7 @@ class RabbitMqRegulacaoEventPublisherTest {
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
                 EStatusSolicitacao.APROVADA, ERiscoSolicitado.AMARELO, "I10", "justificativa", "Dr. Silva", null,
                 EDestino.FILA_REGULADA, "motivo", UUID.randomUUID(),
-                LocalDateTime.now().minusHours(1), LocalDateTime.now().minusHours(1), null
+                LocalDateTime.now().minusHours(1), LocalDateTime.now().minusHours(1), null, null
         );
     }
 

@@ -46,7 +46,7 @@ class ComplementarSolicitacaoUseCaseTest {
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
                 status, ERiscoSolicitado.AZUL, "I10", "justificativa clinica antiga", "Dr. Silva", null,
                 EDestino.FILA_REGULADA, "faltou informacao clinica", UUID.randomUUID(),
-                LocalDateTime.now().minusHours(1), LocalDateTime.now().minusHours(1), null
+                LocalDateTime.now().minusHours(1), LocalDateTime.now().minusHours(1), null, null
         );
     }
 
@@ -62,7 +62,8 @@ class ComplementarSolicitacaoUseCaseTest {
             when(solicitacaoRepository.save(any())).thenReturn(solicitacao);
 
             ComplementarSolicitacaoCommand command = new ComplementarSolicitacaoCommand(
-                    solicitacao.getId(), "I11.9", "Complemento: paciente com HAS estagio 3", null, "CRM/SP 12345");
+                    solicitacao.getId(), "I11.9", "Complemento: paciente com HAS estagio 3", null, "CRM/SP 12345",
+                    "paciente confirmou disponibilidade pela manha");
 
             Solicitacao result = useCase.execute(command);
 
@@ -70,6 +71,7 @@ class ComplementarSolicitacaoUseCaseTest {
             assertThat(result.getJustificativaClinica()).isEqualTo("Complemento: paciente com HAS estagio 3");
             assertThat(result.getProfissionalSolicitante()).isEqualTo("Dr. Silva");
             assertThat(result.getCrmProfissional()).isEqualTo("CRM/SP 12345");
+            assertThat(result.getObservacoes()).isEqualTo("paciente confirmou disponibilidade pela manha");
         }
 
         @Test
@@ -80,7 +82,7 @@ class ComplementarSolicitacaoUseCaseTest {
             when(solicitacaoRepository.save(any())).thenReturn(solicitacao);
 
             Solicitacao result = useCase.execute(new ComplementarSolicitacaoCommand(
-                    solicitacao.getId(), "I11.9", null, null, null));
+                    solicitacao.getId(), "I11.9", null, null, null, null));
 
             assertThat(result.getStatus()).isEqualTo(EStatusSolicitacao.AGUARDANDO);
         }
@@ -93,7 +95,7 @@ class ComplementarSolicitacaoUseCaseTest {
             when(solicitacaoRepository.save(any())).thenReturn(solicitacao);
 
             Solicitacao result = useCase.execute(new ComplementarSolicitacaoCommand(
-                    solicitacao.getId(), null, null, null, null));
+                    solicitacao.getId(), null, null, null, null, null));
 
             assertThat(result.getJustificativaNegacao()).isNull();
         }
@@ -105,7 +107,7 @@ class ComplementarSolicitacaoUseCaseTest {
             when(solicitacaoRepository.findById(solicitacao.getId())).thenReturn(solicitacao);
             when(solicitacaoRepository.save(any())).thenReturn(solicitacao);
 
-            useCase.execute(new ComplementarSolicitacaoCommand(solicitacao.getId(), "I11.9", null, null, null));
+            useCase.execute(new ComplementarSolicitacaoCommand(solicitacao.getId(), "I11.9", null, null, null, null));
 
             verify(solicitacaoRepository).save(solicitacao);
         }
@@ -123,7 +125,7 @@ class ComplementarSolicitacaoUseCaseTest {
             when(solicitacaoRepository.findById(solicitacao.getId())).thenReturn(solicitacao);
 
             assertThatThrownBy(() -> useCase.execute(new ComplementarSolicitacaoCommand(
-                    solicitacao.getId(), "I11.9", null, null, null)))
+                    solicitacao.getId(), "I11.9", null, null, null, null)))
                     .isInstanceOf(SolicitacaoNaoPendenteException.class);
 
             verify(solicitacaoRepository, never()).save(any());
@@ -140,7 +142,7 @@ class ComplementarSolicitacaoUseCaseTest {
             UUID id = UUID.randomUUID();
             when(solicitacaoRepository.findById(id)).thenThrow(new SolicitacaoNaoEncontradaException("nao encontrada"));
 
-            assertThatThrownBy(() -> useCase.execute(new ComplementarSolicitacaoCommand(id, "I11.9", null, null, null)))
+            assertThatThrownBy(() -> useCase.execute(new ComplementarSolicitacaoCommand(id, "I11.9", null, null, null, null)))
                     .isInstanceOf(SolicitacaoNaoEncontradaException.class);
         }
     }

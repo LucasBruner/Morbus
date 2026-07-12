@@ -490,6 +490,8 @@ sus.agendamento.exchange (direct)      publicado por: agendamento-service
                                regulacao-service: "regulacao.appointment.no_show"
 ```
 > `appointment.cancelled` e `appointment.no_slot` reinserem o paciente na fila via `ReinstatePatientInQueue` no queue-service (mesma semântica já usada por `appointment.expired`/`patient.no_show`).
+>
+> regulacao-service só consome eventos de `sus.agendamento.exchange` (`AppointmentCreatedConsumer`/`AppointmentAttendedConsumer`/`AppointmentNoShowConsumer`); ele nunca consome os eventos que publica em `sus.regulacao.exchange`. Uma versão anterior do `RabbitMQConfig` chegava a declarar e vincular 4 filas órfãs (`regulacao.solicitacao.aprovada/negada/devolvida/reclassificada`) sem nenhum `@RabbitListener`, que acumulavam mensagens indefinidamente — essas filas foram removidas.
 
 **Dead Letter Exchange (DLX):**
 
@@ -551,14 +553,17 @@ Cada serviço possui seu próprio schema PostgreSQL. Não existem foreign keys e
 ```
 
 **Ordem de startup (depends_on + healthchecks):**
+
+`postgres` e `rabbitmq` não têm `depends_on` entre si — sobem em paralelo. Cada serviço de aplicação só espera pela infraestrutura que efetivamente usa: `auth-service` não usa RabbitMQ, então seu `depends_on` no `docker-compose.yml` lista apenas `postgres`; `notification-service` depende de `rabbitmq`+`postgres` diretamente, não de `queue-service` (a ordem de entrega das mensagens é garantida pelo broker, não por ordem de subida dos containers).
+
 ```
-postgres (healthy)
-    ↓
-rabbitmq (healthy)
-    ↓                ↓               ↓                ↓
-auth-service   queue-service   regulacao-service   agendamento-service
-                    ↓
-           notification-service
+postgres (healthy)              rabbitmq (healthy)
+     │                                │
+     ├── auth-service (só postgres)   │
+     │                                │
+     ├────────────────┬───────────────┼────────────────┬───────────────┐
+     ▼                ▼                                ▼                ▼
+queue-service   regulacao-service              agendamento-service  notification-service
 ```
 
 **Healthchecks:** todos os serviços Spring Boot (`auth`, `queue`, `regulacao`, `agendamento`) expõem `/actuator/health` (permitido sem autenticação no `SecurityConfig` de cada um) via `spring-boot-starter-actuator`, e o `docker-compose.yml` usa esse endpoint — não `/v3/api-docs`, que fica desabilitado no profile `docker` (`springdoc.api-docs.enabled=false`) e portanto nunca respondeu. O `notification-service` (Quarkus) expõe `/q/health` via `quarkus-smallrye-health`.

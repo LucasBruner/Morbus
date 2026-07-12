@@ -15,7 +15,8 @@ public record SolicitacaoRequestDTO(
         @NotBlank(message = "profissionalSolicitante e obrigatorio") String profissionalSolicitante,
         String crmProfissional,
         @NotNull(message = "unitSolicitanteId e obrigatorio") UUID unitSolicitanteId,
-        @NotNull(message = "destino e obrigatorio") EDestino destino) {
+        @NotNull(message = "destino e obrigatorio") EDestino destino,
+        String observacoes) {
 
     public CriarSolicitacaoCommand toCommand(UUID userId) {
         return new CriarSolicitacaoCommand(
@@ -27,6 +28,7 @@ public record SolicitacaoRequestDTO(
                 profissionalSolicitante,
                 crmProfissional,
                 destino,
-                userId);
+                userId,
+                observacoes);
     }
 }

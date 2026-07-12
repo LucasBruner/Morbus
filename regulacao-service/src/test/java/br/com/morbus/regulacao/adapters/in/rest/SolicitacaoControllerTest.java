@@ -87,7 +87,7 @@ class SolicitacaoControllerTest {
                 UUID.randomUUID(), null, EStatusSolicitacao.AGUARDANDO,
                 ERiscoSolicitado.AZUL, "I10", "Hipertensao grave", "Dr. Silva",
                 null, EDestino.FILA_REGULADA, null, UUID.randomUUID(),
-                LocalDateTime.now(), LocalDateTime.now(), null
+                LocalDateTime.now(), LocalDateTime.now(), null, null
         );
     }
 

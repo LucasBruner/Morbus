@@ -8,10 +8,11 @@ public record ComplementarSolicitacaoRequestDTO(
         String cid,
         String justificativaClinica,
         String profissionalSolicitante,
-        String crmProfissional) {
+        String crmProfissional,
+        String observacoes) {
 
     public ComplementarSolicitacaoCommand toCommand(UUID solicitacaoId) {
         return new ComplementarSolicitacaoCommand(solicitacaoId, cid, justificativaClinica,
-                profissionalSolicitante, crmProfissional);
+                profissionalSolicitante, crmProfissional, observacoes);
     }
 }

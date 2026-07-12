@@ -6,5 +6,6 @@ public record ComplementarSolicitacaoCommand(UUID solicitacaoId,
                                               String cid,
                                               String justificativaClinica,
                                               String profissionalSolicitante,
-                                              String crmProfissional) {
+                                              String crmProfissional,
+                                              String observacoes) {
 }

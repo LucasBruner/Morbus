@@ -62,7 +62,8 @@ public class CriarSolicitacaoUseCase implements ICriarSolicitacaoUseCase {
                 command.profissionalSolicitante(),
                 command.crmProfissional(),
                 command.destino(),
-                command.solicitadoPor()
+                command.solicitadoPor(),
+                command.observacoes()
         );
 
         return solicitacaoRepository.save(solicitacao);

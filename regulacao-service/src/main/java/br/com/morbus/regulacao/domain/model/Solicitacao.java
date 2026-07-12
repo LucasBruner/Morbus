@@ -26,6 +26,7 @@ public class Solicitacao {
     private EDestino destino;
     private String justificativaNegacao;
     private UUID solicitadoPor;
+    private String observacoes;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -37,7 +38,8 @@ public class Solicitacao {
                        String profissionalSolicitante,
                        String crmProfissional,
                        EDestino destino,
-                       UUID solicitadoPor) {
+                       UUID solicitadoPor,
+                       String observacoes) {
         this.id = UUID.randomUUID();
         this.patientId = patientId;
         this.procedureId = procedureId;
@@ -50,6 +52,7 @@ public class Solicitacao {
         this.crmProfissional = crmProfissional;
         this.destino = destino;
         this.solicitadoPor = solicitadoPor;
+        this.observacoes = observacoes;
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
@@ -70,7 +73,8 @@ public class Solicitacao {
                        UUID solicitadoPor,
                        LocalDateTime createdAt,
                        LocalDateTime updatedAt,
-                       UUID appointmentId) {
+                       UUID appointmentId,
+                       String observacoes) {
         this.id = id;
         this.patientId = patientId;
         this.procedureId = procedureId;
@@ -88,6 +92,7 @@ public class Solicitacao {
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.appointmentId = appointmentId;
+        this.observacoes = observacoes;
     }
 
     public void cancelar() {
@@ -144,11 +149,12 @@ public class Solicitacao {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void complementar(String cid, String justificativaClinica, String profissionalSolicitante, String crmProfissional) {
+    public void complementar(String cid, String justificativaClinica, String profissionalSolicitante, String crmProfissional, String observacoes) {
         if (cid != null) this.cid = cid;
         if (justificativaClinica != null) this.justificativaClinica = justificativaClinica;
         if (profissionalSolicitante != null) this.profissionalSolicitante = profissionalSolicitante;
         if (crmProfissional != null) this.crmProfissional = crmProfissional;
+        if (observacoes != null) this.observacoes = observacoes;
         this.status = EStatusSolicitacao.AGUARDANDO;
         this.justificativaNegacao = null;
         this.updatedAt = LocalDateTime.now();
