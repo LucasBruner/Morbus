@@ -99,8 +99,10 @@ Cria um novo usuário com a role desejada.
 | Status | Motivo                           |
 |--------|----------------------------------|
 | `400`  | Campos inválidos ou ausentes (`type`: `.../problems/validation-error`)    |
+| `400`  | Corpo ausente, JSON malformado ou `role` fora do enum (`type`: `.../problems/invalid-request-body`) |
 | `409`  | Username ou e-mail já cadastrado (`type`: `.../problems/user-already-exists`) |
 | `422`  | Senha não atende aos requisitos mínimos (`type`: `.../problems/invalid-password`) |
+| `500`  | Erro inesperado (`type`: `.../problems/internal-error`) |
 
 ---
 
@@ -154,8 +156,8 @@ Autentica o usuário e retorna o token JWT.
 
 | Status | Motivo                       |
 |--------|------------------------------|
-| `400`  | Campos ausentes              |
-| `401`  | Credenciais inválidas        |
+| `400`  | Campos ausentes (`type`: `.../problems/validation-error`) |
+| `401`  | Credenciais inválidas (`type`: `.../problems/invalid-credentials`) |
 
 ---
 
@@ -190,7 +192,7 @@ Cadastra um paciente em uma fila de procedimento. A cor de entrada é sempre **A
 |-------------------|--------|-------------|------------------------------------------------------|
 | `patientId`       | UUID   | ✅          | ID do paciente já cadastrado                         |
 | `procedureId`     | UUID   | ✅          | ID do procedimento solicitado                        |
-| `tipoFila`        | enum   | ✅          | `FILA_REGULADA` \| `FILA_ESPERA`                     |
+| `tipoFila`        | enum   | ❌          | `FILA_REGULADA` \| `FILA_ESPERA` — sem `@NotNull` em `RegisterQueueRequestDTO`; se omitido, `QueueController.registerQueue()` assume `FILA_REGULADA` como padrão |
 | `preferredUnitId` | UUID   | ❌          | Unidade preferida pelo paciente (nullable)           |
 
 **Response `201 Created`:**
@@ -228,6 +230,8 @@ Cadastra um paciente em uma fila de procedimento. A cor de entrada é sempre **A
 ```
 
 > `patient` é serializado com `PatientResponseDTO` — **não existe campo `nomeCompleto`** aqui (apenas `nome`/`sobrenome` separados, mais os demais campos do cadastro). `nomeCompleto` só existe no schema de `GET /api/v1/queue/{id}/position`, que usa um DTO diferente (`QueuePositionPatientDTO`). `QueueEntryResponseDTO` é um schema plano único reaproveitado por vários endpoints deste recurso, por isso sempre inclui `tipoFila`, `solicitacaoId`, `preferredUnitId`, `calledAt` e `newPosition`, mesmo quando não fazem sentido para a operação (ficam `null`).
+>
+> `registeredAt`, `calledAt`, `updatedAt` e demais timestamps deste recurso são `LocalDateTime` (`QueueEntry.java`), sem timezone e sem configuração Jackson forçando UTC — igual ao caso de `auth-service.createdAt` (ver [Convenções](#convenções)). A resposta real **não tem o sufixo `Z`** em nenhum desses campos, mesmo nos exemplos abaixo onde ele aparece por consistência ilustrativa com o restante do documento.
 
 **Erros:**
 
@@ -235,13 +239,17 @@ Cadastra um paciente em uma fila de procedimento. A cor de entrada é sempre **A
 |--------|------------------------------------------------------|
 | `404`  | Paciente ou procedimento não encontrado              |
 | `422`  | Paciente fora da faixa etária do procedimento        |
+| `422`  | Paciente inativo (`type`: `.../problems/patient-inactive`) |
 | `409`  | Paciente já possui entrada ativa neste procedimento  |
+| `409`  | Cota da unidade esgotada para `FILA_ESPERA` (`type`: `.../problems/quota-exceeded`) |
 
 ---
 
 ### GET /api/v1/queue
 
-Lista a fila de um procedimento ordenada por prioridade (riskColor → grupoLegal → registeredAt).
+Lista a fila de um procedimento ordenada por prioridade (tipoFila → riskColor → grupoLegal → registeredAt).
+
+> A ordenação real (`QueueEntryJpaRepository.findByProcedureIdAndFilters`) aplica `tipoFila` como critério primário — entradas `FILA_REGULADA` sempre vêm antes de `FILA_ESPERA`, independente da cor de risco — e só depois ordena por `riskColor`/grupo legal efetivo/`registeredAt`.
 
 **Auth:** `ROLE_MEDICO`
 
@@ -250,7 +258,7 @@ Lista a fila de um procedimento ordenada por prioridade (riskColor → grupoLega
 | Parâmetro     | Tipo    | Obrigatório | Padrão      | Descrição                                |
 |---------------|---------|-------------|-------------|------------------------------------------|
 | `procedureId` | UUID    | ✅          | —           | ID do procedimento para filtrar a fila   |
-| `status`      | enum    | ❌          | —           | Filtrar por status da entrada            |
+| `status`      | enum    | ❌          | `AGUARDANDO`| Filtrar por status da entrada — se omitido, `ListQueueByPriority.DEFAULT_STATUS` aplica `AGUARDANDO`; **não** retorna entradas de todos os status |
 | `riskColor`   | enum    | ❌          | —           | Filtrar por cor de risco                 |
 | `page`        | integer | ❌          | `0`         | Número da página (zero-based)            |
 | `size`        | integer | ❌          | `20`        | Itens por página                         |
@@ -478,13 +486,13 @@ Cadastra um novo paciente no sistema.
 
 | Campo            | Tipo   | Obrigatório | Validações                                              |
 |------------------|--------|-------------|---------------------------------------------------------|
-| `cpf`            | string | ✅          | Formato `###.###.###-##`, válido e único                |
+| `cpf`            | string | ✅          | Validado por dígito verificador (`@CPF` do Hibernate Validator), aceita **com ou sem** máscara — não exige o formato `###.###.###-##`. Único. |
 | `cns`            | string | ❌          | Cartão Nacional de Saúde, único se informado            |
 | `nome`           | string | ✅          | Primeiro nome do paciente                               |
 | `sobrenome`      | string | ✅          | Sobrenome do paciente                                   |
-| `dataNascimento` | date   | ✅          | Formato `yyyy-MM-dd`, não pode ser no futuro            |
+| `dataNascimento` | date   | ✅          | Formato `yyyy-MM-dd`. Não há `@Past`/`@PastOrPresent` em `RegisterPatientDTO` nem checagem no use case — **uma data futura é aceita sem erro**, ao contrário do que versões anteriores deste documento afirmavam. |
 | `gender`         | enum   | ❌          | `MASCULINO` \| `FEMININO` \| `OUTROS`                  |
-| `contato`        | string | ❌          | Apenas e-mail — `RegisterPatientDTO` valida com `@Email`, um telefone é **rejeitado** apesar do nome do campo sugerir "e-mail ou telefone" |
+| `contato`        | string | ❌          | Apenas e-mail **neste endpoint** — `RegisterPatientDTO` valida com `@Email`, um telefone é **rejeitado** apesar do nome do campo sugerir "e-mail ou telefone". Essa validação não é reaplicada no `PATCH /api/v1/patients/{id}` (ver abaixo). |
 | `grupoLegal`     | enum   | ❌          | `IDOSO` \| `GESTANTE` \| `DEFICIENTE` \| `LACTANTE` \| `OBESO` \| `GERAL` — sem `@NotNull` em `RegisterPatientDTO`; se omitido, assume `GERAL` como padrão |
 
 > **Detecção automática de IDOSO:** paciente com 60+ anos recebe `grupoLegal = IDOSO` automaticamente via `PriorityCalculator.getPriorityGroup()`, sobrescrevendo o valor informado.
@@ -599,6 +607,8 @@ Atualiza dados cadastrais de um paciente.
 }
 ```
 
+> `cpf` não é um campo deste corpo — o CPF não pode ser alterado via este endpoint. `contato` aqui é uma `String` livre, sem `@Email` (diferente do `POST /api/v1/patients`) — qualquer valor, inclusive telefone, é aceito.
+
 **Response `200 OK`:** mesmo schema de `GET /api/v1/patients/{id}`
 
 **Erros:**
@@ -681,7 +691,8 @@ Lista os procedimentos disponíveis para agendamento na fila, com suporte a pagi
 |-----------|---------|-------------|--------|-----------------------------------|
 | `page`    | integer | ❌          | `0`    | Número da página (zero-based)     |
 | `size`    | integer | ❌          | `20`   | Itens por página (máx. 100)       |
-| `codigo`  | string  | ❌          | —      | Filtrar por código SIGTAP (parcial)|
+
+> `codigo` **não é um parâmetro deste endpoint** — `ProcedureController` registra `codigo` numa rota Spring separada (`@GetMapping(params = "codigo")`, ver `GET /api/v1/procedures?codigo={codigo}` abaixo), que retorna um objeto único, não a lista paginada. Passar `codigo` junto com `page`/`size` na mesma chamada não combina os dois filtros.
 
 **Response `200 OK`:**
 ```json
@@ -707,7 +718,7 @@ Lista os procedimentos disponíveis para agendamento na fila, com suporte a pagi
 
 ### GET /api/v1/procedures?codigo={codigo}
 
-Busca um procedimento pelo código SIGTAP.
+Busca um procedimento pelo código SIGTAP. A busca é por **igualdade exata** (`findByCoProcedimento`) — não é um filtro parcial/`LIKE`.
 
 **Auth:** `ROLE_MEDICO` ou `ROLE_PACIENTE`
 
@@ -777,7 +788,7 @@ Lista o histórico de notificações enviadas, ordenadas por `sentAt` decrescent
 
 | Parâmetro   | Tipo    | Obrigatório | Padrão | Descrição                                          |
 |-------------|---------|-------------|--------|----------------------------------------------------|
-| `eventType` | enum    | ❌          | —      | Filtrar por tipo: `PATIENT_REGISTERED`, `PATIENT_CALLED`, `PRIORITY_UPDATED`, `PATIENT_CANCELLED` |
+| `eventType` | string  | ❌          | —      | Filtrar por tipo de evento. **Não é validado contra um enum fechado** — o parâmetro é recebido como `String` livre; qualquer um dos 12 valores de [`NotificationType`](#notificationtype) pode ser consumido/persistido (o serviço tem 3 consumers RabbitMQ que gravam todos eles, não só os 4 originalmente listados aqui) |
 | `page`      | integer | ❌          | `0`    | Número da página (zero-based)                      |
 | `size`      | integer | ❌          | `20`   | Itens por página                                   |
 
@@ -867,7 +878,7 @@ Cria uma nova solicitação de inclusão de paciente em fila ambulatorial.
 |--------------------------|--------|-------------|------------------------------------------|
 | `patientId`              | UUID   | ✅          | ID do paciente no queue-service          |
 | `procedureId`            | UUID   | ✅          | ID do procedimento no queue-service      |
-| `cid`                    | string | ✅          | Código CID-10 (default: `Z00.0`)         |
+| `cid`                    | string | ✅          | Código CID-10 — `@NotBlank` em `SolicitacaoRequestDTO`, sem valor default; omitir retorna `400 validation-error` |
 | `justificativaClinica`   | string | ✅          | Justificativa clínica detalhada          |
 | `profissionalSolicitante`| string | ✅          | Nome do médico solicitante               |
 | `crmProfissional`        | string | ❌          | CRM do profissional                      |
@@ -928,6 +939,8 @@ Lista solicitações com filtros opcionais.
 Retorna o detalhe de uma solicitação.
 
 > A resposta real **não inclui histórico de pareceres** — é um objeto plano (`SolicitacaoStatusResponseDTO`). Para ver as decisões emitidas, seria preciso um endpoint próprio de pareceres, que hoje não existe; versões anteriores deste documento mostravam um array `pareceres` aninhado que não corresponde à implementação.
+
+> Diferente de `GET /api/v1/solicitacoes` (listagem), este endpoint **não restringe** um `ROLE_SOLICITANTE` a ver apenas solicitações da própria unidade — `ConsultarStatusSolicitacaoUseCase.execute()` recebe o `UsuarioContexto` do JWT mas não o utiliza para checar propriedade. Qualquer `ROLE_SOLICITANTE` autenticado pode consultar qualquer `id` de solicitação por este endpoint.
 
 **Auth:** `ROLE_SOLICITANTE` ou `ROLE_REGULADOR`
 
@@ -1044,7 +1057,7 @@ Emite um parecer sobre uma solicitação. Disponível apenas para o médico regu
 |---------------|-----------------------------------------------------------------------|
 | `AUTORIZAR`   | Publica `SOLICITATION_APPROVED` → queue-service cria entry em `FILA_REGULADA` |
 | `FILA_ESPERA` | Publica `SOLICITATION_APPROVED` com destino `FILA_ESPERA`            |
-| `NEGAR`       | Publica `SOLICITATION_DENIED` → notification-service notifica UBS    |
+| `NEGAR`       | Publica `SOLICITATION_DENIED` → notification-service notifica UBS (publicação **best-effort**: `AvaliarSolicitacaoUseCase.publicarNegacaoSemFalhar` captura e loga falha do RabbitMQ sem bloquear a negação — a solicitação é negada mesmo que o evento não chegue) |
 | `DEVOLVER`    | Publica `SOLICITATION_DEVOLVED` → UBS deve complementar e reenviar   |
 | `PENDENTE`    | Aprovado mas sem vaga — aguarda cota ou decisão futura               |
 
@@ -1137,6 +1150,8 @@ Lista solicitações aprovadas mas com status `PENDENTE` (sem vaga disponível n
 > O agendamento-service expõe **dois canais de API**:
 > - **REST** (porta `8084`) — comandos que alteram estado (write operations)
 > - **GraphQL** (porta `8084`, path `/graphql`) — consultas flexíveis (read operations)
+>
+> **Restrição de unidade para `ROLE_EXECUTANTE`** (não documentada anteriormente): `POST /api/v1/schedules`, `PUT /api/v1/schedules/{id}`, `POST /api/v1/schedules/{id}/block`, `POST /api/v1/schedules/{id}/unblock` e `POST /api/v1/appointments/{id}/falta` comparam `principal.unitId()` (extraído do JWT) com a unidade do recurso (`schedule.getUnitId()`) e retornam `403 AccessDeniedException` ("EXECUTANTE restrito a sua unidade") em caso de divergência — um EXECUTANTE só opera sobre grades/agendamentos da própria unidade.
 
 ---
 
@@ -1153,6 +1168,7 @@ Confirma a presença do paciente no agendamento dentro do prazo de 72 horas.
 {
   "id": "cc44dd55-ee66-ff77-0011-223344556677",
   "status": "CONFIRMADO",
+  "confirmedAt": "2026-07-08T09:00:00",
   "slotDateTime": "2026-07-10T08:30:00Z",
   "unitName": "UPA Norte",
   "unitAddress": "Rua das Flores, 100"
@@ -1160,6 +1176,8 @@ Confirma a presença do paciente no agendamento dentro do prazo de 72 horas.
 ```
 
 > `unitAddress` vem da coluna `endereco` de `HealthUnit` (adicionada para viabilizar este campo) — pode retornar `null` até que o cadastro de unidades seja atualizado com esse dado.
+>
+> `confirmedAt` é um campo real de `ConfirmarAgendamentoResponseDTO` (não estava documentado aqui) — timestamp de quando o paciente confirmou.
 
 **Erros:**
 
@@ -1191,6 +1209,7 @@ Cancela um agendamento e libera o slot alocado.
 |--------|----------------------------------------------------------------|
 | `404`  | Agendamento não encontrado                                     |
 | `422`  | Status não permite cancelamento (`ATENDIDO`, `FALTOU`)        |
+| `422`  | `expiresAt` já passou — `CancelarAgendamentoUseCase` bloqueia o cancelamento após o prazo mesmo com status `CONFIRMADO` (não documentado anteriormente) |
 
 ---
 
@@ -1347,6 +1366,8 @@ Desbloqueia (volta para `DISPONIVEL`) todos os slots `INDISPONIVEL` da grade —
 
 Retorna slots disponíveis para um procedimento, com filtros opcionais de unidade e período.
 
+**Auth:** `ROLE_REGULADOR`, `ROLE_MEDICO`, `ROLE_PACIENTE` ou `ROLE_EXECUTANTE`
+
 ```graphql
 query {
   disponibilidade(
@@ -1411,6 +1432,8 @@ query {
 
 Retorna agendamentos com filtros flexíveis. PACIENTE vê apenas os próprios (pacienteId extraído do JWT). `dateFrom`/`dateTo` são obrigatórios (mesmo padrão de `disponibilidade.dataInicio`/`dataFim`).
 
+**Auth:** `ROLE_REGULADOR`, `ROLE_MEDICO`, `ROLE_PACIENTE` ou `ROLE_EXECUTANTE`
+
 ```graphql
 query {
   agendamentos(
@@ -1438,6 +1461,8 @@ query {
 
 #### Query: agendamento (por ID)
 
+**Auth:** `ROLE_REGULADOR`, `ROLE_MEDICO`, `ROLE_PACIENTE` ou `ROLE_EXECUTANTE`
+
 ```graphql
 query {
   agendamento(id: "cc44dd55-ee66-ff77-0011-223344556677") {
@@ -1460,6 +1485,8 @@ query {
 #### Query: grade
 
 Retorna a grade semanal de uma unidade para uma semana específica.
+
+**Auth:** `ROLE_EXECUTANTE`, `ROLE_MEDICO` ou `ROLE_REGULADOR` — diferente das demais queries (`disponibilidade`, `agendamentos`, `agendamento`), que também aceitam `ROLE_PACIENTE`; `grade` não é acessível a `ROLE_PACIENTE`.
 
 ```graphql
 query {
@@ -1709,7 +1736,7 @@ Todos os serviços seguem o padrão **RFC 7807 — Problem Details for HTTP APIs
   "instance": "/api/v1/patients",
   "violations": [
     { "field": "cpf",             "message": "CPF inválido" },
-    { "field": "dataNascimento",  "message": "não pode ser no futuro" }
+    { "field": "nome",            "message": "É obrigatório informar o nome do paciente!" }
   ]
 }
 ```
@@ -1824,7 +1851,7 @@ Todos os serviços seguem o padrão **RFC 7807 — Problem Details for HTTP APIs
 | `.../problems/quota-not-found`                                  | 404    | queue — não documentado anteriormente |
 | `.../problems/unit-not-found`                                   | 404    | regulacao           |
 | `.../problems/unit-already-exists`                               | 409    | regulacao           |
-| `.../problems/id-paciente-incorreto`                             | 403    | regulacao           |
+| `.../problems/id-paciente-incorreto`                             | 403    | regulacao — mapeado em `GlobalExceptionHandler`, mas `IdPacienteIncorretoException` nunca é lançada em nenhum use case; nenhum endpoint documentado produz este erro hoje |
 | `.../problems/missing-required-field`                            | 422    | regulacao           |
 | `.../problems/slot-not-found`                                   | 404    | agendamento         |
 | `.../problems/slot-unavailable`                                 | 422    | agendamento         |

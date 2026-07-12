@@ -7,8 +7,6 @@ import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
 
 public record PatientRequestDTO(
-        @NotBlank(message = "O CPF é obrigatório")
-        String cpf,
         String cns,
         @NotBlank(message = "É obrigatório informar o nome do paciente!")
         String nome,
