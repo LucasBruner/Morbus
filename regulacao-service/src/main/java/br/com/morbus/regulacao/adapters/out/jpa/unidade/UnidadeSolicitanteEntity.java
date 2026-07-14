@@ -3,14 +3,15 @@ package br.com.morbus.regulacao.adapters.out.jpa.unidade;
 import br.com.morbus.regulacao.domain.model.UnidadeSolicitante;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PostLoad;
+import jakarta.persistence.PostPersist;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
+import jakarta.persistence.Transient;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.data.domain.Persistable;
 
 import java.util.UUID;
 
@@ -19,11 +20,9 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
-public class UnidadeSolicitanteEntity {
+public class UnidadeSolicitanteEntity implements Persistable<UUID> {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(nullable = false, length = 7, unique = true)
@@ -37,6 +36,28 @@ public class UnidadeSolicitanteEntity {
 
     @Column(length = 20)
     private String telefone;
+
+    @Transient
+    private boolean isNew = true;
+
+    public UnidadeSolicitanteEntity(UUID id, String cnes, String nome, String endereco, String telefone) {
+        this.id = id;
+        this.cnes = cnes;
+        this.nome = nome;
+        this.endereco = endereco;
+        this.telefone = telefone;
+    }
+
+    @Override
+    public boolean isNew() {
+        return isNew;
+    }
+
+    @PostLoad
+    @PostPersist
+    void markNotNew() {
+        this.isNew = false;
+    }
 
     public UnidadeSolicitante toDomain() {
         return new UnidadeSolicitante(this.id, this.cnes, this.nome, this.endereco, this.telefone);

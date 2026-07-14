@@ -4,7 +4,7 @@ import br.com.morbus.queueservice.domain.enums.EDestino;
 import br.com.morbus.queueservice.domain.enums.ERiskColor;
 import jakarta.annotation.Nullable;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 public record QueueEventPayload(String eventType,
@@ -19,5 +19,5 @@ public record QueueEventPayload(String eventType,
                                 ERiskColor riskColor,
                                 EDestino tipoFila,
                                 @Nullable String motivoCancelamento,
-                                LocalDateTime timestamp) {
+                                Instant timestamp) {
 }

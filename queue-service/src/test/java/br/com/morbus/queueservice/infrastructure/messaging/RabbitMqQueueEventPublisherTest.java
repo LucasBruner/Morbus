@@ -18,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -117,9 +118,9 @@ class RabbitMqQueueEventPublisherTest {
         @DisplayName("deve preencher os campos do payload corretamente")
         void devePreencherPayload() {
             QueueEntry entry = buildEntry();
-            LocalDateTime antes = LocalDateTime.now();
+            Instant antes = Instant.now();
             publisher.publishPatientRegistered(entry);
-            LocalDateTime depois = LocalDateTime.now();
+            Instant depois = Instant.now();
 
             QueueEventPayload payload = capturePayload("sus.queue.exchange", "patient.registered");
 
@@ -179,9 +180,9 @@ class RabbitMqQueueEventPublisherTest {
         @DisplayName("timestamp deve refletir o momento do evento, não o registeredAt")
         void timestampDeveSerMomentoDoEvento() {
             QueueEntry entry = buildEntry();
-            LocalDateTime antes = LocalDateTime.now();
+            Instant antes = Instant.now();
             publisher.publishPatientCalled(entry);
-            LocalDateTime depois = LocalDateTime.now();
+            Instant depois = Instant.now();
 
             QueueEventPayload payload = capturePayload("sus.queue.exchange", "patient.called");
             assertThat(payload.timestamp())

@@ -1,7 +1,7 @@
 package br.com.morbus.queueservice.infrastructure.config;
 
 import br.com.morbus.queueservice.infrastructure.security.JwtAuthenticationFilter;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

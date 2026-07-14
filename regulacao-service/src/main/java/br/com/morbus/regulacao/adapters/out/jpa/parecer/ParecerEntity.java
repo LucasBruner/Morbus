@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.data.domain.Persistable;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -17,10 +18,9 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class ParecerEntity {
+public class ParecerEntity implements Persistable<UUID> {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(name = "solicitacao_id", nullable = false)
@@ -38,6 +38,20 @@ public class ParecerEntity {
 
     @Column(name = "emitido_em", nullable = false, updatable = false)
     private LocalDateTime emitidoEm;
+
+    @Transient
+    private boolean isNew = true;
+
+    @Override
+    public boolean isNew() {
+        return isNew;
+    }
+
+    @PostLoad
+    @PostPersist
+    void markNotNew() {
+        this.isNew = false;
+    }
 
     public Parecer toDomain() {
         return new Parecer(this.id, this.solicitacaoId, this.reguladorId, this.decisao, this.justificativa, this.emitidoEm);

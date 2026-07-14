@@ -816,14 +816,20 @@
           ],
           "request": {
             "method": "DELETE",
-            "header": [{ "key": "Authorization", "value": "Bearer {{medicoToken}}" }],
-            "url": {
-              "raw": "{{baseUrlQueue}}/api/v1/queue/{{queueEntryIdCancel}}?motivo=Paciente desistiu do procedimento",
-              "host": ["{{baseUrlQueue}}"],
-              "path": ["api", "v1", "queue", "{{queueEntryIdCancel}}"],
-              "query": [{ "key": "motivo", "value": "Paciente desistiu do procedimento" }]
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{medicoToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"motivoCancelamento\": \"Paciente desistiu do procedimento\"\n}"
             },
-            "description": "Flow 7. Publica PATIENT_CANCELLED."
+            "url": {
+              "raw": "{{baseUrlQueue}}/api/v1/queue/{{queueEntryIdCancel}}",
+              "host": ["{{baseUrlQueue}}"],
+              "path": ["api", "v1", "queue", "{{queueEntryIdCancel}}"]
+            },
+            "description": "Flow 7. Publica PATIENT_CANCELLED. O corpo usa `motivoCancelamento` (nao query param `motivo`) porque QueueController.cancelQueueEntry exige @RequestBody CancelQueueRequestDTO."
           },
           "response": []
         },
@@ -851,6 +857,34 @@
       "name": "Flow 8 - Consulta de Posicao pelo Paciente (dedicado)",
       "item": [
         {
+          "name": "Find Procedure Posicao (codigo)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "const item = Array.isArray(body) ? body[0] : body;",
+                  "pm.collectionVariables.set('procedureIdPosition', item.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{medicoToken}}" }],
+            "url": {
+              "raw": "{{baseUrlQueue}}/api/v1/procedures?codigo={{procedureCodigoPosition}}",
+              "host": ["{{baseUrlQueue}}"],
+              "path": ["api", "v1", "procedures"],
+              "query": [{ "key": "codigo", "value": "{{procedureCodigoPosition}}" }]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "Register Queue Entry - Patient A (para consulta de posicao)",
           "event": [
             {
@@ -872,14 +906,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"patientId\": \"{{patientAId}}\",\n  \"procedureId\": \"{{procedureId}}\"\n}"
+              "raw": "{\n  \"patientId\": \"{{patientAId}}\",\n  \"procedureId\": \"{{procedureIdPosition}}\"\n}"
             },
             "url": {
               "raw": "{{baseUrlQueue}}/api/v1/queue",
               "host": ["{{baseUrlQueue}}"],
               "path": ["api", "v1", "queue"]
             },
-            "description": "2a entrada do Patient A no mesmo procedimento da Flow 4 — permitido porque a 1a entrada ja saiu de AGUARDANDO (esta CHAMADO desde a Flow 5)."
+            "description": "Usa um procedimento dedicado (procedureCodigoPosition) em vez de reaproveitar o da Flow 4: RegisterPatientInQueue.validateIfPatientInQueue bloqueia reentrada com status AGUARDANDO, CHAMADO ou AGENDADO para o mesmo procedimento, entao a 1a entrada da Flow 4 (CHAMADO desde a Flow 5) continuaria bloqueando esta 2a entrada se reusasse o mesmo procedimento."
           },
           "response": []
         },
@@ -1507,6 +1541,8 @@
     { "key": "procedureCodigo", "value": "0301010072", "type": "string" },
     { "key": "procedureCodigoReclass", "value": "0301010064", "type": "string" },
     { "key": "procedureCodigoCancel", "value": "0301040010", "type": "string" },
+    { "key": "procedureCodigoPosition", "value": "0202010011", "type": "string" },
+    { "key": "procedureIdPosition", "value": "", "type": "string" },
     { "key": "agendamentoUnitId", "value": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "type": "string" },
     { "key": "solicitanteUsername", "value": "", "type": "string" },
     { "key": "solicitanteToken", "value": "", "type": "string" },

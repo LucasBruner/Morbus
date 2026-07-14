@@ -37,6 +37,7 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(GlobalExceptionHandler.class);
     private static final String TYPE_BASE = "https://morbus.sus.gov.br/problems/";
 
     @ExceptionHandler(PatientNotFoundException.class)
@@ -175,6 +176,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ProblemDetail> handleGeneric(
             Exception ex, HttpServletRequest request) {
+
+        log.error("Unhandled exception on {} {}", request.getMethod(), request.getRequestURI(), ex);
 
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.INTERNAL_SERVER_ERROR, "Ocorreu um erro inesperado. Tente novamente.");
