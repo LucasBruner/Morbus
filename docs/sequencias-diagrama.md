@@ -462,6 +462,7 @@ Fluxo completo de ponta a ponta: UBS cria solicitação, regulador aprova, pacie
 sequenceDiagram
     actor Solicitante as Solicitante (UBS)
     actor Regulador
+    actor Medico as Médico
     actor Paciente
     participant RS as regulacao-service :8083
     participant MQ as RabbitMQ
@@ -491,12 +492,12 @@ sequenceDiagram
     MQ--)NS: Consome PATIENT_REGISTERED
     NS-->>Paciente: [EMAIL] "Você foi incluído na fila para [procedimento]. Classificação: AMARELO"
 
-    Note over Regulador,AS: Chamada do próximo
+    Note over Medico,AS: Chamada do próximo
 
-    Regulador->>QS: POST /api/v1/queue/call-next
+    Medico->>QS: POST /api/v1/queue/call-next
     QS->>QS: CallNextPatient → status: CHAMADO
     QS--)MQ: PATIENT_CALLED { queueEntryId, patientId, procedureId, preferredUnitId }
-    QS-->>Regulador: 200 OK { status: CHAMADO }
+    QS-->>Medico: 200 OK { status: CHAMADO }
 
     Note over MQ,AS: agendamento-service aloca slot
 

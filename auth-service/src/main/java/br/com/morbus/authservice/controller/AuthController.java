@@ -38,6 +38,7 @@ public class AuthController {
                         user.getUsername(),
                         user.getEmail(),
                         user.getRole().toString(),
+                        user.getUnitId() != null ? user.getUnitId().toString() : null,
                         user.getCreatedAt()));
     }
 

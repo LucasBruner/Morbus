@@ -41,6 +41,7 @@ public class AuthService {
         newUser.setEmail(newUserDTO.email());
         newUser.setPassword(passwordEncoder.encode(newUserDTO.password()));
         newUser.setRole(newUserDTO.role());
+        newUser.setUnitId(newUserDTO.unitId());
 
         return userRepository.save(newUser);
     }

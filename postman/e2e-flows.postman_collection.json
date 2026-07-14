@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "f4a7c2e1-8b3d-4e6a-9c1f-2d5e6a7b8c9d",
     "name": "Morbus - E2E Flows (docs/sequencias-diagrama.md)",
-    "description": "Reproduz, requisição a requisição, os 13 fluxos de docs/sequencias-diagrama.md, encadeando auth-service, queue-service, regulacao-service, agendamento-service e notification-service. Rode a coleção inteira em ordem (Collection Runner ou `newman run postman/e2e-flows.postman_collection.json --delay-request 500`) contra o docker-compose.yml da raiz do repo.\n\nPré-requisitos:\n1. `docker-compose up -d` na raiz do projeto.\n2. Antes da pasta \"Flow 10\", rode `./postman/seed-agendamento.sh` — sem isso o slot do agendamento-service não existe e a Flow 10 não completa (ver `postman/README.md`, seção Limitações Conhecidas).\n\nEsta coleção é independente das 3 coleções por serviço já existentes (auth-service, queue-service, regulacao-service) — aquelas testam endpoints isolados; esta testa as jornadas ponta-a-ponta entre serviços, incluindo a propagação via RabbitMQ.\n\nVeja `postman/README.md` para as limitações reais encontradas no código durante a criação desta coleção (username precisa ser UUID para regulacao/agendamento-service; endpoints ROLE_EXECUTANTE sempre retornam 403; call-next é ROLE_MEDICO mesmo nos fluxos onde o diagrama mostra o Regulador chamando).",
+    "description": "Reproduz, requisição a requisição, os 14 fluxos de docs/sequencias-diagrama.md, encadeando auth-service, queue-service, regulacao-service, agendamento-service e notification-service, mais uma Flow 14 extra (fora do diagrama) validando o caminho de sucesso do gap de unit_id corrigido. Rode a coleção inteira em ordem (Collection Runner ou `newman run postman/e2e-flows.postman_collection.json --delay-request 500`) contra o docker-compose.yml da raiz do repo.\n\nPré-requisitos:\n1. `docker-compose up -d` na raiz do projeto.\n2. Antes da pasta \"Flow 10\", rode `./postman/seed-agendamento.sh` — ele cria apenas health_unit e provider (não existe API pública para isso). A schedule e os slots já são criados via API dentro da própria Flow 10 (request \"Create Schedule\"), usando o {{executanteToken}} com o claim unit_id no JWT.\n\nEsta coleção é independente das 3 coleções por serviço já existentes (auth-service, queue-service, regulacao-service) — aquelas testam endpoints isolados; esta testa as jornadas ponta-a-ponta entre serviços, incluindo a propagação via RabbitMQ.\n\nVeja `postman/README.md` para as limitações reais encontradas no código durante a criação desta coleção (username precisa ser UUID para regulacao/agendamento-service; call-next é ROLE_MEDICO mesmo nos fluxos onde o diagrama mostra o Regulador chamando). O gap de JWT sem unit_id para ROLE_EXECUTANTE foi corrigido no auth-service — endpoints unit-scoped funcionam desde que o registro do usuário inclua unitId e o corpo da requisição use o mesmo unitId. Flow 13 testa o caso negativo (EXECUTANTE sem unitId -> 403, comportamento correto) e Flow 14 testa o caso positivo (EXECUTANTE com unitId correto -> 204, reaproveitando o mesmo agendamento da Flow 10).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -181,13 +181,14 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"{{executanteUsername}}\",\n  \"email\": \"executante.{{executanteUsername}}@sus.gov.br\",\n  \"password\": \"{{senhaPadrao}}\",\n  \"role\": \"EXECUTANTE\"\n}"
+              "raw": "{\n  \"username\": \"{{executanteUsername}}\",\n  \"email\": \"executante.{{executanteUsername}}@sus.gov.br\",\n  \"password\": \"{{senhaPadrao}}\",\n  \"role\": \"EXECUTANTE\",\n  \"unitId\": \"{{agendamentoUnitId}}\"\n}"
             },
             "url": {
               "raw": "{{baseUrlAuth}}/auth/register",
               "host": ["{{baseUrlAuth}}"],
               "path": ["auth", "register"]
-            }
+            },
+            "description": "unitId preenchido para que o JWT carregue o claim unit_id, exigido por ScheduleController (ver Flow 10 / Create Schedule)."
           },
           "response": []
         },
@@ -950,8 +951,41 @@
     },
     {
       "name": "Flow 10 - Solicitacao Aprovada -> Fila -> Agendamento",
-      "description": "Requer Flow 1-2, Flow 3 e Flow 4 ja executadas nesta run (usa {{medicoToken}}, {{solicitanteToken}}, {{reguladorToken}} e {{procedureId}}). Requer tambem que ./postman/seed-agendamento.sh tenha sido rodado — sem isso o agendamento-service nao encontra slot disponivel e a jornada para no PATIENT_CALLED (ver postman/README.md).",
+      "description": "Requer Flow 1-2, Flow 3 e Flow 4 ja executadas nesta run (usa {{medicoToken}}, {{solicitanteToken}}, {{reguladorToken}}, {{executanteToken}} e {{procedureId}}). Requer tambem que ./postman/seed-agendamento.sh tenha sido rodado — ele so cria health_unit e provider (sem API publica para isso); a schedule/slots agora sao criados aqui mesmo, via API, pela request 'Create Schedule'.",
       "item": [
+        {
+          "name": "Create Schedule",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('slotsGerados > 0', () => pm.expect(pm.response.json().slotsGerados).to.be.above(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{executanteToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"providerId\": \"{{agendamentoProviderId}}\",\n  \"unitId\": \"{{agendamentoUnitId}}\",\n  \"procedureId\": \"{{procedureId}}\",\n  \"diaDaSemana\": \"SEGUNDA\",\n  \"horarioInicio\": \"08:00\",\n  \"horarioFim\": \"12:00\",\n  \"slotDuracaoMinutos\": 30,\n  \"capacidade\": 2\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlAgendamento}}/api/v1/schedules",
+              "host": ["{{baseUrlAgendamento}}"],
+              "path": ["api", "v1", "schedules"]
+            },
+            "description": "Exige ROLE_EXECUTANTE com unit_id no JWT batendo com o unitId do corpo (gap corrigido no auth-service). providerId e o mesmo criado por seed-agendamento.sh; a data do slot e sempre a proxima ocorrencia de diaDaSemana a partir de hoje (CriarScheduleUseCase.gerarSlots), entao qualquer dia da semana serve."
+          },
+          "response": []
+        },
         {
           "name": "Register Unidade Solicitante",
           "event": [
@@ -1500,18 +1534,119 @@
       ]
     },
     {
-      "name": "Flow 13 - Paciente Faltou (bloqueado no codigo atual)",
-      "description": "Reproduz o gatilho de Flow 13 (EXECUTANTE registra falta), mas o endpoint retorna 403 de forma consistente no codigo atual. Ver postman/README.md > Limitacoes Conhecidas para a causa raiz confirmada em codigo.",
+      "name": "Flow 13 - Paciente Faltou (EXECUTANTE sem unidade -> 403 esperado)",
+      "description": "Esta Flow testa o caso negativo real: um EXECUTANTE que nunca teve unitId associado no cadastro continua corretamente bloqueado (403) ao tentar registrar falta em um agendamento de uma unidade que ele nao representa. Usa um executante dedicado (sem unitId), nao o {{executanteToken}} da Flow 1-2 (que tem unitId e e usado para criar a Schedule na Flow 10).",
       "item": [
         {
-          "name": "Registrar Falta (esperado 403 - gap de unitId no JWT)",
+          "name": "Register Executante Sem Unidade",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const uuid = pm.variables.replaceIn('{{$randomUUID}}');",
+                  "pm.collectionVariables.set('executanteSemUnidadeUsername', uuid);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{executanteSemUnidadeUsername}}\",\n  \"email\": \"executante.semunidade.{{executanteSemUnidadeUsername}}@sus.gov.br\",\n  \"password\": \"{{senhaPadrao}}\",\n  \"role\": \"EXECUTANTE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlAuth}}/auth/register",
+              "host": ["{{baseUrlAuth}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Sem unitId de proposito — este usuario nao representa nenhuma unidade, entao o JWT nao carrega o claim unit_id."
+          },
+          "response": []
+        },
+        {
+          "name": "Login Executante Sem Unidade",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('403 Forbidden (gap conhecido, nao e falha do teste)', () => pm.response.to.have.status(403));"
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('executanteSemUnidadeToken', pm.response.json().token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{executanteSemUnidadeUsername}}\",\n  \"password\": \"{{senhaPadrao}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlAuth}}/auth/login",
+              "host": ["{{baseUrlAuth}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Registrar Falta (403 esperado - EXECUTANTE sem unidade)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 Forbidden (EXECUTANTE sem unitId associado)', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{executanteSemUnidadeToken}}" }],
+            "url": {
+              "raw": "{{baseUrlAgendamento}}/api/v1/appointments/{{agendamentoId}}/falta",
+              "host": ["{{baseUrlAgendamento}}"],
+              "path": ["api", "v1", "appointments", "{{agendamentoId}}", "falta"]
+            },
+            "description": "RegistrarFaltaAgendamentoUseCase.execute() compara schedule.getUnitId() com o unitId do principal autenticado (extraido via JwtService.extractUnitId). Como este EXECUTANTE nunca recebeu unitId no cadastro, o JWT nao carrega o claim unit_id, principal.unitId() e null, e a comparacao falha com AccessDeniedException (403) — comportamento de autorizacao correto, nao mais um gap."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Flow 14 - Paciente Faltou (sucesso)",
+      "description": "Contraparte de sucesso do Flow 13: usa {{executanteToken}} (Flow 1-2), que TEM unitId associado e bate com a unidade do agendamento criado na Flow 10. Reaproveita o mesmo {{agendamentoId}} — so funciona porque o Flow 13 roda antes e nao muda o estado (403 e barrado antes de qualquer mutacao). RegistrarFaltaAgendamentoUseCase exige status CONFIRMADO, que e exatamente o estado deixado pela Flow 10.",
+      "item": [
+        {
+          "name": "Registrar Falta (204 esperado - EXECUTANTE com unidade correta)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('204 No Content', () => pm.response.to.have.status(204));"
                 ]
               }
             }
@@ -1524,7 +1659,40 @@
               "host": ["{{baseUrlAgendamento}}"],
               "path": ["api", "v1", "appointments", "{{agendamentoId}}", "falta"]
             },
-            "description": "RegistrarFaltaAgendamentoUseCase.execute() compara schedule.getUnitId() com o unitId do principal autenticado. O agendamento-service extrai esse unitId via JwtService.extractUnitId(token) — mas o auth-service (JwtService.generateToken) NUNCA adiciona um claim 'unitId' ao JWT, so 'sub' e 'role'. Logo principal.unitId() e sempre null e a comparacao falha, resultando em AccessDeniedException (403) para QUALQUER usuario EXECUTANTE, independente de qual unidade ele deveria representar. O mesmo bloqueia POST /api/v1/schedules, .../block, .../unblock e PATCH .../attend. Nao ha workaround via API publica; corrigir exigiria o auth-service emitir um claim unitId (e um jeito de associar um EXECUTANTE a uma unidade no cadastro), o que esta fora do escopo desta colecao de testes."
+            "description": "Mesmo agendamento da Flow 10 (status CONFIRMADO apos 'Confirmar Agendamento'). Aqui o EXECUTANTE tem unitId = {{agendamentoUnitId}}, igual a unidade da schedule/slot, entao a comparacao em RegistrarFaltaAgendamentoUseCase passa e o agendamento transiciona para FALTOU, liberando o slot (slot.releaseOne())."
+          },
+          "response": []
+        },
+        {
+          "name": "GraphQL - Confirmar status FALTOU",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('status FALTOU', () => pm.expect(pm.response.json().data.agendamento.status).to.eql('FALTOU'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{executanteToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query { agendamento(id: \\\"{{agendamentoId}}\\\") { id status } }\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlAgendamento}}/graphql",
+              "host": ["{{baseUrlAgendamento}}"],
+              "path": ["graphql"]
+            },
+            "description": "Confirma que a falta foi persistida (nao so o 204 da resposta) — consulta o mesmo agendamento e espera status FALTOU."
           },
           "response": []
         }
@@ -1544,12 +1712,15 @@
     { "key": "procedureCodigoPosition", "value": "0202010011", "type": "string" },
     { "key": "procedureIdPosition", "value": "", "type": "string" },
     { "key": "agendamentoUnitId", "value": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "type": "string" },
+    { "key": "agendamentoProviderId", "value": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", "type": "string" },
     { "key": "solicitanteUsername", "value": "", "type": "string" },
     { "key": "solicitanteToken", "value": "", "type": "string" },
     { "key": "reguladorUsername", "value": "", "type": "string" },
     { "key": "reguladorToken", "value": "", "type": "string" },
     { "key": "executanteUsername", "value": "", "type": "string" },
     { "key": "executanteToken", "value": "", "type": "string" },
+    { "key": "executanteSemUnidadeUsername", "value": "", "type": "string" },
+    { "key": "executanteSemUnidadeToken", "value": "", "type": "string" },
     { "key": "medicoUsername", "value": "", "type": "string" },
     { "key": "medicoToken", "value": "", "type": "string" },
     { "key": "patientACpf", "value": "", "type": "string" },
