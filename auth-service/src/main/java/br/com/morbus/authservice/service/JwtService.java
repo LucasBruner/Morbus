@@ -29,9 +29,15 @@ public class JwtService {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + expirationMs);
 
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .subject(user.getUsername())
-                .claim("role", user.getRole().name())
+                .claim("role", user.getRole().name());
+
+        if (user.getUnitId() != null) {
+            builder.claim("unit_id", user.getUnitId().toString());
+        }
+
+        return builder
                 .issuedAt(now)
                 .expiration(expiry)
                 .signWith(secretKey)
@@ -53,6 +59,10 @@ public class JwtService {
 
     public String extractRole(String token) {
         return parseClaims(token).get("role", String.class);
+    }
+
+    public String extractUnitId(String token) {
+        return parseClaims(token).get("unit_id", String.class);
     }
 
     public long getExpirationMs() {

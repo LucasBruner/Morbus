@@ -1,5 +1,6 @@
 package br.com.morbus.agendamento.adapter.out.persistence;
 
+import org.springframework.data.domain.Limit;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -20,8 +21,14 @@ public interface ISlotJpaRepository extends JpaRepository<SlotEntity, UUID> {
             AND s.status = 'DISPONIVEL'
             ORDER BY s.dataHora ASC
             """)
-    Optional<SlotEntity> findAvailableSlotForProcedureAndUnit(@Param("procedureId") UUID procedureId,
-                                                              @Param("preferredUnitId") UUID preferredUnitId);
+    List<SlotEntity> findAvailableSlotsForProcedureAndUnit(@Param("procedureId") UUID procedureId,
+                                                            @Param("preferredUnitId") UUID preferredUnitId,
+                                                            Limit limit);
+
+    default Optional<SlotEntity> findAvailableSlotForProcedureAndUnit(UUID procedureId, UUID preferredUnitId) {
+        List<SlotEntity> slots = findAvailableSlotsForProcedureAndUnit(procedureId, preferredUnitId, Limit.of(1));
+        return slots.isEmpty() ? Optional.empty() : Optional.of(slots.get(0));
+    }
 
     @Query(value = """
             SELECT s
@@ -32,7 +39,7 @@ public interface ISlotJpaRepository extends JpaRepository<SlotEntity, UUID> {
             AND s.status = 'DISPONIVEL'
             AND s.dataHora >= :dateFrom
             AND s.dataHora <= :dateTo
-            ORDER BY s.data_hora ASC
+            ORDER BY s.dataHora ASC
             """)
     List<SlotEntity> findByProcedureAndUnitAndDate( @Param("procedureId") UUID procedureId,
                                                     @Param("unitId") UUID unitId,

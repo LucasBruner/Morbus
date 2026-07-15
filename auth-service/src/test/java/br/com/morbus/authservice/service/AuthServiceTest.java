@@ -78,7 +78,24 @@ class AuthServiceTest {
             assertThat(result.getUsername()).isEqualTo("dr_silva");
             assertThat(result.getRole()).isEqualTo(UserRole.MEDICO);
             assertThat(result.getPassword()).isEqualTo("$2b$10$hash");
+            assertThat(result.getUnitId()).isNull();
             verify(userRepository).save(any(User.class));
+        }
+
+        @Test
+        @DisplayName("deve propagar unitId para EXECUTANTE")
+        void propagatesUnitIdForExecutante() {
+            UUID unitId = UUID.randomUUID();
+            NewUserDTO dto = new NewUserDTO("executante_1", "executante@sus.gov.br", VALID_PASSWORD, UserRole.EXECUTANTE, unitId);
+
+            when(userRepository.existsByUsername("executante_1")).thenReturn(false);
+            when(userRepository.existsByEmail("executante@sus.gov.br")).thenReturn(false);
+            when(passwordEncoder.encode(VALID_PASSWORD)).thenReturn("$2b$10$hash");
+            when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            User result = authService.createNewUser(dto);
+
+            assertThat(result.getUnitId()).isEqualTo(unitId);
         }
 
         @Test

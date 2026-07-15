@@ -33,6 +33,12 @@ class JwtServiceTest {
         return user;
     }
 
+    private User buildUser(String username, UserRole role, UUID unitId) {
+        User user = buildUser(username, role);
+        user.setUnitId(unitId);
+        return user;
+    }
+
     // ── generateToken ─────────────────────────────────────────────────────────
 
     @Nested
@@ -163,6 +169,34 @@ class JwtServiceTest {
             assertThat(jwtService.extractRole(tokenPaciente)).isEqualTo("PACIENTE");
             assertThat(jwtService.extractUsername(tokenMedico)).isEqualTo("dr_silva");
             assertThat(jwtService.extractUsername(tokenPaciente)).isEqualTo("joao");
+        }
+    }
+
+    // ── extractUnitId ─────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("extractUnitId")
+    class ExtractUnitId {
+
+        @Test
+        @DisplayName("deve extrair o unit_id quando o usuario possui unidade")
+        void extractsUnitIdWhenPresent() {
+            UUID unitId = UUID.randomUUID();
+            User user = buildUser("executante_1", UserRole.EXECUTANTE, unitId);
+
+            String token = jwtService.generateToken(user);
+
+            assertThat(jwtService.extractUnitId(token)).isEqualTo(unitId.toString());
+        }
+
+        @Test
+        @DisplayName("deve retornar null quando o usuario nao possui unidade")
+        void returnsNullWhenAbsent() {
+            User user = buildUser("dr_silva", UserRole.MEDICO);
+
+            String token = jwtService.generateToken(user);
+
+            assertThat(jwtService.extractUnitId(token)).isNull();
         }
     }
 }

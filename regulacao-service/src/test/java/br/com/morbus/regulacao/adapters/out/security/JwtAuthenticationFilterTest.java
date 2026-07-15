@@ -181,5 +181,28 @@ class JwtAuthenticationFilterTest {
                     .getAuthentication().getPrincipal();
             assertThat(principal.role()).isEqualTo("ROLE_SOLICITANTE");
         }
+
+        @Test
+        @DisplayName("deve autenticar com userId nulo quando username nao e um UUID valido")
+        void deveAutenticarComUserIdNuloQuandoUsernameNaoEUuid() throws Exception {
+            String token = "token.valido.aqui";
+            MockHttpServletRequest request = new MockHttpServletRequest();
+            request.addHeader("Authorization", "Bearer " + token);
+
+            when(jwtService.validateToken(token)).thenReturn(true);
+            when(jwtService.extractUsername(token)).thenReturn("dr.joao");
+            when(jwtService.extractRole(token)).thenReturn("MEDICO");
+            when(jwtService.extractUnitId(token)).thenReturn(null);
+
+            filter.doFilter(request, new MockHttpServletResponse(), new MockFilterChain());
+
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            assertThat(auth).isNotNull();
+
+            UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
+            assertThat(principal.username()).isEqualTo("dr.joao");
+            assertThat(principal.userId()).isNull();
+            assertThat(principal.role()).isEqualTo("ROLE_MEDICO");
+        }
     }
 }

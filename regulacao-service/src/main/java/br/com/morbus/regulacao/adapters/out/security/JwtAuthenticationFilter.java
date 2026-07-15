@@ -49,7 +49,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String unitIdStr = jwtService.extractUnitId(token);
         UUID unitId = unitIdStr != null ? UUID.fromString(unitIdStr) : null;
-        UUID userId = UUID.fromString(username);
+        UUID userId = parseUserId(username);
 
         UserPrincipal principal = new UserPrincipal(username, userId, unitId, authority);
 
@@ -61,5 +61,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
         filterChain.doFilter(request, response);
+    }
+
+    private static UUID parseUserId(String username) {
+        try {
+            return UUID.fromString(username);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 }

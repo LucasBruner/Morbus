@@ -3,8 +3,6 @@ package br.com.morbus.regulacao.adapters.out.jpa.quota;
 import br.com.morbus.regulacao.domain.model.Quota;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -24,7 +22,6 @@ import java.util.UUID;
 public class QuotaEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(name = "unit_id", nullable = false)

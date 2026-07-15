@@ -14,6 +14,7 @@ import br.com.morbus.queueservice.infrastructure.database.repository.PatientJpaR
 import br.com.morbus.queueservice.infrastructure.database.repository.ProcedureJpaRepository;
 import br.com.morbus.queueservice.infrastructure.database.repository.QueueEntryJpaRepository;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -43,6 +44,7 @@ public class QueueEntryRepositoryImpl implements IQueueEntryRepository {
     }
 
     @Override
+    @Transactional
     public void save(QueueEntry entry) {
         repository.findById(entry.getId()).ifPresentOrElse(
                 existing -> {
@@ -72,12 +74,14 @@ public class QueueEntryRepositoryImpl implements IQueueEntryRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<QueueEntry> findById(UUID id) {
         Optional<QueueEntryEntity> queueEntity = repository.findById(id);
         return queueEntity.map(this::mapToDomainQueue);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<QueueEntry> findNextByPriority() {
         List<QueueEntryEntity> entryList = repository.findByPriority(EQueueStatus.AGUARDANDO, null);
         return entryList.isEmpty()
@@ -86,12 +90,14 @@ public class QueueEntryRepositoryImpl implements IQueueEntryRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<QueueEntry> findByPatient(Patient patient) {
         List<QueueEntryEntity> entryList = repository.findByPatient(patient.getId());
         return Optional.ofNullable(mapToDomainQueue(entryList.getFirst()));
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<QueueEntry> findAllOrderedByPriority() {
         List<QueueEntryEntity> entryList = repository.findAllOrderedByPriority(null, null);
 
@@ -122,6 +128,7 @@ public class QueueEntryRepositoryImpl implements IQueueEntryRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<QueueEntry> findByPatientAndStatusIn(Patient patient, List<EQueueStatus> statuses) {
         List<QueueEntryEntity> entryList = repository.findByPatientAndStatusIn(patient.getId(), statuses);
 
@@ -131,6 +138,7 @@ public class QueueEntryRepositoryImpl implements IQueueEntryRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<QueueEntry> findByProcedureIdAndFilters(UUID procedureId, EQueueStatus status, ERiskColor riskColor) {
         List<QueueEntryEntity> entryList = repository
                 .findByProcedureIdAndFilters(procedureId, status, riskColor);

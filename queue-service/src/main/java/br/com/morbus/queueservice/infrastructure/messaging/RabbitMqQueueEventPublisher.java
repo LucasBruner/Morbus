@@ -7,7 +7,7 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 import lombok.extern.slf4j.Slf4j;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Slf4j
 @Component
@@ -67,7 +67,7 @@ public class RabbitMqQueueEventPublisher implements IQueueEventPublisher {
                 queueEntry.getRiskColor(),
                 queueEntry.getTipoFila(),
                 null,
-                LocalDateTime.now());
+                Instant.now());
     }
 
     private QueueEventPayload buildPayload(QueueEntry queueEntry, String reason) {
@@ -84,6 +84,6 @@ public class RabbitMqQueueEventPublisher implements IQueueEventPublisher {
                 queueEntry.getRiskColor(),
                 queueEntry.getTipoFila(),
                 reason,
-                LocalDateTime.now());
+                Instant.now());
     }
 }

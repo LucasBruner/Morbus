@@ -22,7 +22,6 @@ import java.util.UUID;
 public class SolicitacaoEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(name = "paciente_id", nullable = false)
