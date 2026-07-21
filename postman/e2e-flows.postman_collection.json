@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "f4a7c2e1-8b3d-4e6a-9c1f-2d5e6a7b8c9d",
     "name": "Morbus - E2E Flows (docs/sequencias-diagrama.md)",
-    "description": "Reproduz, requisição a requisição, os 14 fluxos de docs/sequencias-diagrama.md, encadeando auth-service, queue-service, regulacao-service, agendamento-service e notification-service, mais uma Flow 14 extra (fora do diagrama) validando o caminho de sucesso do gap de unit_id corrigido. Rode a coleção inteira em ordem (Collection Runner ou `newman run postman/e2e-flows.postman_collection.json --delay-request 500`) contra o docker-compose.yml da raiz do repo.\n\nPré-requisitos:\n1. `docker-compose up -d` na raiz do projeto.\n2. Antes da pasta \"Flow 10\", rode `./postman/seed-agendamento.sh` — ele cria apenas health_unit e provider (não existe API pública para isso). A schedule e os slots já são criados via API dentro da própria Flow 10 (request \"Create Schedule\"), usando o {{executanteToken}} com o claim unit_id no JWT.\n\nEsta coleção é independente das 3 coleções por serviço já existentes (auth-service, queue-service, regulacao-service) — aquelas testam endpoints isolados; esta testa as jornadas ponta-a-ponta entre serviços, incluindo a propagação via RabbitMQ.\n\nVeja `postman/README.md` para as limitações reais encontradas no código durante a criação desta coleção (username precisa ser UUID para regulacao/agendamento-service; call-next é ROLE_MEDICO mesmo nos fluxos onde o diagrama mostra o Regulador chamando). O gap de JWT sem unit_id para ROLE_EXECUTANTE foi corrigido no auth-service — endpoints unit-scoped funcionam desde que o registro do usuário inclua unitId e o corpo da requisição use o mesmo unitId. Flow 13 testa o caso negativo (EXECUTANTE sem unitId -> 403, comportamento correto) e Flow 14 testa o caso positivo (EXECUTANTE com unitId correto -> 204, reaproveitando o mesmo agendamento da Flow 10).",
+    "description": "Reproduz, requisição a requisição, os 14 fluxos de docs/sequencias-diagrama.md, encadeando auth-service, queue-service, regulacao-service, agendamento-service e notification-service, mais uma Flow 14 extra (fora do diagrama) validando o caminho de sucesso do gap de unit_id corrigido. Rode a coleção inteira em ordem (Collection Runner ou `newman run postman/e2e-flows.postman_collection.json --delay-request 500`) contra o docker-compose.yml da raiz do repo.\n\nPré-requisitos:\n1. `docker-compose up -d` na raiz do projeto. O health_unit + provider usados pela Flow 10 já vêm seedados automaticamente pela migration Flyway `V13__seed_dev_data.sql` do agendamento-service (não é mais necessário rodar nenhum script). A schedule e os slots já são criados via API dentro da própria Flow 10 (request \"Create Schedule\"), usando o {{executanteToken}} com o claim unit_id no JWT.\n\nEsta coleção é independente das 3 coleções por serviço já existentes (auth-service, queue-service, regulacao-service) — aquelas testam endpoints isolados; esta testa as jornadas ponta-a-ponta entre serviços, incluindo a propagação via RabbitMQ.\n\nVeja `postman/README.md` para as limitações reais encontradas no código durante a criação desta coleção (username precisa ser UUID para regulacao/agendamento-service; call-next é ROLE_MEDICO mesmo nos fluxos onde o diagrama mostra o Regulador chamando). O gap de JWT sem unit_id para ROLE_EXECUTANTE foi corrigido no auth-service — endpoints unit-scoped funcionam desde que o registro do usuário inclua unitId e o corpo da requisição use o mesmo unitId. Flow 13 testa o caso negativo (EXECUTANTE sem unitId -> 403, comportamento correto) e Flow 14 testa o caso positivo (EXECUTANTE com unitId correto -> 204, reaproveitando o mesmo agendamento da Flow 10).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -951,7 +951,7 @@
     },
     {
       "name": "Flow 10 - Solicitacao Aprovada -> Fila -> Agendamento",
-      "description": "Requer Flow 1-2, Flow 3 e Flow 4 ja executadas nesta run (usa {{medicoToken}}, {{solicitanteToken}}, {{reguladorToken}}, {{executanteToken}} e {{procedureId}}). Requer tambem que ./postman/seed-agendamento.sh tenha sido rodado — ele so cria health_unit e provider (sem API publica para isso); a schedule/slots agora sao criados aqui mesmo, via API, pela request 'Create Schedule'.",
+      "description": "Requer Flow 1-2, Flow 3 e Flow 4 ja executadas nesta run (usa {{medicoToken}}, {{solicitanteToken}}, {{reguladorToken}}, {{executanteToken}} e {{procedureId}}). O health_unit e provider ja vem seedados automaticamente pela migration Flyway V13__seed_dev_data.sql do agendamento-service (sem API publica para cadastra-los via request); a schedule/slots sao criados aqui mesmo, via API, pela request 'Create Schedule'.",
       "item": [
         {
           "name": "Create Schedule",
@@ -982,7 +982,7 @@
               "host": ["{{baseUrlAgendamento}}"],
               "path": ["api", "v1", "schedules"]
             },
-            "description": "Exige ROLE_EXECUTANTE com unit_id no JWT batendo com o unitId do corpo (gap corrigido no auth-service). providerId e o mesmo criado por seed-agendamento.sh; a data do slot e sempre a proxima ocorrencia de diaDaSemana a partir de hoje (CriarScheduleUseCase.gerarSlots), entao qualquer dia da semana serve."
+            "description": "Exige ROLE_EXECUTANTE com unit_id no JWT batendo com o unitId do corpo (gap corrigido no auth-service). providerId e o mesmo seedado pela migration Flyway V13__seed_dev_data.sql; a data do slot e sempre a proxima ocorrencia de diaDaSemana a partir de hoje (CriarScheduleUseCase.gerarSlots), entao qualquer dia da semana serve."
           },
           "response": []
         },
@@ -1215,7 +1215,7 @@
               "host": ["{{baseUrlRegulacao}}"],
               "path": ["api", "v1", "regulacao", "{{solicitacaoId}}", "avaliar"]
             },
-            "description": "unidadeExecutanteId precisa ser o MESMO UUID usado em postman/seed-agendamento.sh (health_units.id / schedules.unit_id), senao o AlocarPacienteEmSlotUseCase nao encontra slot e a jornada para em APPOINTMENT_NO_SLOT.\n\nPublica SOLICITATION_APPROVED -> queue-service cria QueueEntry (AGUARDANDO, FILA_REGULADA, riskColor=AMARELO, preferredUnitId={{agendamentoUnitId}}) -> publica PATIENT_REGISTERED -> notification-service notifica o paciente."
+            "description": "unidadeExecutanteId precisa ser o MESMO UUID seedado pela migration Flyway V13__seed_dev_data.sql (health_units.id / schedules.unit_id), senao o AlocarPacienteEmSlotUseCase nao encontra slot e a jornada para em APPOINTMENT_NO_SLOT.\n\nPublica SOLICITATION_APPROVED -> queue-service cria QueueEntry (AGUARDANDO, FILA_REGULADA, riskColor=AMARELO, preferredUnitId={{agendamentoUnitId}}) -> publica PATIENT_REGISTERED -> notification-service notifica o paciente."
           },
           "response": []
         },
@@ -1292,7 +1292,7 @@
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
                   "const body = pm.response.json();",
                   "const list = body.data && body.data.agendamentos ? body.data.agendamentos : [];",
-                  "pm.test('agendamento foi criado pelo AlocarPacienteEmSlotUseCase (requer seed-agendamento.sh)', () => pm.expect(list.length).to.be.above(0));",
+                  "pm.test('agendamento foi criado pelo AlocarPacienteEmSlotUseCase (requer a request \\'Create Schedule\\' desta Flow ja executada)', () => pm.expect(list.length).to.be.above(0));",
                   "if (list.length > 0) { pm.collectionVariables.set('agendamentoId', list[0].id); }"
                 ]
               }

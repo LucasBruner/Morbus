@@ -30,7 +30,8 @@ public class ReinstatePatientInQueue {
                 .findById(queueEntryId)
                 .orElseThrow(() -> new QueueNotExistException("Não existe fila com esse ID"));
 
-        if (!queueEntry.getQueueStatus().equals(EQueueStatus.AGENDADO)) {
+        EQueueStatus status = queueEntry.getQueueStatus();
+        if (!status.equals(EQueueStatus.AGENDADO) && !status.equals(EQueueStatus.CHAMADO)) {
             throw new QueueNotAllowedException("Não é possível reinserir a fila!");
         }
 
