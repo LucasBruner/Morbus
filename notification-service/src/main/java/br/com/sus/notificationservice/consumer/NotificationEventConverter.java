@@ -7,6 +7,7 @@ import br.com.sus.notificationservice.model.dto.SolicitacaoDevolvidaEventDTO;
 import br.com.sus.notificationservice.model.dto.SolicitacaoNegadaEventDTO;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.smallrye.reactive.messaging.MessageConverter;
+import io.vertx.core.buffer.Buffer;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.reactive.messaging.Message;
@@ -36,7 +37,8 @@ public class NotificationEventConverter implements MessageConverter {
     @Override
     public Message<?> convert(Message<?> message, Type type) {
         try {
-            byte[] payload = (byte[]) message.getPayload();
+            Object rawPayload = message.getPayload();
+            byte[] payload = rawPayload instanceof Buffer buffer ? buffer.getBytes() : (byte[]) rawPayload;
             Object dto = objectMapper.readValue(payload, (Class<?>) type);
             return message.withPayload(dto);
         } catch (Exception e) {
